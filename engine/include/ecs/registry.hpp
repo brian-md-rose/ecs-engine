@@ -76,6 +76,9 @@ namespace engine::ecs
 			return Pool<T>().Add(entity, std::forward<Args>(args)...);
 		}
 
+		// Removing from a dead or null entity, or one without the component, is a deliberate no-op
+		// rather than an assert: a destroyed entity already has no components, so the request is
+		// already satisfied, and deferred removals (CommandBuffer) can race with Destroy.
 		template <Component T> void Remove(Entity entity)
 		{
 			AssertNotIterating();

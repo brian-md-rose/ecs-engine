@@ -259,3 +259,30 @@ TEST_CASE("Registry component access through a const reference", "[ecs][registry
 
 	CHECK(constRegistry.TryGetComponent<Velocity>(e) == nullptr);
 }
+
+TEST_CASE("Registry on a destroyed entity", "[ecs][registry]")
+{
+	const engine::test::AssertsThrow assertsThrow;
+
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Position>(e, 1.0f, 2.0f);
+	registry.Destroy(e);
+
+	// Remove is a deliberate no-op, not an error.
+	CHECK_NOTHROW(registry.Remove<Position>(e));
+
+	CHECK_FALSE(registry.HasComponent<Position>(e));
+	CHECK(registry.TryGetComponent<Position>(e) == nullptr);
+
+	// The recycled id is a different entity; the stale handle still can't reach its component.
+	const Entity reused = registry.Create();
+	registry.Add<Position>(reused, 3.0f, 4.0f);
+	CHECK_FALSE(registry.HasComponent<Position>(e));
+	CHECK(registry.TryGetComponent<Position>(e) == nullptr);
+
+	if constexpr (engine::kAssertsEnabled)
+	{
+		CHECK_THROWS_AS(registry.GetComponent<Position>(e), engine::test::AssertFailure);
+	}
+}

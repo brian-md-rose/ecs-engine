@@ -115,3 +115,24 @@ TEST_CASE("ComponentPool::Add does not allow duplicate components", "[ecs][pool]
 	CHECK_FALSE(pool.HasComponent(e));
 	CHECK(pool.Data().empty());
 }
+
+TEST_CASE("ComponentPool::GetComponent asserts when the component is missing", "[ecs][pool]")
+{
+	if constexpr (!engine::kAssertsEnabled)
+	{
+		SKIP("ENGINE_ASSERT is compiled out in this configuration");
+	}
+
+	using engine::test::AssertFailure;
+	const engine::test::AssertsThrow assertsThrow;
+
+	ComponentPool<Health> pool;
+	pool.Add(Entity{1, 0}, 10);
+	const ComponentPool<Health>& constPool = pool;
+
+	CHECK_THROWS_AS(pool.GetComponent(Entity{99, 0}), AssertFailure);     // id past the end of sparse
+	CHECK_THROWS_AS(pool.GetComponent(Entity{0, 0}), AssertFailure);      // id in range, no component
+	CHECK_THROWS_AS(pool.GetComponent(Entity{1, 1}), AssertFailure);      // stale generation
+	CHECK_THROWS_AS(constPool.GetComponent(Entity{0, 0}), AssertFailure); // const overload
+	CHECK(pool.GetComponent(Entity{1, 0}).value == 10);
+}
