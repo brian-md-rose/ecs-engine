@@ -1,0 +1,18 @@
+# CMake build trees (presets use ./build)
+/build/
+/out/
+CMakeUserPresets.json
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Build outputs
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.lib
+*.dll

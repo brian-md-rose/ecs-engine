@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows-msvc:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [debug, release]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        # The preset pins the VS 2026 generator; fall back to whatever VS the runner has.
+        run: cmake -S . -B build/ci -A x64 -DENGINE_BUILD_TESTS=ON
+      - name: Build
+        run: cmake --build build/ci --config ${{ matrix.config }}
+      - name: Test
+        run: ctest --test-dir build/ci -C ${{ matrix.config }} --output-on-failure
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [ninja-gcc, ninja-clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}

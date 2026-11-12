@@ -1,0 +1,13 @@
+# Matches the existing style: tabs, Allman braces, namespace contents indented.
+BasedOnStyle: Microsoft
+Standard: c++20
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 120
+NamespaceIndentation: All
+AccessModifierOffset: -4
+PointerAlignment: Left
+SortIncludes: CaseSensitive
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: WithoutElse

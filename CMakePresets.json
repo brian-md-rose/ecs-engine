@@ -1,0 +1,59 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "ENGINE_BUILD_GAME": "ON",
+        "ENGINE_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "msvc",
+      "inherits": "base",
+      "displayName": "MSVC x64 (Visual Studio 2026)",
+      "generator": "Visual Studio 18 2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "ninja-gcc",
+      "inherits": "base",
+      "displayName": "Ninja + GCC (Debug)",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "ninja-clang",
+      "inherits": "base",
+      "displayName": "Ninja + Clang (Debug)",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug",       "configurePreset": "msvc", "configuration": "Debug" },
+    { "name": "release",     "configurePreset": "msvc", "configuration": "Release" },
+    { "name": "ninja-gcc",   "configurePreset": "ninja-gcc" },
+    { "name": "ninja-clang", "configurePreset": "ninja-clang" }
+  ],
+  "testPresets": [
+    {
+      "name": "test-base",
+      "hidden": true,
+      "output": { "outputOnFailure": true }
+    },
+    { "name": "debug",       "inherits": "test-base", "configurePreset": "msvc", "configuration": "Debug" },
+    { "name": "release",     "inherits": "test-base", "configurePreset": "msvc", "configuration": "Release" },
+    { "name": "ninja-gcc",   "inherits": "test-base", "configurePreset": "ninja-gcc" },
+    { "name": "ninja-clang", "inherits": "test-base", "configurePreset": "ninja-clang" }
+  ]
+}
