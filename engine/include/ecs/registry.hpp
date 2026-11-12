@@ -1,5 +1,7 @@
 #pragma once
+#include <cstddef>
 #include <memory>
+#include <span>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -124,6 +126,10 @@ namespace engine::ecs
 		// Calls f(entity, First&, Rest&...) for every entity that has all the listed components.
 		// Inside f, reading and modifying component values and calling Create() are fine;
 		// Add/Remove/Destroy assert in Debug. Record those in a CommandBuffer instead.
+		//
+		// The loop is driven by whichever listed pool is smallest (e.g. Each<Position, Enemy>
+		// walks the few enemies, not every positioned entity), so visiting order follows that
+		// pool's packed order. The callback's arguments are always in the order written.
 		template <Component First, typename... Rest, typename Func> void Each(Func&& f)
 		{
 			const IterationScope scope(iterationDepth);
@@ -139,17 +145,39 @@ namespace engine::ecs
 			{
 				if (!(rest && ...)) return;
 
-				auto ents = first.Entities();
-				auto data = first.Data();
+				const std::span<const Entity> ents = first.Entities();
 
-				for (std::size_t i = 0; i < ents.size(); ++i)
+				// Pick the smallest pool. Safe to hold the span: structural changes,
+				// which could reallocate it, assert while iterating.
+				std::span<const Entity> driver = ents;
+				((driver = rest->Entities().size() < driver.size() ? rest->Entities() : driver), ...);
+
+				if (driver.data() == ents.data())
 				{
-					if ((rest->HasComponent(ents[i]) && ...))
+					// First is the smallest: walk its packed data directly, no lookup per entity.
+					const std::span<First> data = first.Data();
+					for (std::size_t i = 0; i < ents.size(); ++i)
 					{
-						f(ents[i], data[i], rest->GetComponent(ents[i])...);
+						if ((rest->HasComponent(ents[i]) && ...))
+						{
+							f(ents[i], data[i], rest->GetComponent(ents[i])...);
+						}
+					}
+					return;
+				}
+
+				for (const Entity entity : driver)
+				{
+					if (first.HasComponent(entity) && (rest->HasComponent(entity) && ...))
+					{
+						f(entity, first.GetComponent(entity), rest->GetComponent(entity)...);
 					}
 				}
 			}(FindPool<Rest>()...);
 		}
+
+		// Number of component pools that exist. Diagnostic; tests use it to prove that
+		// read-only queries don't create pools.
+		[[nodiscard]] std::size_t PoolCount() const noexcept { return pools.size(); }
 	};
 } // namespace engine::ecs
