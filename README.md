@@ -1,6 +1,6 @@
 # ecs-engine
 
-[![CI](https://github.com/brose22/ecs-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/brose22/ecs-engine/actions/workflows/ci.yml)
+[![CI](https://github.com/brian-md-rose/ecs-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/brian-md-rose/ecs-engine/actions/workflows/ci.yml)
 
 A learning-focused 2D game engine built on a hand-written Entity Component System.
 
