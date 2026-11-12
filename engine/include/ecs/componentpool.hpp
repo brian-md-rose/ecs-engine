@@ -27,6 +27,8 @@ namespace engine::ecs
 	public:
 		template <typename... Args> T& Add(Entity entity, Args&&... args)
 		{
+			// Always on: a null id would overflow the resize below and write out of bounds.
+			ENGINE_VERIFY(!entity.IsNull(), "cannot add a component to null entity");
 			ENGINE_ASSERT(!HasComponent(entity), "entity already has this component; use GetComponent to modify it");
 
 			// Asserts are compiled out in Release: never store a second copy,

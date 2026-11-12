@@ -70,6 +70,9 @@ namespace engine::ecs
 		template <Component T, typename... Args> T& Add(Entity entity, Args&&... args)
 		{
 			AssertNotIterating();
+			// Always on: a dead or null entity would leave an orphaned entry in the pool
+			// (or, for Entity::Null, write out of bounds).
+			ENGINE_VERIFY(IsAlive(entity), "cannot add a component to a dead or null entity");
 			return Pool<T>().Add(entity, std::forward<Args>(args)...);
 		}
 

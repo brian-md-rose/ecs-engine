@@ -10,6 +10,7 @@ add_executable(engine_tests
     ecs/registry_tests.cpp
     ecs/componentpool_tests.cpp
     ecs/commandbuffer_tests.cpp
+    ecs/entity_tests.cpp
 )
 target_link_libraries(engine_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
 target_include_directories(engine_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
