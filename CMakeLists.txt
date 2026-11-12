@@ -31,7 +31,11 @@ if(MSVC)
         # defect in the code: inlining decisions (4710, 4711), unreferenced
         # inline functions removed (4514), struct padding added (4820), and
         # Spectre mitigation insertion points (5045).
-        /wd4514 /wd4710 /wd4711 /wd4820 /wd5045)
+        /wd4514 /wd4710 /wd4711 /wd4820 /wd5045
+        # Copy/move constructor or assignment implicitly deleted (4625, 4626,
+        # 5026, 5027): fires for every move-only type (e.g. anything holding a
+        # std::unique_ptr), which is intentional, not a defect.
+        /wd4625 /wd4626 /wd5026 /wd5027)
 else()
     target_compile_options(engine_warnings INTERFACE
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)

@@ -1,8 +1,12 @@
 add_library(engine STATIC
-    src/ecs/componentpool.cpp
+    src/core/assert.cpp
     src/ecs/registry.cpp
 )
 add_library(engine::engine ALIAS engine)
+
+# ENGINE_ASSERT is active in Debug builds only. PUBLIC so every target that
+# includes engine headers sees the same setting.
+target_compile_definitions(engine PUBLIC $<$<CONFIG:Debug>:ENGINE_ENABLE_ASSERTS>)
 
 target_include_directories(engine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
