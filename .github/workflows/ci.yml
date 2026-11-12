@@ -13,7 +13,7 @@ jobs:
       matrix:
         config: [debug, release]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         # The preset pins the VS 2026 generator; fall back to whatever VS the runner has.
         run: cmake -S . -B build/ci -A x64 -DENGINE_BUILD_TESTS=ON
@@ -29,7 +29,7 @@ jobs:
       matrix:
         preset: [ninja-gcc, ninja-clang]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: Configure
