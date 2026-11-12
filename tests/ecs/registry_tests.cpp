@@ -1,5 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "assert_guard.hpp"
+#include "core/assert.hpp"
+#include "ecs/commandbuffer.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 
@@ -81,4 +84,85 @@ TEST_CASE("Registry::Each visits only entities with every component", "[ecs][reg
 	CHECK(registry.GetComponent<Position>(moving).x == 1.0f);
 	CHECK(registry.GetComponent<Position>(moving).y == 2.0f);
 	CHECK(registry.GetComponent<Position>(still).x == 5.0f);
+}
+
+TEST_CASE("Registry asserts on structural changes during Each", "[ecs][registry]")
+{
+	if constexpr (!engine::kAssertsEnabled)
+	{
+		SKIP("ENGINE_ASSERT is compiled out in this configuration");
+	}
+
+	using engine::test::AssertFailure;
+	const engine::test::AssertsThrow assertsThrow;
+
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Position>(e, 1.0f, 2.0f);
+
+	SECTION("Destroy")
+	{
+		CHECK_THROWS_AS(registry.Each<Position>([&](Entity entity, Position&) { registry.Destroy(entity); }),
+		                AssertFailure);
+		CHECK(registry.IsAlive(e));
+	}
+
+	SECTION("Add")
+	{
+		CHECK_THROWS_AS(
+			registry.Each<Position>([&](Entity entity, Position&) { registry.Add<Velocity>(entity, 0.0f, 0.0f); }),
+			AssertFailure);
+		CHECK_FALSE(registry.HasComponent<Velocity>(e));
+	}
+
+	SECTION("Remove")
+	{
+		CHECK_THROWS_AS(registry.Each<Position>([&](Entity entity, Position&) { registry.Remove<Position>(entity); }),
+		                AssertFailure);
+		CHECK(registry.HasComponent<Position>(e));
+	}
+
+	SECTION("inside a nested Each")
+	{
+		registry.Add<Velocity>(e, 0.0f, 0.0f);
+		CHECK_THROWS_AS(registry.Each<Position>([&](Entity, Position&) {
+			registry.Each<Velocity>([&](Entity, Velocity&) {});
+			registry.Destroy(e); // still inside the outer loop
+		}),
+		                AssertFailure);
+	}
+
+	SECTION("CommandBuffer::Apply inside Each")
+	{
+		engine::ecs::CommandBuffer commands;
+		commands.Destroy(e);
+		CHECK_THROWS_AS(registry.Each<Position>([&](Entity, Position&) { commands.Apply(registry); }),
+		                AssertFailure);
+	}
+
+	// Once the throwing Each has unwound, structural changes are allowed again.
+	CHECK_NOTHROW(registry.Destroy(e));
+	CHECK_FALSE(registry.IsAlive(e));
+}
+
+TEST_CASE("Registry allows reads, writes and Create during Each", "[ecs][registry]")
+{
+	const engine::test::AssertsThrow assertsThrow;
+
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Position>(e, 1.0f, 2.0f);
+
+	Entity created{};
+	CHECK_NOTHROW(registry.Each<Position>([&](Entity entity, Position& p) {
+		p.x += 1.0f;
+		CHECK(registry.HasComponent<Position>(entity));
+		created = registry.Create();
+	}));
+
+	CHECK(registry.GetComponent<Position>(e).x == 2.0f);
+	CHECK(registry.IsAlive(created));
+
+	// And structural changes work normally afterwards.
+	CHECK_NOTHROW(registry.Add<Velocity>(created, 1.0f, 1.0f));
 }

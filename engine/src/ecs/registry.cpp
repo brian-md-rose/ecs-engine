@@ -19,6 +19,7 @@ namespace engine::ecs
 
 	void Registry::Destroy(Entity entity)
 	{
+		AssertNotIterating();
 		if (!IsAlive(entity)) return;
 
 		for (auto& [type, pool] : pools)
