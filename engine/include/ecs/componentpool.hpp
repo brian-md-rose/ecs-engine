@@ -78,6 +78,8 @@ namespace engine::ecs
 
 		T& GetComponent(Entity entity) { return components[sparse[entity.id]]; }
 
+		const T& GetComponent(Entity entity) const { return components[sparse[entity.id]]; }
+
 		// std::span is a lightweight, non-owning view over a contiguous sequence of memory.
 		// It wraps a raw pointer and a size into a single, cohesive type, acting as a universal interface for functions
 		// that process linear blocks of data.

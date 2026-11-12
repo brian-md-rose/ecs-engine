@@ -47,6 +47,21 @@ namespace engine::ecs
 			return static_cast<ComponentPool<T>&>(*p);
 		}
 
+		template <Component T> ComponentPool<T>* FindPool()
+		{
+			const auto it = pools.find(std::type_index(typeid(T)));
+			if (it == pools.end()){ return nullptr; }
+			// Safe: the entry for typeid(T) is only ever created by Pool<T>() as a ComponentPool<T>.
+			return static_cast<ComponentPool<T>*>(it->second.get());
+		}
+
+		template <Component T> const ComponentPool<T>* FindPool() const
+		{
+			const auto it = pools.find(std::type_index(typeid(T)));
+			if (it == pools.end()){ return nullptr; }
+			return static_cast<const ComponentPool<T>*>(it->second.get());
+		}
+
 	public:
 		Entity Create();
 		void Destroy(Entity entity);
@@ -58,15 +73,47 @@ namespace engine::ecs
 			return Pool<T>().Add(entity, std::forward<Args>(args)...);
 		}
 
-		template <Component T> void Remove(Entity e)
+		template <Component T> void Remove(Entity entity)
 		{
 			AssertNotIterating();
-			Pool<T>().Remove(e);
+			ComponentPool<T>* pool = FindPool<T>();
+			if (pool != nullptr)
+			{
+				pool->Remove(entity);
+			}
 		}
 
-		template <Component T> T& GetComponent(Entity e) { return Pool<T>().GetComponent(e); }
+		template <Component T> T& GetComponent(Entity entity)
+		{
+			ComponentPool<T>* pool = FindPool<T>();
+			ENGINE_ASSERT(pool != nullptr && pool->HasComponent(entity), "entity does not have this component");
+			return pool->GetComponent(entity);
+		}
 
-		template <Component T> bool HasComponent(Entity e) { return Pool<T>().HasComponent(e); }
+		template <Component T> const T& GetComponent(Entity entity) const
+		{
+			const ComponentPool<T>* pool = FindPool<T>();
+			ENGINE_ASSERT(pool != nullptr && pool->HasComponent(entity), "entity does not have this component");
+			return pool->GetComponent(entity);
+		}
+
+		template <Component T> T* TryGetComponent(Entity entity)
+		{
+			ComponentPool<T>* pool = FindPool<T>();
+			return pool != nullptr && pool->HasComponent(entity) ? &pool->GetComponent(entity) : nullptr;
+		}
+
+		template <Component T> const T* TryGetComponent(Entity entity) const
+		{
+			const ComponentPool<T>* pool = FindPool<T>();
+			return pool != nullptr && pool->HasComponent(entity) ? &pool->GetComponent(entity) : nullptr;
+		}
+
+		template <Component T> bool HasComponent(Entity entity) const
+		{
+			const ComponentPool<T>* pool = FindPool<T>();
+			return pool != nullptr && pool->HasComponent(entity);
+		}
 
 		// Calls f(entity, First&, Rest&...) for every entity that has all the listed components.
 		// Inside f, reading and modifying component values and calling Create() are fine;
@@ -74,19 +121,29 @@ namespace engine::ecs
 		template <Component First, typename... Rest, typename Func> void Each(Func&& f)
 		{
 			const IterationScope scope(iterationDepth);
-			auto& first = Pool<First>();
-			[&](auto&... rest) // look up the pools once, not per entity
+
+			ComponentPool<First>* pool = FindPool<First>();
+			if (pool == nullptr)
 			{
+				return;
+			}
+
+			auto& first = *pool;
+			[&](auto... rest) // look up the pools once, not per entity
+			{
+				if (!(rest && ...)) return;
+
 				auto ents = first.Entities();
 				auto data = first.Data();
+
 				for (std::size_t i = 0; i < ents.size(); ++i)
 				{
-					if ((rest.HasComponent(ents[i]) && ...))
+					if ((rest->HasComponent(ents[i]) && ...))
 					{
-						f(ents[i], data[i], rest.GetComponent(ents[i])...);
+						f(ents[i], data[i], rest->GetComponent(ents[i])...);
 					}
 				}
-			}(Pool<Rest>()...);
+			}(FindPool<Rest>()...);
 		}
 	};
 } // namespace engine::ecs

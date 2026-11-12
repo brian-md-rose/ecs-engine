@@ -31,8 +31,10 @@ int main()
 	engine::ecs::Registry registry;
 	engine::ecs::Entity player = registry.Create();
 
-	const Position& position = registry.Add<Position>(player, 10.0f, 10.0f);
+	registry.Add<Position>(player, 10.0f, 10.0f);
 	registry.Add<Velocity>(player, 0.0f, -9.8f);
+
+	const Position& position = registry.GetComponent<Position>(player);
 
 	std::printf("ecs-engine: entity %u (generation %u) at (%.1f, %.1f)\n", static_cast<unsigned>(player.id),
 	            static_cast<unsigned>(player.generation), static_cast<double>(position.x),
