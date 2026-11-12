@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
-#include <unordered_map>
 #include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 #include "ecs/component.hpp"
@@ -15,8 +15,7 @@ namespace engine::ecs
 		std::vector<std::uint32_t> freeEntities;
 		std::unordered_map<std::type_index, std::unique_ptr<IComponentPool>> pools;
 
-		template<Component T>
-		ComponentPool<T>& Pool()
+		template <Component T> ComponentPool<T>& Pool()
 		{
 			auto& p = pools[typeid(T)];
 			if (!p) p = std::make_unique<ComponentPool<T>>();
@@ -28,25 +27,19 @@ namespace engine::ecs
 		void Destroy(Entity entity);
 		bool IsAlive(Entity entity) const;
 
-		template<Component T, typename... Args>
-		T& Add(Entity entity, Args&&... args)
+		template <Component T, typename... Args> T& Add(Entity entity, Args&&... args)
 		{
 			return Pool<T>().Add(entity, std::forward<Args>(args)...);
 		}
 
-		template<Component T>
-		void Remove(Entity e)
-		{
-			Pool<T>().Remove(e);
-		}
+		template <Component T> void Remove(Entity e) { Pool<T>().Remove(e); }
 
-		template<Component T> T& GetComponent(Entity e) { return Pool<T>().GetComponent(e); }
+		template <Component T> T& GetComponent(Entity e) { return Pool<T>().GetComponent(e); }
 
-		template<Component T> bool HasComponent(Entity e) { return Pool<T>().HasComponent(e); }
+		template <Component T> bool HasComponent(Entity e) { return Pool<T>().HasComponent(e); }
 
 		// Calls f(entity, First&, Rest&...) for every entity that has all the listed components.
-		template<Component First, typename... Rest, typename Func>
-		void Each(Func&& f)
+		template <Component First, typename... Rest, typename Func> void Each(Func&& f)
 		{
 			auto& first = Pool<First>();
 			[&](auto&... rest) // look up the pools once, not per entity
@@ -63,4 +56,4 @@ namespace engine::ecs
 			}(Pool<Rest>()...);
 		}
 	};
-}
+} // namespace engine::ecs

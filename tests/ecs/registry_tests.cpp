@@ -19,7 +19,7 @@ namespace
 
 	using engine::ecs::Entity;
 	using engine::ecs::Registry;
-}
+} // namespace
 
 TEST_CASE("Registry creates entities with unique ids", "[ecs][registry]")
 {

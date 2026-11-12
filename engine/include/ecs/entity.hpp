@@ -9,4 +9,4 @@ namespace engine::ecs
 		std::uint32_t generation = 0;
 		bool operator==(const Entity& entity) const { return id == entity.id && generation == entity.generation; }
 	};
-}
+} // namespace engine::ecs

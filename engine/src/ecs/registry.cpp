@@ -7,14 +7,14 @@ namespace engine::ecs
 	{
 		if (!freeEntities.empty())
 		{
-			std::uint32_t id = freeEntities.back(); 
+			std::uint32_t id = freeEntities.back();
 			freeEntities.pop_back();
-			return { id, generations[id] };
+			return {id, generations[id]};
 		}
 		generations.push_back(0);
 
 		// Returns new Entity with an id and generation
-		return { static_cast<std::uint32_t>(generations.size() - 1), 0 };
+		return {static_cast<std::uint32_t>(generations.size() - 1), 0};
 	}
 
 	void Registry::Destroy(Entity entity)
@@ -27,7 +27,7 @@ namespace engine::ecs
 		}
 
 		++generations[entity.id];
-		
+
 		freeEntities.push_back(entity.id);
 	}
 
@@ -35,4 +35,4 @@ namespace engine::ecs
 	{
 		return entity.id < generations.size() && generations[entity.id] == entity.generation;
 	}
-}
+} // namespace engine::ecs
