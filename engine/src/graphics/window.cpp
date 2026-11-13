@@ -6,7 +6,6 @@ namespace engine::graphics
 	Window::Window(const char* title, int width, int height)
 	{
 		videoInitialized = SDL_InitSubSystem(SDL_INIT_VIDEO);
-
 		if (!videoInitialized)
 		{
 			SDL_Log("SDL_InitSubSystem(VIDEO) failed: %s", SDL_GetError());
@@ -31,19 +30,5 @@ namespace engine::graphics
 		{
 			SDL_QuitSubSystem(SDL_INIT_VIDEO);
 		}
-	}
-
-	bool Window::PollEvents()
-	{
-		bool open = true;
-		SDL_Event event{};
-		while (SDL_PollEvent(&event))
-		{
-			if (event.type == SDL_EVENT_QUIT)
-			{
-				open = false;
-			}
-		}
-		return open;
 	}
 } // namespace engine::graphics

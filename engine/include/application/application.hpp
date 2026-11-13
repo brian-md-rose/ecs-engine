@@ -3,6 +3,7 @@
 #include "core/clock.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
+#include "input/keyboard.hpp"
 
 namespace engine::application
 {
@@ -23,8 +24,10 @@ namespace engine::application
 		virtual ~Game() = default;
 
 		// Called at a fixed rate (1 / ApplicationConfig::updateRate seconds, passed as dt),
-		// zero or more times per frame. Run ECS systems here.
-		virtual void Update(double dt) = 0;
+		// zero or more times per frame. Run ECS systems here. The keyboard's pressed/released
+		// edges are cleared after each call, so each press is seen by exactly one update.
+		// Mapping keys to game actions is the game's job.
+		virtual void Update(double dt, const input::Keyboard& keyboard) = 0;
 
 		// Called once per frame: clear and draw. Application presents the frame afterwards.
 		// alpha in [0, 1) is how far the game is into the next update, for optional
@@ -52,7 +55,12 @@ namespace engine::application
 		SdlScope sdl;
 		graphics::Window window;
 		graphics::Renderer renderer;
+		input::Keyboard keyboard;
 		double updateStep;
+
+		// Drains pending SDL events, feeding key events to keyboard. Returns false once the
+		// window has been asked to close.
+		bool PumpEvents();
 
 	public:
 		explicit Application(const ApplicationConfig& config);

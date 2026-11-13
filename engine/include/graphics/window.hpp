@@ -23,10 +23,6 @@ namespace engine::graphics
 
 		[[nodiscard]] bool IsValid() const noexcept { return window != nullptr; }
 
-		// Drains pending window events. Returns false once the window has been asked to close.
-		// Stopgap until the Input module (#9) owns event handling.
-		bool PollEvents();
-
 		// For engine code (e.g. Renderer) that needs the SDL handle. SDL_Window is only
 		// forward-declared, so this doesn't expose SDL's headers.
 		[[nodiscard]] SDL_Window* GetWindowHandle() const noexcept { return window; }

@@ -6,6 +6,7 @@ add_library(engine STATIC
     src/ecs/registry.cpp
     src/graphics/renderer.cpp
     src/graphics/window.cpp
+    src/input/keyboard.cpp
 )
 add_library(engine::engine ALIAS engine)
 
