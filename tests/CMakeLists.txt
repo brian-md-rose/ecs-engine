@@ -7,6 +7,7 @@ FetchContent_Declare(Catch2
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(engine_tests
+    core/fixedtimestep_tests.cpp
     ecs/registry_tests.cpp
     ecs/componentpool_tests.cpp
     ecs/commandbuffer_tests.cpp

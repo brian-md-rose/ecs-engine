@@ -1,5 +1,8 @@
 add_library(engine STATIC
+    src/application/application.cpp
     src/core/assert.cpp
+    src/core/clock.cpp
+    src/core/fixedtimestep.cpp
     src/ecs/registry.cpp
     src/graphics/renderer.cpp
     src/graphics/window.cpp

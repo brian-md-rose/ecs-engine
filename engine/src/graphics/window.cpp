@@ -31,9 +31,6 @@ namespace engine::graphics
 		{
 			SDL_QuitSubSystem(SDL_INIT_VIDEO);
 		}
-
-		// TODO(#10): move SDL_Quit to Application, which outlives every subsystem
-		SDL_Quit();
 	}
 
 	bool Window::PollEvents()
