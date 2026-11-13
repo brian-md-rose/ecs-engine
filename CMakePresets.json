@@ -40,8 +40,15 @@
     }
   ],
   "buildPresets": [
-    { "name": "debug",       "configurePreset": "msvc", "configuration": "Debug" },
-    { "name": "release",     "configurePreset": "msvc", "configuration": "Release" },
+    {
+      "name": "msvc-base",
+      "hidden": true,
+      "configurePreset": "msvc",
+      "nativeToolOptions": ["/m"],
+      "description": "/m lets MSBuild build independent projects at the same time, one per core."
+    },
+    { "name": "debug",       "inherits": "msvc-base", "configuration": "Debug" },
+    { "name": "release",     "inherits": "msvc-base", "configuration": "Release" },
     { "name": "ninja-gcc",   "configurePreset": "ninja-gcc" },
     { "name": "ninja-clang", "configurePreset": "ninja-clang" }
   ],
