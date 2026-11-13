@@ -41,6 +41,17 @@ else()
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
 endif()
 
+# SDL3, vendored as a git submodule. Static, so there's no SDL3.dll to copy
+# next to the game. SYSTEM keeps our /Wall /WX off SDL's headers;
+# EXCLUDE_FROM_ALL builds only the SDL targets we link.
+if(NOT EXISTS ${PROJECT_SOURCE_DIR}/thirdparty/SDL/CMakeLists.txt)
+    message(FATAL_ERROR "thirdparty/SDL is empty. Run: git submodule update --init")
+endif()
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
+set(SDL_TEST_LIBRARY OFF)
+add_subdirectory(thirdparty/SDL EXCLUDE_FROM_ALL SYSTEM)
+
 add_subdirectory(engine)
 
 if(ENGINE_BUILD_GAME)

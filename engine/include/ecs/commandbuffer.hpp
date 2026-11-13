@@ -1,12 +1,13 @@
 #pragma once
-#include "core/assert.hpp"
-#include "ecs/component.hpp"
-#include "ecs/entity.hpp"
-#include "ecs/registry.hpp"
 #include <cstddef>
 #include <memory>
 #include <utility>
 #include <vector>
+
+#include "core/assert.hpp"
+#include "ecs/component.hpp"
+#include "ecs/entity.hpp"
+#include "ecs/registry.hpp"
 
 namespace engine::ecs
 {
@@ -14,7 +15,8 @@ namespace engine::ecs
 	// applied later, at a point where no Registry::Each loop is iterating the pools.
 	//
 	//     CommandBuffer commands;
-	//     registry.Each<Pellet, GridPosition>([&](Entity e, Pellet&, GridPosition& p) {
+	//     registry.Each<Pellet, GridPosition>([&](Entity e, Pellet&, GridPosition& p)
+	//     {
 	//         if (p == playerTile) commands.Destroy(e);
 	//     });
 	//     commands.Apply(registry);
@@ -28,7 +30,7 @@ namespace engine::ecs
 	{
 		enum class Operation
 		{
-			INVALID,
+			Invalid,
 			Add,
 			Remove,
 			Destroy
@@ -64,7 +66,7 @@ namespace engine::ecs
 
 		struct Command
 		{
-			Operation op = Operation::INVALID;
+			Operation op = Operation::Invalid;
 			Entity entity;
 			std::unique_ptr<IComponentCommand> component; // set for Add and Remove, null for Destroy
 		};
@@ -108,8 +110,8 @@ namespace engine::ecs
 				case Operation::Destroy:
 					registry.Destroy(command.entity);
 					break;
-				case Operation::INVALID:
-					ENGINE_ASSERT(false, "CommandBuffer recorded an INVALID command");
+				case Operation::Invalid:
+					ENGINE_ASSERT(false, "CommandBuffer recorded an invalid command");
 					break;
 				}
 			}
