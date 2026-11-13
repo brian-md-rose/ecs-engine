@@ -76,7 +76,8 @@ TEST_CASE("Registry::Each visits only entities with every component", "[ecs][reg
 	registry.Add<Position>(still, 5.0f, 5.0f);
 
 	int visited = 0;
-	registry.Each<Position, Velocity>([&](Entity, Position& p, const Velocity& v) {
+	registry.Each<Position, Velocity>([&](Entity, Position& p, const Velocity& v)
+	{
 		++visited;
 		p.x += v.x;
 		p.y += v.y;
@@ -104,42 +105,54 @@ TEST_CASE("Registry asserts on structural changes during Each", "[ecs][registry]
 
 	SECTION("Destroy")
 	{
-		CHECK_THROWS_AS(registry.Each<Position>([&](Entity entity, Position&) { registry.Destroy(entity); }),
-		                AssertFailure);
+		const auto destroy = [&](Entity entity, Position&)
+		{
+			registry.Destroy(entity);
+		};
+		CHECK_THROWS_AS(registry.Each<Position>(destroy), AssertFailure);
 		CHECK(registry.IsAlive(e));
 	}
 
 	SECTION("Add")
 	{
-		CHECK_THROWS_AS(
-			registry.Each<Position>([&](Entity entity, Position&) { registry.Add<Velocity>(entity, 0.0f, 0.0f); }),
-			AssertFailure);
+		const auto add = [&](Entity entity, Position&)
+		{
+			registry.Add<Velocity>(entity, 0.0f, 0.0f);
+		};
+		CHECK_THROWS_AS(registry.Each<Position>(add), AssertFailure);
 		CHECK_FALSE(registry.HasComponent<Velocity>(e));
 	}
 
 	SECTION("Remove")
 	{
-		CHECK_THROWS_AS(registry.Each<Position>([&](Entity entity, Position&) { registry.Remove<Position>(entity); }),
-		                AssertFailure);
+		const auto remove = [&](Entity entity, Position&)
+		{
+			registry.Remove<Position>(entity);
+		};
+		CHECK_THROWS_AS(registry.Each<Position>(remove), AssertFailure);
 		CHECK(registry.HasComponent<Position>(e));
 	}
 
 	SECTION("inside a nested Each")
 	{
 		registry.Add<Velocity>(e, 0.0f, 0.0f);
-		CHECK_THROWS_AS(registry.Each<Position>([&](Entity, Position&) {
+		const auto nested = [&](Entity, Position&)
+		{
 			registry.Each<Velocity>([&](Entity, Velocity&) {});
 			registry.Destroy(e); // still inside the outer loop
-		}),
-		                AssertFailure);
+		};
+		CHECK_THROWS_AS(registry.Each<Position>(nested), AssertFailure);
 	}
 
 	SECTION("CommandBuffer::Apply inside Each")
 	{
 		engine::ecs::CommandBuffer commands;
 		commands.Destroy(e);
-		CHECK_THROWS_AS(registry.Each<Position>([&](Entity, Position&) { commands.Apply(registry); }),
-		                AssertFailure);
+		const auto apply = [&](Entity, Position&)
+		{
+			commands.Apply(registry);
+		};
+		CHECK_THROWS_AS(registry.Each<Position>(apply), AssertFailure);
 	}
 
 	// Once the throwing Each has unwound, structural changes are allowed again.
@@ -156,7 +169,8 @@ TEST_CASE("Registry allows reads, writes and Create during Each", "[ecs][registr
 	registry.Add<Position>(e, 1.0f, 2.0f);
 
 	Entity created{};
-	CHECK_NOTHROW(registry.Each<Position>([&](Entity entity, Position& p) {
+	CHECK_NOTHROW(registry.Each<Position>([&](Entity entity, Position& p)
+	{
 		p.x += 1.0f;
 		CHECK(registry.HasComponent<Position>(entity));
 		created = registry.Create();
@@ -179,12 +193,18 @@ TEST_CASE("Registry::Each with a component type that was never added", "[ecs][re
 
 	SECTION("as an extra component: visits nothing")
 	{
-		registry.Each<Position, Velocity>([&](Entity, Position&, Velocity&) { ++visited; });
+		registry.Each<Position, Velocity>([&](Entity, Position&, Velocity&)
+		{
+			++visited;
+		});
 	}
 
 	SECTION("as the first component: visits nothing")
 	{
-		registry.Each<Velocity, Position>([&](Entity, Velocity&, Position&) { ++visited; });
+		registry.Each<Velocity, Position>([&](Entity, Velocity&, Position&)
+		{
+			++visited;
+		});
 	}
 
 	CHECK(visited == 0);
@@ -307,7 +327,8 @@ TEST_CASE("Registry::Each loops over the smallest pool", "[ecs][registry]")
 
 	SECTION("smaller pool listed second")
 	{
-		registry.Each<Position, Velocity>([&](Entity e, Position& p, Velocity& v) {
+		registry.Each<Position, Velocity>([&](Entity e, Position& p, Velocity& v)
+		{
 			order.push_back(e);
 			CHECK(v.x == p.x * 10.0f); // arguments stay in declared order and match the entity
 		});
@@ -316,7 +337,8 @@ TEST_CASE("Registry::Each loops over the smallest pool", "[ecs][registry]")
 
 	SECTION("smaller pool listed first")
 	{
-		registry.Each<Velocity, Position>([&](Entity e, Velocity& v, Position& p) {
+		registry.Each<Velocity, Position>([&](Entity e, Velocity& v, Position& p)
+		{
 			order.push_back(e);
 			CHECK(v.x == p.x * 10.0f);
 		});
@@ -325,7 +347,10 @@ TEST_CASE("Registry::Each loops over the smallest pool", "[ecs][registry]")
 
 	SECTION("callback writes reach the stored components")
 	{
-		registry.Each<Position, Velocity>([](Entity, Position& p, const Velocity& v) { p.y = v.x; });
+		registry.Each<Position, Velocity>([](Entity, Position& p, const Velocity& v)
+		{
+			p.y = v.x;
+		});
 		CHECK(registry.GetComponent<Position>(a).y == 10.0f);
 		CHECK(registry.GetComponent<Position>(b).y == 0.0f);
 		CHECK(registry.GetComponent<Position>(c).y == 30.0f);

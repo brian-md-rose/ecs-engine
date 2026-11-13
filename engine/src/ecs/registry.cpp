@@ -1,4 +1,5 @@
 #include "ecs/registry.hpp"
+
 #include "ecs/entity.hpp"
 
 namespace engine::ecs

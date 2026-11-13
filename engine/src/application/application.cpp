@@ -1,7 +1,6 @@
 #include "application/application.hpp"
 
 #include <SDL3/SDL.h>
-
 #include <optional>
 
 #include "core/fixedtimestep.hpp"
@@ -18,8 +17,7 @@ namespace engine::application
 
 		// A table rather than a switch: SDL_Scancode has hundreds of enumerators and /Wall
 		// warns about every one a switch leaves unhandled.
-		constexpr KeyMapping kKeyMap[] =
-		{
+		constexpr KeyMapping kKeyMap[] = {
 		    {SDL_SCANCODE_UP, input::Key::Up},        {SDL_SCANCODE_DOWN, input::Key::Down},
 		    {SDL_SCANCODE_LEFT, input::Key::Left},    {SDL_SCANCODE_RIGHT, input::Key::Right},
 		    {SDL_SCANCODE_W, input::Key::W},          {SDL_SCANCODE_A, input::Key::A},

@@ -52,7 +52,10 @@ namespace engine::ecs
 		template <Component T> ComponentPool<T>* FindPool()
 		{
 			const auto it = pools.find(std::type_index(typeid(T)));
-			if (it == pools.end()){ return nullptr; }
+			if (it == pools.end())
+			{
+				return nullptr;
+			}
 			// Safe: the entry for typeid(T) is only ever created by Pool<T>() as a ComponentPool<T>.
 			return static_cast<ComponentPool<T>*>(it->second.get());
 		}
@@ -60,7 +63,10 @@ namespace engine::ecs
 		template <Component T> const ComponentPool<T>* FindPool() const
 		{
 			const auto it = pools.find(std::type_index(typeid(T)));
-			if (it == pools.end()){ return nullptr; }
+			if (it == pools.end())
+			{
+				return nullptr;
+			}
 			return static_cast<const ComponentPool<T>*>(it->second.get());
 		}
 

@@ -42,7 +42,8 @@ TEST_CASE("CommandBuffer::Destroy during Each leaves the right survivors", "[ecs
 
 	CommandBuffer commands;
 	int visited = 0;
-	registry.Each<Tag>([&](Entity e, Tag& tag) {
+	registry.Each<Tag>([&](Entity e, Tag& tag)
+	{
 		++visited;
 		if (tag.value % 2 == 0) commands.Destroy(e);
 	});
@@ -65,7 +66,8 @@ TEST_CASE("CommandBuffer::Destroy during Each leaves the right survivors", "[ecs
 	}
 
 	int remaining = 0;
-	registry.Each<Tag>([&](Entity, Tag& tag) {
+	registry.Each<Tag>([&](Entity, Tag& tag)
+	{
 		++remaining;
 		CHECK(tag.value % 2 == 1);
 	});
@@ -81,7 +83,8 @@ TEST_CASE("CommandBuffer::Add during Each is applied afterwards", "[ecs][command
 	registry.Add<Tag>(b, 2);
 
 	CommandBuffer commands;
-	registry.Each<Tag>([&](Entity e, Tag& tag) {
+	registry.Each<Tag>([&](Entity e, Tag& tag)
+	{
 		commands.Add<Position>(e, static_cast<float>(tag.value), 0.0f);
 		commands.Add<Tag>(registry.Create(), tag.value * 10); // new entities are fine to create directly
 	});
@@ -96,7 +99,10 @@ TEST_CASE("CommandBuffer::Add during Each is applied afterwards", "[ecs][command
 	CHECK(registry.GetComponent<Position>(b).x == 2.0f);
 
 	int tagged = 0;
-	registry.Each<Tag>([&](Entity, Tag&) { ++tagged; });
+	registry.Each<Tag>([&](Entity, Tag&)
+	{
+		++tagged;
+	});
 	CHECK(tagged == 4);
 }
 
@@ -123,8 +129,8 @@ TEST_CASE("CommandBuffer runs commands in order and skips dead entities", "[ecs]
 
 	CommandBuffer commands;
 	commands.Destroy(e);
-	commands.Add<Tag>(e, 1);   // e is dead by the time this runs: skipped
-	commands.Destroy(e);       // destroying twice is harmless
+	commands.Add<Tag>(e, 1); // e is dead by the time this runs: skipped
+	commands.Destroy(e);     // destroying twice is harmless
 
 	commands.Apply(registry);
 

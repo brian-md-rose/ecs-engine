@@ -1,4 +1,5 @@
 #include "graphics/window.hpp"
+
 #include <SDL3/SDL.h>
 
 namespace engine::graphics

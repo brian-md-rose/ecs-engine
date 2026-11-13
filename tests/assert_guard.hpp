@@ -30,4 +30,4 @@ namespace engine::test
 		AssertsThrow(const AssertsThrow&) = delete;
 		AssertsThrow& operator=(const AssertsThrow&) = delete;
 	};
-}
+} // namespace engine::test

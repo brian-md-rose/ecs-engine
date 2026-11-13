@@ -15,7 +15,7 @@ namespace engine
 		}
 
 		AssertHandler g_assertHandler = &DefaultAssertHandler;
-	}
+	} // namespace
 
 	AssertHandler SetAssertHandler(AssertHandler handler) noexcept
 	{
@@ -28,4 +28,4 @@ namespace engine
 	{
 		g_assertHandler(expression, message, file, line);
 	}
-}
+} // namespace engine

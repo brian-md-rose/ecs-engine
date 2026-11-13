@@ -27,13 +27,14 @@ namespace engine
 #else
 	inline constexpr bool kAssertsEnabled = false;
 #endif
-}
+} // namespace engine
 
 // ENGINE_VERIFY(condition, message)
 //
 // Like ENGINE_ASSERT, but compiled in every configuration. Use it only where continuing
 // would corrupt memory (e.g. an out-of-range write), so a cheap check is worth keeping in
 // Release. If the handler returns instead of aborting or throwing, the process aborts anyway.
+// clang-format off: the macros are aligned by hand.
 #define ENGINE_VERIFY(condition, message)                                                  \
 	do                                                                                     \
 	{                                                                                      \
@@ -56,3 +57,4 @@ namespace engine
 #else
 	#define ENGINE_ASSERT(condition, message) ((void)0)
 #endif
+// clang-format on

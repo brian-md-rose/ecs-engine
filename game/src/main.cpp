@@ -10,6 +10,8 @@
 
 namespace
 {
+	using engine::ecs::Entity;
+
 	constexpr int kLogicalWidth = 320;
 	constexpr int kLogicalHeight = 180;
 	constexpr float kSquareSize = 16.0f;
@@ -56,7 +58,7 @@ namespace
 			break;
 		}
 
-		registry.Each<PlayerControlled, Velocity>([heading](engine::ecs::Entity, const PlayerControlled&, Velocity& velocity)
+		registry.Each<PlayerControlled, Velocity>([heading](Entity, const PlayerControlled&, Velocity& velocity)
 		{
 			velocity = heading;
 		});
@@ -64,7 +66,8 @@ namespace
 
 	void MovementSystem(engine::ecs::Registry& registry, float dt)
 	{
-		registry.Each<Position, Velocity>([dt](engine::ecs::Entity, Position& p, const Velocity& v) {
+		registry.Each<Position, Velocity>([dt](Entity, Position& p, const Velocity& v)
+		{
 			p.x += v.x * dt;
 			p.y += v.y * dt;
 		});
@@ -76,7 +79,7 @@ namespace
 
 	void ClampToScreenSystem(engine::ecs::Registry& registry)
 	{
-		registry.Each<Position>([](engine::ecs::Entity, Position& p)
+		registry.Each<Position>([](Entity, Position& p)
 		{
 			p.x = std::clamp(p.x, 0.0f, kMaxX);
 			p.y = std::clamp(p.y, 0.0f, kMaxY);
@@ -93,7 +96,7 @@ namespace
 	public:
 		MazeGame()
 		{
-			const engine::ecs::Entity player = registry.Create();
+			const Entity player = registry.Create();
 			registry.Add<Position>(player, 152.0f, 82.0f);
 			registry.Add<Velocity>(player);
 			registry.Add<PlayerControlled>(player);
@@ -120,9 +123,9 @@ namespace
 			const std::uint8_t red = paused ? 128 : 255;
 			const std::uint8_t green = paused ? 105 : 210;
 
-			registry.Each<Position>([&renderer, red, green](engine::ecs::Entity, const Position& p)
+			registry.Each<Position>([&renderer, red, green](Entity, const Position& position)
 			{
-				renderer.FillRect(p.x, p.y, kSquareSize, kSquareSize, red, green, 0);
+				renderer.FillRect(position.x, position.y, kSquareSize, kSquareSize, red, green, 0);
 			});
 		}
 	};

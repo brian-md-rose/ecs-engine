@@ -1,11 +1,12 @@
 #pragma once
-#include "core/assert.hpp"
-#include "ecs/component.hpp"
-#include "ecs/entity.hpp"
 #include <cstdint>
 #include <span>
 #include <utility>
 #include <vector>
+
+#include "core/assert.hpp"
+#include "ecs/component.hpp"
+#include "ecs/entity.hpp"
 
 namespace engine::ecs
 {

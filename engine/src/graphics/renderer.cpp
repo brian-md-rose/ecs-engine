@@ -1,6 +1,8 @@
 #include "graphics/renderer.hpp"
-#include "graphics/window.hpp"
+
 #include <SDL3/SDL.h>
+
+#include "graphics/window.hpp"
 
 namespace engine::graphics
 {
