@@ -25,12 +25,15 @@ endif()
 include(Catch)
 catch_discover_tests(engine_tests)
 
-# Tests for the game's own logic (game_logic), kept apart from the engine tests.
-if(TARGET game_logic)
+# Tests for the game's own logic, kept apart from the engine tests. The game is an
+# executable, so its sources (all but main.cpp) are compiled in here directly.
+if(TARGET game)
     add_executable(game_tests
         game/controls_tests.cpp
+        ${GAME_TESTABLE_SOURCES}
     )
-    target_link_libraries(game_tests PRIVATE game_logic engine::warnings Catch2::Catch2WithMain)
+    target_include_directories(game_tests PRIVATE ${GAME_INCLUDE_DIR})
+    target_link_libraries(game_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
     if(MSVC)
         target_compile_options(game_tests PRIVATE /wd4868)
     endif()
