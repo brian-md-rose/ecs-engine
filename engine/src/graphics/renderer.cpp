@@ -1,22 +1,32 @@
 #include "graphics/renderer.hpp"
-
+#include "graphics/window.hpp"
 #include <SDL3/SDL.h>
 
 namespace engine::graphics
 {
-	Renderer::Renderer(const char* title, int width, int height)
+	Renderer::Renderer(Window& window, int renderWidth, int renderHeight)
 	{
-		if (!SDL_Init(SDL_INIT_VIDEO))
+		if (!window.IsValid())
 		{
-			SDL_Log("SDL_Init failed: %s", SDL_GetError());
 			return;
 		}
 
-		if (!SDL_CreateWindowAndRenderer(title, width, height, SDL_WINDOW_RESIZABLE, &window, &renderer))
+		renderer = SDL_CreateRenderer(window.GetWindowHandle(), nullptr);
+		if (renderer == nullptr)
 		{
-			SDL_Log("SDL_CreateWindowAndRenderer failed: %s", SDL_GetError());
-			window = nullptr;
-			renderer = nullptr;
+			SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+			return;
+		}
+
+		if (!SDL_SetRenderLogicalPresentation(renderer, renderWidth, renderHeight,
+		                                      SDL_LOGICAL_PRESENTATION_INTEGER_SCALE))
+		{
+			SDL_Log("SDL_SetRenderLogicalPresentation failed: %s", SDL_GetError());
+		}
+
+		if (!SDL_SetRenderVSync(renderer, 1))
+		{
+			SDL_Log("SDL_SetRenderVSync failed: %s", SDL_GetError());
 		}
 	}
 
@@ -26,25 +36,6 @@ namespace engine::graphics
 		{
 			SDL_DestroyRenderer(renderer);
 		}
-		if (window != nullptr)
-		{
-			SDL_DestroyWindow(window);
-		}
-		SDL_Quit();
-	}
-
-	bool Renderer::PollEvents()
-	{
-		bool open = true;
-		SDL_Event event{};
-		while (SDL_PollEvent(&event))
-		{
-			if (event.type == SDL_EVENT_QUIT)
-			{
-				open = false;
-			}
-		}
-		return open;
 	}
 
 	void Renderer::Clear(std::uint8_t r, std::uint8_t g, std::uint8_t b)

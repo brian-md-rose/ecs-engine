@@ -3,19 +3,22 @@
 
 // SDL types are only forward-declared here: SDL is linked PRIVATE to the engine, so its headers
 // are not visible to the game or tests. Only engine .cpp files include <SDL3/...>.
-struct SDL_Window;
 struct SDL_Renderer;
 
 namespace engine::graphics
 {
-	// Owns the SDL window and renderer for the lifetime of the object.
+	class Window;
+
+	// Owns the SDL renderer for the lifetime of the object. Draws into a Window,
+	// which must outlive the Renderer (declare the Window first).
 	class Renderer
 	{
-		SDL_Window* window = nullptr;
 		SDL_Renderer* renderer = nullptr;
 
 	public:
-		Renderer(const char* title, int width, int height);
+		// renderWidth/renderHeight is the game's fixed logical resolution. It is scaled up by
+		// the largest whole number that fits the window, with black bars around the rest.
+		Renderer(Window& window, int renderWidth, int renderHeight);
 		~Renderer();
 
 		Renderer(const Renderer&) = delete;
@@ -23,12 +26,8 @@ namespace engine::graphics
 		Renderer(Renderer&&) = delete;
 		Renderer& operator=(Renderer&&) = delete;
 
-		// False if the window or renderer couldn't be created (the reason is logged).
-		[[nodiscard]] bool IsValid() const noexcept { return window != nullptr && renderer != nullptr; }
-
-		// Drains pending window events. Returns false once the window has been asked to close.
-		// Stopgap until the Input module (#9) owns event handling.
-		bool PollEvents();
+		// False if the renderer couldn't be created (the reason is logged).
+		[[nodiscard]] bool IsValid() const noexcept { return renderer != nullptr; }
 
 		void Clear(std::uint8_t r, std::uint8_t g, std::uint8_t b);
 		void Present();

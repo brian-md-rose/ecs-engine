@@ -2,6 +2,7 @@ add_library(engine STATIC
     src/core/assert.cpp
     src/ecs/registry.cpp
     src/graphics/renderer.cpp
+    src/graphics/window.cpp
 )
 add_library(engine::engine ALIAS engine)
 

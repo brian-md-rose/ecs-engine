@@ -6,6 +6,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/renderer.hpp"
+#include "graphics/window.hpp"
 
 struct Position
 {
@@ -43,8 +44,10 @@ int main()
 
 	MovementSystem(registry, 1.0f);
 
-	engine::graphics::Renderer renderer("ecs-engine", 1280, 720);
-	while (renderer.IsValid() && renderer.PollEvents())
+	engine::graphics::Window window("ecs-engine", 1280, 720);
+	engine::graphics::Renderer renderer(window, 320, 180);
+
+	while (window.IsValid() && renderer.IsValid() && window.PollEvents())
 	{
 		renderer.Clear(0, 0, 0);
 		renderer.Present();
