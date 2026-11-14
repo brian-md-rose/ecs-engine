@@ -50,6 +50,11 @@ namespace engine::ecs
 					entry.system(world, context);
 				}
 			}
+
+			// Handlers see the entities the phase created and destroyed, and may queue
+			// commands of their own, applied below. Resources stay locked for them too.
+			world.commands.Apply(world.registry);
+			world.events.Deliver(world);
 		}
 		world.commands.Apply(world.registry);
 	}

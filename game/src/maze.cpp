@@ -10,6 +10,7 @@ namespace game
 {
 	namespace
 	{
+		using engine::ecs::CommandBuffer;
 		using engine::ecs::Entity;
 		using engine::ecs::Registry;
 		using engine::graphics::Position;
@@ -31,6 +32,18 @@ namespace game
 			registry.Add<Shape>(entity, shape);
 			registry.Add<Tag>(entity);
 		}
+
+		// Created now, its components recorded in commands.
+		template <typename Tag>
+		void SpawnEdible(Registry& registry, CommandBuffer& commands, TilePosition tile, Position position,
+		                 const Shape& shape)
+		{
+			const Entity entity = registry.Create();
+			commands.Add<Transform>(entity, position);
+			commands.Add<Shape>(entity, shape);
+			commands.Add<Tag>(entity);
+			commands.Add<OnTile>(entity, OnTile{.tile = tile});
+		}
 	} // namespace
 
 	Position TileTopLeft(Position origin, TilePosition tile)
@@ -42,10 +55,6 @@ namespace game
 	void SpawnMaze(Registry& registry, const TileMap& map, Position origin)
 	{
 		const Shape wall{.width = kTileSize, .height = kTileSize, .color = kWallColor, .layer = kWallLayer};
-		const Shape pellet{
-		    .kind = ShapeKind::Circle, .radius = kPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
-		const Shape powerPellet{
-		    .kind = ShapeKind::Circle, .radius = kPowerPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
 		const Shape door{.width = kTileSize, .height = kDoorThickness, .color = kDoorColor, .layer = kPelletLayer};
 
 		for (std::size_t row = 0; row < map.Height(); ++row)
@@ -58,15 +67,11 @@ namespace game
 				case Tile::Wall:
 					SpawnTile<Wall>(registry, tile, wall);
 					break;
-				case Tile::Pellet:
-					SpawnTile<Pellet>(registry, CentredCircle(tile, kPelletRadius), pellet);
-					break;
-				case Tile::PowerPellet:
-					SpawnTile<PowerPellet>(registry, CentredCircle(tile, kPowerPelletRadius), powerPellet);
-					break;
 				case Tile::Door:
 					SpawnTile<Door>(registry, {tile.x, tile.y + (kTileSize - kDoorThickness) / 2.0f}, door);
 					break;
+				case Tile::Pellet:
+				case Tile::PowerPellet: // SpawnPellets, below
 				case Tile::Empty:
 				case Tile::PlayerSpawn:
 				case Tile::EnemySpawn:
@@ -74,6 +79,29 @@ namespace game
 					break;
 				}
 			}
+		}
+
+		CommandBuffer commands;
+		SpawnPellets(registry, commands, map, origin);
+		commands.Apply(registry);
+	}
+
+	void SpawnPellets(Registry& registry, CommandBuffer& commands, const TileMap& map, Position origin)
+	{
+		const Shape pellet{
+		    .kind = ShapeKind::Circle, .radius = kPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
+		const Shape powerPellet{
+		    .kind = ShapeKind::Circle, .radius = kPowerPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
+
+		for (const TilePosition& tile : map.Find(Tile::Pellet))
+		{
+			SpawnEdible<Pellet>(registry, commands, tile, CentredCircle(TileTopLeft(origin, tile), kPelletRadius),
+			                    pellet);
+		}
+		for (const TilePosition& tile : map.Find(Tile::PowerPellet))
+		{
+			SpawnEdible<PowerPellet>(registry, commands, tile,
+			                         CentredCircle(TileTopLeft(origin, tile), kPowerPelletRadius), powerPellet);
 		}
 	}
 } // namespace game

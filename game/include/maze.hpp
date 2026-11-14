@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 
+#include "ecs/commandbuffer.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/color.hpp"
 #include "graphics/transform.hpp"
@@ -31,4 +32,10 @@ namespace game
 	// empty tiles get no entity: the game places its actors from the map.
 	// Creates entities directly, so call it during setup, not from a system.
 	void SpawnMaze(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin);
+
+	// The pellets and power pellets of SpawnMaze alone, each also with an OnTile: creates the
+	// entities and records their components in commands, so systems and event handlers can
+	// put the pellets back when a level restarts.
+	void SpawnPellets(engine::ecs::Registry& registry, engine::ecs::CommandBuffer& commands, const TileMap& map,
+	                  engine::graphics::Position origin);
 } // namespace game

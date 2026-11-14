@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <initializer_list>
 #include <queue>
 #include <string>
 #include <vector>
@@ -135,5 +136,19 @@ TEST_CASE("Every open tile of level 1 is reachable, and the house only through i
 	for (const TilePosition& enemy : map.Find(Tile::EnemySpawn))
 	{
 		CHECK_FALSE(doorClosed[enemy.row * map.Width() + enemy.column]);
+	}
+}
+
+TEST_CASE("The player can reach every pellet of level 1, so the level can be cleared", "[game][assets]")
+{
+	const TileMap map = LoadMaze("level1.txt");
+	const std::vector<bool> reachable = Reachable(map, map.Find(Tile::PlayerSpawn).front(), false);
+	for (const Tile kind : {Tile::Pellet, Tile::PowerPellet})
+	{
+		for (const TilePosition& tile : map.Find(kind))
+		{
+			INFO("line " << tile.row + 1 << ", column " << tile.column + 1);
+			CHECK(reachable[tile.row * map.Width() + tile.column]);
+		}
 	}
 }

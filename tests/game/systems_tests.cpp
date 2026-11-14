@@ -5,13 +5,16 @@
 #include "components.hpp"
 #include "direction.hpp"
 #include "ecs/entity.hpp"
+#include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "input/keyboard.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "scoring.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -23,11 +26,12 @@ namespace
 
 	constexpr double kStep = 1.0 / 60.0;
 
-	// Two corridors, one above the other, with the spawn at column 2, row 2.
+	// Two corridors, one above the other, with the spawn at column 2, row 2: seven pellets and a
+	// power pellet in the top-left corner.
 	[[nodiscard]] game::TileMap TestMaze()
 	{
 		game::TileMapResult result = game::ParseTileMap("#######\n"
-		                                                "#.....#\n"
+		                                                "#o....#\n"
 		                                                "#.P.E.#\n"
 		                                                "#######\n");
 		REQUIRE(result.map.has_value());
@@ -40,6 +44,25 @@ namespace
 	{
 		game::MazeGame maze{TestMaze()};
 		engine::input::Keyboard keyboard;
+
+		// Starts with the round under way, past the Ready pause, unless told not to.
+		explicit Harness(bool startPlaying = true)
+		{
+			maze.world.resources.Get<game::ConsoleHud>().enabled = false;
+			if (startPlaying) UpdateUntil(game::Stage::Playing);
+		}
+
+		[[nodiscard]] game::GameFlow& Flow() { return maze.world.resources.Get<game::GameFlow>(); }
+
+		// Updates until the game reaches stage, failing if that takes over a minute.
+		void UpdateUntil(game::Stage stage)
+		{
+			for (int i = 0; i < 60 * 60 && Flow().stage != stage; ++i)
+			{
+				Update();
+			}
+			REQUIRE(Flow().stage == stage);
+		}
 
 		void Update(int steps = 1)
 		{
@@ -83,6 +106,18 @@ namespace
 		}
 
 		[[nodiscard]] bool Paused() const { return maze.world.resources.Get<game::GameState>().paused; }
+
+		[[nodiscard]] int Points() const { return maze.world.resources.Get<game::Score>().points; }
+
+		template <typename Tag> [[nodiscard]] int Count()
+		{
+			int count = 0;
+			maze.world.registry.Each<Tag>([&count](Entity, const Tag&)
+			{
+				++count;
+			});
+			return count;
+		}
 	};
 
 	// The top-left corner of a tile of the test maze, where the player is drawn when it stands
@@ -108,8 +143,8 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
-	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 2);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 0);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 3);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 1);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
@@ -228,4 +263,130 @@ TEST_CASE("The stress test toggles while paused", "[game][systems]")
 	h.Tap(Key::P);
 	h.Tap(Key::F1);
 	CHECK(h.StressShapeCount() == game::kStressShapeCount);
+}
+
+TEST_CASE("The player eats the pellets it walks over", "[game][systems]")
+{
+	Harness h;
+	CHECK(h.Points() == 0);
+	CHECK(h.Count<game::Pellet>() == 7);
+
+	h.Tap(Key::Right);
+	h.Update(2 * 60); // to the wall at column 5, over the pellets at columns 3 and 5
+	CHECK(h.Count<game::Pellet>() == 5);
+	CHECK(h.Points() == 2 * game::kPelletPoints);
+}
+
+TEST_CASE("A round starts Ready, and the player waits for Playing", "[game][systems][gameflow]")
+{
+	Harness h(false);
+	CHECK(h.Flow().stage == game::Stage::Ready);
+
+	h.Tap(Key::Right); // pressed during Ready: remembered, not acted on
+	h.Update(30);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+
+	h.UpdateUntil(game::Stage::Playing);
+	h.Update(10);
+	CHECK(h.PlayerTransform().position.x > Start().x);
+}
+
+TEST_CASE("Clearing every pellet completes the level, which restarts with the pellets back",
+          "[game][systems][gameflow]")
+{
+	Harness h;
+	const auto walk = [&h](Key key)
+	{
+		h.Tap(key);
+		h.Update(60); // a second is enough for the longest straight in the test maze
+	};
+
+	walk(Key::Right); // columns 3 and 5 of row 2
+	walk(Key::Up);
+	walk(Key::Left); // row 1, the power pellet last
+	CHECK(h.Flow().stage == game::Stage::Playing);
+	CHECK(h.Count<game::Pellet>() == 1);
+	CHECK(h.Count<game::PowerPellet>() == 0);
+
+	walk(Key::Down); // the last pellet, at column 1 of row 2
+	CHECK(h.Flow().stage == game::Stage::LevelComplete);
+	CHECK(h.Count<game::Pellet>() == 0);
+	CHECK(h.Points() == 7 * game::kPelletPoints + game::kPowerPelletPoints);
+
+	// Nothing moves while the level is complete.
+	const Transform done = h.PlayerTransform();
+	h.Tap(Key::Right);
+	h.Update(30);
+	CHECK(h.PlayerTransform().position.x == done.position.x);
+
+	h.UpdateUntil(game::Stage::Ready);
+	CHECK(h.Flow().level == 2);
+	CHECK(h.Flow().lives == game::kStartingLives);
+	CHECK(h.Count<game::Pellet>() == 7);
+	CHECK(h.Count<game::PowerPellet>() == 1);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+	CHECK(h.PlayerTransform().position.y == Start().y);
+	CHECK(h.Points() == 7 * game::kPelletPoints + game::kPowerPelletPoints); // the score carries on
+
+	// The new round plays like the first: the player stays put until told to move, then eats.
+	h.UpdateUntil(game::Stage::Playing);
+	h.Update(30);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+	walk(Key::Right);
+	CHECK(h.Count<game::Pellet>() == 5);
+}
+
+TEST_CASE("An enemy catching the player costs a life and puts the player back", "[game][systems][gameflow]")
+{
+	Harness h;
+	engine::ecs::Registry& registry = h.maze.world.registry;
+	const Entity enemy = registry.Create();
+	registry.Add<game::Enemy>(enemy);
+	registry.Add<game::GridMover>(enemy, game::GridMover{.tile = {.column = 4, .row = 2}});
+
+	h.Tap(Key::Right);
+	h.Update(30); // through column 3 into the enemy at column 4
+	CHECK(h.Flow().stage == game::Stage::Dying);
+	CHECK(h.Flow().lives == game::kStartingLives - 1);
+
+	h.UpdateUntil(game::Stage::Ready);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+	CHECK(h.Count<game::Pellet>() == 6); // the pellet eaten on the way stays eaten
+	CHECK(h.Points() == game::kPelletPoints);
+}
+
+TEST_CASE("Losing the last life ends the game, and Confirm starts a new one", "[game][systems][gameflow]")
+{
+	Harness h;
+	h.Flow().lives = 1;
+	engine::ecs::Registry& registry = h.maze.world.registry;
+	const Entity enemy = registry.Create();
+	registry.Add<game::Enemy>(enemy);
+	registry.Add<game::GridMover>(enemy, game::GridMover{.tile = {.column = 4, .row = 2}});
+
+	h.Tap(Key::Right);
+	h.UpdateUntil(game::Stage::GameOver);
+	CHECK(h.Points() == game::kPelletPoints);
+
+	h.Update(5 * 60); // waits for a key
+	CHECK(h.Flow().stage == game::Stage::GameOver);
+
+	h.Tap(Key::Enter);
+	CHECK(h.Flow().stage == game::Stage::Ready);
+	CHECK(h.Flow().lives == game::kStartingLives);
+	CHECK(h.Flow().level == 1);
+	CHECK(h.Points() == 0);
+	CHECK(h.Count<game::Pellet>() == 7);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+}
+
+TEST_CASE("Pausing stops the Ready timer", "[game][systems][gameflow]")
+{
+	Harness h(false);
+	h.Tap(Key::P);
+	h.Update(10 * 60);
+	CHECK(h.Flow().stage == game::Stage::Ready);
+
+	h.Tap(Key::P);
+	h.UpdateUntil(game::Stage::Playing);
 }
