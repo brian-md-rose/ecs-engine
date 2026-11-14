@@ -131,6 +131,11 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 - Queue structural changes (create, add, remove, destroy) on `world.commands`. The scheduler
   applies them after each phase, so the next phase sees them.
 - Systems never add or remove resources: that asserts while a phase runs. Do it in setup.
+- To announce that something happened (a pellet was eaten), publish an event on
+  `world.events` rather than calling whoever cares. Handlers are plain functions
+  `void OnX(World&, const X&)`, subscribed during setup next to the system registrations, and
+  they follow the same rules as systems. The scheduler delivers events at the end of each
+  phase, after applying its commands (see `docs/decisions/0002-events.md`).
 
 ## Errors and invariants
 

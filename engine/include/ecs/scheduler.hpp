@@ -48,8 +48,9 @@ namespace engine::ecs
 	using RunCondition = bool (*)(const World& world);
 
 	// Holds systems by phase and runs them in the order they were added. After each phase it
-	// applies world.commands, so entities queued for creation or destruction in one phase are
-	// settled before the next. While a phase runs, adding or removing resources asserts.
+	// applies world.commands, delivers world.events, then applies the commands the event
+	// handlers queued, so everything one phase did is settled before the next begins. While a
+	// phase runs (handlers included), adding or removing resources asserts.
 	class Scheduler
 	{
 		struct Entry
@@ -65,7 +66,8 @@ namespace engine::ecs
 		// Appends system to phase. With runIf, the system is skipped whenever runIf is false.
 		void Add(Phase phase, System system, RunCondition runIf = nullptr);
 
-		// Runs phase's systems in order, then applies world.commands. Not re-entrant.
+		// Runs phase's systems in order, then applies world.commands and delivers world.events
+		// (see above). Not re-entrant.
 		void Run(Phase phase, World& world, const FrameContext& context);
 
 		[[nodiscard]] std::size_t SystemCount(Phase phase) const;
