@@ -1,6 +1,7 @@
 #include "graphics/renderer2d.hpp"
 
 #include <SDL3/SDL.h>
+#include <utility>
 
 #include "graphics/renderer.hpp"
 
@@ -8,10 +9,10 @@ namespace engine::graphics
 {
 	namespace
 	{
-		// One channel of colour * tint, in SDL's 0-1 range.
-		float Channel(std::uint8_t colour, std::uint8_t tint)
+		// One channel in SDL's 0-1 range.
+		float Channel(std::uint8_t colour)
 		{
-			return static_cast<float>(colour) * static_cast<float>(tint) / (255.0f * 255.0f);
+			return static_cast<float>(colour) / 255.0f;
 		}
 	} // namespace
 
@@ -21,9 +22,38 @@ namespace engine::graphics
 
 	Renderer2D::~Renderer2D() = default;
 
+	void Renderer2D::SetAtlas(Atlas newAtlas)
+	{
+		atlas = std::move(newAtlas);
+		uploadPending = true;
+	}
+
+	void Renderer2D::SetFont(const BitmapFont& newFont)
+	{
+		font = newFont;
+		hasFont = true;
+	}
+
 	void Renderer2D::Draw(Renderer& renderer, ecs::Registry& registry)
 	{
-		batch.Build(registry, camera);
+		if (uploadPending)
+		{
+			renderer.DestroyTexture(texture);
+			texture = renderer.CreateTexture(atlas.image);
+			uploadPending = false;
+		}
+		SDL_Texture* handle = renderer.GetTextureHandle(texture);
+
+		// Without a texture, sprites and text can't be drawn: build the batch with no atlas.
+		BatchSettings settings{.camera = camera, .tint = tint, .untintedFromLayer = untintedFromLayer};
+		if (handle != nullptr)
+		{
+			settings.atlasWidth = atlas.image.Width();
+			settings.atlasHeight = atlas.image.Height();
+			settings.solid = atlas.solid;
+			settings.font = hasFont ? &font : nullptr;
+		}
+		batch.Build(registry, settings);
 		if (batch.Indices().empty())
 		{
 			return;
@@ -32,12 +62,11 @@ namespace engine::graphics
 		sdlVertices.clear();
 		for (const Vertex& vertex : batch.Vertices())
 		{
-			const SDL_FColor colour{Channel(vertex.color.r, tint.r), Channel(vertex.color.g, tint.g),
-			                        Channel(vertex.color.b, tint.b), 1.0f};
-			sdlVertices.push_back({{vertex.position.x, vertex.position.y}, colour, {0.0f, 0.0f}});
+			const SDL_FColor colour{Channel(vertex.color.r), Channel(vertex.color.g), Channel(vertex.color.b), 1.0f};
+			sdlVertices.push_back({{vertex.position.x, vertex.position.y}, colour, {vertex.uv.x, vertex.uv.y}});
 		}
 
-		if (!SDL_RenderGeometry(renderer.GetRendererHandle(), nullptr, sdlVertices.data(),
+		if (!SDL_RenderGeometry(renderer.GetRendererHandle(), handle, sdlVertices.data(),
 		                        static_cast<int>(sdlVertices.size()), batch.Indices().data(),
 		                        static_cast<int>(batch.Indices().size())))
 		{

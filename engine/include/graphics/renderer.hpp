@@ -1,19 +1,27 @@
 #pragma once
 #include <cstdint>
+#include <vector>
 
 // SDL types are only forward-declared here: SDL is linked PRIVATE to the engine, so its headers
 // are not visible to the game or tests. Only engine .cpp files include <SDL3/...>.
 struct SDL_Renderer;
+struct SDL_Texture;
 
 namespace engine::graphics
 {
+	class Image;
 	class Window;
 
-	// Owns the SDL renderer for the lifetime of the object. Draws into a Window,
-	// which must outlive the Renderer (declare the Window first).
+	// Names a texture the Renderer owns. 0 (kNoTexture) is never a texture.
+	using TextureId = std::uint32_t;
+	inline constexpr TextureId kNoTexture = 0;
+
+	// Owns the SDL renderer, and every texture made with it, for the lifetime of the object.
+	// Draws into a Window, which must outlive the Renderer (declare the Window first).
 	class Renderer
 	{
 		SDL_Renderer* renderer = nullptr;
+		std::vector<SDL_Texture*> textures; // TextureId i is textures[i - 1]; null once destroyed
 
 	public:
 		// renderWidth/renderHeight is the game's fixed logical resolution. It is scaled up by
@@ -31,8 +39,17 @@ namespace engine::graphics
 
 		void Clear(std::uint8_t r, std::uint8_t g, std::uint8_t b);
 
+		// Uploads image as a texture with alpha blending. It is sampled nearest-neighbour, so
+		// its pixels stay sharp when the logical resolution is scaled up to the window. Returns
+		// kNoTexture if it couldn't be created (the reason is logged). The texture lives until
+		// DestroyTexture or the Renderer's end, whichever comes first.
+		[[nodiscard]] TextureId CreateTexture(const Image& image);
+		void DestroyTexture(TextureId texture);
+
 		// For engine code that draws with SDL directly, such as Renderer2D.
 		[[nodiscard]] SDL_Renderer* GetRendererHandle() const noexcept { return renderer; }
+		// nullptr for kNoTexture or a texture that no longer exists.
+		[[nodiscard]] SDL_Texture* GetTextureHandle(TextureId texture) const noexcept;
 
 		void Present();
 	};

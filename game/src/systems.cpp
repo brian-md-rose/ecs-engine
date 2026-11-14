@@ -324,7 +324,7 @@ namespace game
 		if (state.stressTest)
 		{
 			world.resources.Get<FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,
-			                                           renderer2D.ShapeCount());
+			                                           renderer2D.ItemCount());
 		}
 	}
 } // namespace game

@@ -2,9 +2,12 @@
 #include <cstddef>
 #include <vector>
 
+#include "graphics/atlas.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/color.hpp"
-#include "graphics/shapebatch.hpp"
+#include "graphics/drawbatch.hpp"
+#include "graphics/font.hpp"
+#include "graphics/renderer.hpp"
 
 // Only forward-declared: see renderer.hpp. The vector below is defined in renderer2d.cpp,
 // where SDL_Vertex is complete, which is why the constructor and destructor live there too.
@@ -17,15 +20,24 @@ namespace engine::ecs
 
 namespace engine::graphics
 {
-	class Renderer;
-
-	// Draws every Transform + Shape entity in one batched call. The game owns one and calls
-	// Draw from its Render, after Clear; Application presents the frame afterwards.
+	// Draws every shape, sprite and text entity in one batched call, from one atlas texture.
+	// The game owns one, gives it an atlas and a font at setup, and calls Draw from its Render,
+	// after Clear; Application presents the frame afterwards.
+	//
+	// The atlas is kept as an Image and uploaded to the Renderer on the first Draw after
+	// SetAtlas, so a game can be set up (and tested) before any renderer exists. The texture
+	// belongs to the Renderer, so it is never used after the Renderer is gone.
 	class Renderer2D
 	{
-		ShapeBatch batch;
+		DrawBatch batch;
 		std::vector<SDL_Vertex> sdlVertices; // reused each frame
+		Atlas atlas;
+		BitmapFont font;
+		bool hasFont = false;
+		TextureId texture = kNoTexture;
+		bool uploadPending = false;
 		Color tint{255, 255, 255};
+		int untintedFromLayer = 256;
 
 	public:
 		Camera camera;
@@ -38,15 +50,29 @@ namespace engine::graphics
 		Renderer2D(Renderer2D&&) = delete;
 		Renderer2D& operator=(Renderer2D&&) = delete;
 
-		// Multiplies every shape's colour, e.g. {128, 128, 128} to dim the scene by half.
-		// White (the default) leaves colours unchanged.
-		void SetTint(Color color) noexcept { tint = color; }
+		// The atlas sprites and text are cut from (see PackAtlas). Until one is set, only shapes
+		// are drawn. Always draw with the same Renderer: the texture is made on it.
+		void SetAtlas(Atlas newAtlas);
+		[[nodiscard]] const Atlas& GetAtlas() const noexcept { return atlas; }
+
+		// The font Text components are drawn with; its glyphs are in the atlas.
+		void SetFont(const BitmapFont& newFont);
+		[[nodiscard]] const BitmapFont* GetFont() const noexcept { return hasFont ? &font : nullptr; }
+
+		// Multiplies the colour of everything below untintedFrom, e.g. {128, 128, 128} to dim
+		// the scene by half while a menu on a higher layer stays bright. White (the default)
+		// leaves colours unchanged.
+		void SetTint(Color color, int untintedFrom = 256) noexcept
+		{
+			tint = color;
+			untintedFromLayer = untintedFrom;
+		}
 		[[nodiscard]] Color Tint() const noexcept { return tint; }
 
-		// Only reads the registry; see ShapeBatch::Build.
+		// Only reads the registry; see DrawBatch::Build.
 		void Draw(Renderer& renderer, ecs::Registry& registry);
 
-		// Shapes drawn by the last Draw, after culling.
-		[[nodiscard]] std::size_t ShapeCount() const noexcept { return batch.ShapeCount(); }
+		// Shapes, sprites and characters drawn by the last Draw, after culling.
+		[[nodiscard]] std::size_t ItemCount() const noexcept { return batch.ItemCount(); }
 	};
 } // namespace engine::graphics
