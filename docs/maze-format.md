@@ -65,7 +65,7 @@ editors and terminals can jump to them:
 ```text
 game/assets/mazes/level1.txt:4:7: unknown tile 'x'
 game/assets/mazes/level1.txt:9:13: row 9 has 12 tiles; expected 13 like row 1
-game/assets/mazes/level1.txt:5:13: tunnel at column 13 on the right edge has no pair on the left edge
+game/assets/mazes/level1.txt:5:13: tunnel on the right edge has no pair on the left edge
 game/assets/mazes/level1.txt: no player spawn 'P'
 ```
 
