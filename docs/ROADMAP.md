@@ -45,7 +45,7 @@ Everything else builds on the registry, so fix its sharp edges first.
 - [x] Components: `Transform` and `Shape` (rectangle or circle, colour, layer).
 - [x] `Renderer2D`: draws all shapes in batches each frame, with a camera that scales a fixed logical resolution such as 224×288.
 - [ ] `Scheduler`: an ordered list of systems in phases (input → update → late update → render).
-- [ ] Decide where single-instance game data (maze, score, game state) lives: in the registry or in a separate context object.
+- [x] Decide where single-instance game data (maze, score, game state) lives: in the registry or in a separate context object.
 
 **Done when:** `main.cpp` only registers systems and runs the application.
 
