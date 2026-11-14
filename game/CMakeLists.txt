@@ -10,9 +10,16 @@ target_link_libraries(game PRIVATE engine::engine engine::warnings)
 # Mirror the folder layout as IDE filters: include/ and src/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${GAME_SOURCES} ${GAME_HEADERS})
 
-set_target_properties(game PROPERTIES
-    # Run from the game folder in the VS debugger so relative asset paths work.
-    VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+# Copy assets/ next to the executable, for every generator and config. The game finds them
+# there (engine::core::ExecutableDirectory), so it doesn't depend on the working directory.
+# A custom target with no outputs runs on every build, so an edited asset is copied even when
+# the game itself is up to date; a POST_BUILD step would only run when the game relinks.
+add_custom_target(game_assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets
+    COMMENT "Copying game assets next to the executable"
+    VERBATIM)
+add_dependencies(game game_assets)
 
 # For game_tests (tests/CMakeLists.txt): the game sources minus main.cpp, compiled
 # straight into the test executable.
