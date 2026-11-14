@@ -24,10 +24,10 @@ are ruled out: they hide state from tests and make two worlds in one process imp
 
 Option 3. `engine::ecs::Resources` (`engine/include/ecs/resources.hpp`) holds one value of each
 type, and `engine::ecs::World` bundles it with the `Registry` and a `CommandBuffer`. Systems
-take a `World&`:
+take a `World&` (plus the per-call `FrameContext` added with the scheduler, #14):
 
 ```cpp
-void PlayerInputSystem(World& world)
+void PlayerInputSystem(World& world, const FrameContext& context)
 {
 	const auto& controls = world.resources.Get<game::Controls>();
 	world.registry.Each<PlayerControlled, Velocity>(...);
@@ -54,10 +54,11 @@ world.resources.Emplace<Renderer2D>(Camera{.logicalWidth = 224, .logicalHeight =
 ## Rules
 
 1. **Resources are owned by the World.** Things lent for a single call (`dt`, the keyboard, the
-   renderer during Render, `alpha`) are passed as arguments, never stored as resources, so
-   nothing in a World can dangle between frames.
+   renderer during Render, `alpha`) are passed in the system's `FrameContext`, never
+   stored as resources, so nothing in a World can dangle between frames.
 2. **Add and remove resources only during setup or between phases**, never inside a system:
-   removing one would leave other systems' references dangling.
+   removing one would leave other systems' references dangling. `Scheduler::Run` enforces this:
+   `Emplace` and `Remove` assert while a phase runs.
 3. **One value per type.** Two values of the same underlying type get distinct wrappers
    (`struct Score { int value; }`, `struct HighScore { int value; }`).
 4. **A missing resource fails loudly.** `Get<T>` uses `ENGINE_VERIFY`, so it aborts with the
