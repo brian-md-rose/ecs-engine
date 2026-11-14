@@ -41,6 +41,13 @@ else()
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
 endif()
 
+# Visual Studio compiles the files of one project one at a time unless /MP is set.
+# Applied before SDL is added so its ~400 C files build in parallel too. Ninja already
+# runs one compiler per core, so this is for the Visual Studio generator only.
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    add_compile_options($<$<OR:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>:/MP>)
+endif()
+
 # SDL3, vendored as a git submodule. Static, so there's no SDL3.dll to copy
 # next to the game. SYSTEM keeps our /Wall /WX off SDL's headers;
 # EXCLUDE_FROM_ALL builds only the SDL targets we link.
