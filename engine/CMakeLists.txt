@@ -5,6 +5,8 @@ add_library(engine STATIC
     src/core/fixedtimestep.cpp
     src/ecs/registry.cpp
     src/graphics/renderer.cpp
+    src/graphics/renderer2d.cpp
+    src/graphics/shapebatch.cpp
     src/graphics/window.cpp
     src/input/keyboard.cpp
 )

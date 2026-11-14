@@ -18,6 +18,7 @@ namespace game
 		MoveRight,
 		Pause,
 		Confirm,
+		ToggleStressTest, // debug: fill the screen with shapes to check rendering speed
 		Count
 	};
 

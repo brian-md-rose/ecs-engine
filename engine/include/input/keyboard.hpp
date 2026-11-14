@@ -23,6 +23,7 @@ namespace engine::input
 		Space,
 		Enter,
 		Escape,
+		F1,
 		Count
 	};
 
