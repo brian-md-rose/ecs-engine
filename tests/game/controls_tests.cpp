@@ -12,7 +12,7 @@ namespace
 	using game::Direction;
 
 	// Key events go to the keyboard, then Update() runs one game update the way Application
-	// and MazeGame do: Controls reads the keyboard, then the keyboard's edges are cleared.
+	// and ControlsSystem do: Controls reads the keyboard, then the keyboard's edges are cleared.
 	struct Harness
 	{
 		Keyboard keyboard;

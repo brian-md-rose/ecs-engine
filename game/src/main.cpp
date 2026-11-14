@@ -1,13 +1,11 @@
 #include "application/application.hpp"
 #include "mazegame.hpp"
 
+using engine::application::Application;
+
 int main()
 {
-	engine::application::Application app({.title = "ecs-engine",
-	                                      .windowWidth = game::kLogicalWidth * game::kWindowScale,
-	                                      .windowHeight = game::kLogicalHeight * game::kWindowScale,
-	                                      .logicalWidth = game::kLogicalWidth,
-	                                      .logicalHeight = game::kLogicalHeight});
+	Application app(game::MazeGame::kConfig);
 	game::MazeGame game;
 	return app.Run(game);
 }
