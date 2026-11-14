@@ -51,11 +51,11 @@ Everything else builds on the registry, so fix its sharp edges first.
 
 ## Phase 3 – Resources and mazes
 
-- [ ] Text maze format, e.g. `#` wall, `.` pellet, `o` power pellet, `P` player spawn,
+- [x] Text maze format, e.g. `#` wall, `.` pellet, `o` power pellet, `P` player spawn,
       `E` enemy spawn, `-` enemy-house door, `T` wrap tunnel.
-- [ ] `TileMap` loader that turns tiles into entities and reports errors with line numbers.
-- [ ] CMake post-build step that copies `assets/` next to the executable.
-- [ ] Design the first original maze.
+- [x] `TileMap` loader that turns tiles into entities and reports errors with line numbers.
+- [x] CMake post-build step that copies `assets/` next to the executable.
+- [x] Design the first original maze.
 
 **Done when:** a maze loads from file and renders, and the loader has unit tests.
 

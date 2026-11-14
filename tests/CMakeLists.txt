@@ -32,6 +32,8 @@ catch_discover_tests(engine_tests)
 if(TARGET game)
     add_executable(game_tests ${GAME_TEST_SOURCES} ${GAME_TESTABLE_SOURCES})
     target_include_directories(game_tests PRIVATE ${GAME_INCLUDE_DIR})
+    # The asset tests read the mazes from the source tree, as written.
+    target_compile_definitions(game_tests PRIVATE GAME_ASSETS_DIR="${PROJECT_SOURCE_DIR}/game/assets")
     target_link_libraries(game_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
     if(MSVC)
         target_compile_options(game_tests PRIVATE /wd4868)
