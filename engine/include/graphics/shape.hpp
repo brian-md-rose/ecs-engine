@@ -20,7 +20,7 @@ namespace engine::graphics
 		float width = 0;  // Rectangle only
 		float height = 0; // Rectangle only
 		float radius = 0; // Circle only
-		Color color;
+		Color color{};
 		std::uint8_t layer = 0; // higher layers draw on top
 
 		// Size of the bounding box, whichever the kind.
