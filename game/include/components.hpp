@@ -26,6 +26,12 @@ namespace game
 	{
 	};
 
+	// Where a grid mover starts, and goes back to when a round restarts.
+	struct Spawn
+	{
+		TilePosition tile;
+	};
+
 	// Tag: an enemy. It catches the player by reaching the player's tile (see CollisionSystem).
 	struct Enemy
 	{

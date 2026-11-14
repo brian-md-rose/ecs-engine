@@ -10,6 +10,7 @@
 #include "core/assert.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/color.hpp"
 #include "graphics/renderer.hpp"
@@ -17,6 +18,7 @@
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
+#include "maze.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "tilemap.hpp"
@@ -69,6 +71,27 @@ namespace game
 			}
 		}
 
+		// Moves the state machine on to next, announcing a change of stage.
+		void SetFlow(World& world, const GameFlow& next)
+		{
+			GameFlow& flow = world.resources.Get<GameFlow>();
+			const Stage from = flow.stage;
+			flow = next;
+			if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
+		}
+
+		void DestroyPellets(World& world)
+		{
+			world.registry.Each<Pellet>([&world](Entity entity, const Pellet&)
+			{
+				world.commands.Destroy(entity);
+			});
+			world.registry.Each<PowerPellet>([&world](Entity entity, const PowerPellet&)
+			{
+				world.commands.Destroy(entity);
+			});
+		}
+
 		void DestroyStressShapes(World& world)
 		{
 			world.registry.Each<StressShape>([&world](Entity entity, const StressShape&)
@@ -81,6 +104,11 @@ namespace game
 	bool NotPaused(const World& world)
 	{
 		return !world.resources.Get<GameState>().paused;
+	}
+
+	bool IsPlaying(const World& world)
+	{
+		return NotPaused(world) && world.resources.Get<GameFlow>().stage == Stage::Playing;
 	}
 
 	void ControlsSystem(World& world, const FrameContext& context)
@@ -111,6 +139,17 @@ namespace game
 				DestroyStressShapes(world);
 			}
 		}
+	}
+
+	void GameFlowSystem(World& world, const FrameContext& context)
+	{
+		const auto& controls = world.resources.Get<Controls>();
+		const GameFlow& flow = world.resources.Get<GameFlow>();
+
+		// Confirm only from GameOver, before the timers: a game that ends on this update waits
+		// for a press on a later one.
+		const bool confirm = flow.stage == Stage::GameOver && controls.WasPressed(Action::Confirm);
+		SetFlow(world, confirm ? Confirm(flow) : Tick(flow, static_cast<float>(context.dt)));
 	}
 
 	void PlayerInputSystem(World& world, const FrameContext&)
@@ -187,6 +226,70 @@ namespace game
 			anyLeft = true;
 		});
 		if (!anyLeft) world.events.Publish(LevelCleared{});
+	}
+
+	void LoseLife(World& world, const PlayerCaught&)
+	{
+		SetFlow(world, CatchPlayer(world.resources.Get<GameFlow>()));
+	}
+
+	void CompleteLevel(World& world, const LevelCleared&)
+	{
+		SetFlow(world, ClearLevel(world.resources.Get<GameFlow>()));
+	}
+
+	void ResetRound(World& world, const StageChanged& event)
+	{
+		const RoundReset reset = ResetFor(event.from, event.to);
+		const auto& maze = world.resources.Get<TileMap>();
+		const Position origin = MazeOrigin(maze);
+
+		if (reset.pellets)
+		{
+			DestroyPellets(world);
+			SpawnPellets(world.registry, world.commands, maze, origin);
+		}
+		if (reset.actors)
+		{
+			world.registry.Each<Spawn, GridMover, Transform>(
+			    [origin](Entity, const Spawn& spawn, GridMover& mover, Transform& transform)
+			{
+				mover = GridMover{.tile = spawn.tile, .speed = mover.speed};
+				transform.position = MoverTopLeft(origin, mover);
+			});
+			// A direction pressed before the reset would send the player off at once.
+			world.resources.Get<Controls>().ClearBufferedDirection();
+		}
+		if (reset.score)
+		{
+			world.resources.Get<Score>().points = 0;
+		}
+	}
+
+	void PrintStage(World& world, const StageChanged& event)
+	{
+		if (!world.resources.Get<ConsoleHud>().enabled) return;
+		const GameFlow& flow = world.resources.Get<GameFlow>();
+		const int points = world.resources.Get<Score>().points;
+		switch (event.to)
+		{
+		case Stage::Ready:
+			std::printf("level %d, %d %s: get ready\n", flow.level, flow.lives, flow.lives == 1 ? "life" : "lives");
+			break;
+		case Stage::Playing:
+			std::printf("go\n");
+			break;
+		case Stage::Dying:
+			std::printf("caught\n");
+			break;
+		case Stage::LevelComplete:
+			std::printf("level %d complete, score %d\n", flow.level, points);
+			break;
+		case Stage::GameOver:
+			std::printf("game over, score %d: press Enter or Space to play again\n", points);
+			break;
+		}
+		std::fflush(stdout);
 	}
 
 	template void PrintScore<PelletEaten>(World&, const PelletEaten&);

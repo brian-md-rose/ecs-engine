@@ -16,6 +16,7 @@
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
 #include "events.hpp"
+#include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/renderer2d.hpp"
@@ -79,6 +80,7 @@ namespace game
 
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
+		world.resources.Emplace<GameFlow>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ConsoleHud>();
 		world.resources.Emplace<FrameStats>();
@@ -96,6 +98,7 @@ namespace game
 		const GridMover mover{.tile = spawns.front(), .speed = kPlayerSpeed};
 		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
 		registry.Add<GridMover>(player, mover);
+		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
 		registry.Add<PlayerControlled>(player);
 		registry.Add<Shape>(
 		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
@@ -103,9 +106,10 @@ namespace game
 		// The whole frame, in run order.
 		scheduler.Add(Phase::Input, ControlsSystem);
 		scheduler.Add(Phase::Input, GameStateSystem);
-		scheduler.Add(Phase::Update, PlayerInputSystem, NotPaused);
-		scheduler.Add(Phase::Update, GridMovementSystem, NotPaused);
-		scheduler.Add(Phase::LateUpdate, CollisionSystem, NotPaused);
+		scheduler.Add(Phase::Update, GameFlowSystem, NotPaused);
+		scheduler.Add(Phase::Update, PlayerInputSystem, IsPlaying);
+		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
+		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.
@@ -115,5 +119,9 @@ namespace game
 		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
 		world.events.Subscribe<PowerPelletEaten>(PrintScore<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
+		world.events.Subscribe<PlayerCaught>(LoseLife);
+		world.events.Subscribe<LevelCleared>(CompleteLevel);
+		world.events.Subscribe<StageChanged>(ResetRound);
+		world.events.Subscribe<StageChanged>(PrintStage);
 	}
 } // namespace game
