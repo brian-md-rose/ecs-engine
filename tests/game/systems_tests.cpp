@@ -7,7 +7,9 @@
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "input/keyboard.hpp"
+#include "maze.hpp"
 #include "mazegame.hpp"
+#include "tilemap.hpp"
 
 namespace
 {
@@ -18,11 +20,22 @@ namespace
 
 	constexpr double kStep = 1.0 / 60.0;
 
+	// A maze with room to move; walls don't stop the player yet. The spawn is column 2, row 2.
+	[[nodiscard]] game::TileMap TestMaze()
+	{
+		game::TileMapResult result = game::ParseTileMap("#######\n"
+		                                                "#.....#\n"
+		                                                "#.P.E.#\n"
+		                                                "#######\n");
+		REQUIRE(result.map.has_value());
+		return *result.map;
+	}
+
 	// The game as main.cpp runs it, minus the window: the fixed phases run on Update, and key
 	// events go through a Keyboard the way Application feeds them.
 	struct Harness
 	{
-		game::MazeGame maze;
+		game::MazeGame maze{TestMaze()};
 		engine::input::Keyboard keyboard;
 
 		void Update(int steps = 1)
@@ -69,15 +82,19 @@ namespace
 		[[nodiscard]] bool Paused() const { return maze.world.resources.Get<game::GameState>().paused; }
 	};
 
-	constexpr float kStartX = (game::kLogicalWidth - game::kSquareSize) / 2.0f;
-	constexpr float kStartY = (game::kLogicalHeight - game::kSquareSize) / 2.0f;
+	// Where the player starts: the top-left corner of the spawn tile.
+	[[nodiscard]] engine::graphics::Position Start()
+	{
+		return game::TileTopLeft(game::MazeOrigin(TestMaze()), {.column = 2, .row = 2});
+	}
 } // namespace
 
-TEST_CASE("MazeGame adds its resources, systems and a centred player", "[game][systems]")
+TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its spawn", "[game][systems]")
 {
 	Harness h;
 	CHECK(h.maze.world.resources.Has<game::GameState>());
 	CHECK(h.maze.world.resources.Has<game::FrameStats>());
+	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
@@ -86,8 +103,8 @@ TEST_CASE("MazeGame adds its resources, systems and a centred player", "[game][s
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
-	CHECK(start.position.x == kStartX);
-	CHECK(start.position.y == kStartY);
+	CHECK(start.position.x == Start().x);
+	CHECK(start.position.y == Start().y);
 	CHECK_FALSE(h.Paused());
 }
 
@@ -95,8 +112,8 @@ TEST_CASE("The player stays put until a direction is pressed", "[game][systems]"
 {
 	Harness h;
 	h.Update(10);
-	CHECK(h.PlayerTransform().position.x == kStartX);
-	CHECK(h.PlayerTransform().position.y == kStartY);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+	CHECK(h.PlayerTransform().position.y == Start().y);
 }
 
 TEST_CASE("The player keeps moving in the last direction tapped", "[game][systems]")
@@ -104,8 +121,8 @@ TEST_CASE("The player keeps moving in the last direction tapped", "[game][system
 	Harness h;
 	h.Tap(Key::Right);
 	const float afterTap = h.PlayerTransform().position.x;
-	CHECK(afterTap > kStartX);
-	CHECK(h.PlayerTransform().position.y == kStartY);
+	CHECK(afterTap > Start().x);
+	CHECK(h.PlayerTransform().position.y == Start().y);
 
 	h.Update(10); // key released, still moving
 	CHECK(h.PlayerTransform().position.x > afterTap);
@@ -127,7 +144,7 @@ TEST_CASE("The player stops at the screen edge", "[game][systems]")
 
 	h.Tap(Key::Down);
 	h.Update(5 * 60);
-	CHECK(h.PlayerTransform().position.y == game::kLogicalHeight - game::kSquareSize);
+	CHECK(h.PlayerTransform().position.y == game::kLogicalHeight - game::kPlayerSize);
 }
 
 TEST_CASE("Pausing stops movement until unpaused", "[game][systems]")
@@ -169,7 +186,7 @@ TEST_CASE("F1 adds and removes the stress-test shapes", "[game][systems]")
 	h.Tap(Key::F1);
 	CHECK(h.StressShapeCount() == 0);
 	CHECK_FALSE(h.maze.world.resources.Get<game::GameState>().stressTest);
-	CHECK(h.PlayerTransform().position.x == kStartX); // the player is untouched
+	CHECK(h.PlayerTransform().position.x == Start().x); // the player is untouched
 }
 
 TEST_CASE("The stress test toggles while paused", "[game][systems]")
