@@ -26,6 +26,18 @@ namespace game
 	{
 	};
 
+	// Tag: an enemy. It catches the player by reaching the player's tile (see CollisionSystem).
+	struct Enemy
+	{
+	};
+
+	// The tile something that never moves sits on: pellets and power pellets, which the player
+	// eats by entering their tile.
+	struct OnTile
+	{
+		TilePosition tile;
+	};
+
 	// Tags for the maze's tiles (see SpawnMaze).
 	struct Wall
 	{

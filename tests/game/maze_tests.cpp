@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "components.hpp"
+#include "ecs/commandbuffer.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/shape.hpp"
@@ -111,4 +112,38 @@ TEST_CASE("SpawnMaze fills wall tiles and centres pellets on theirs", "[game][ma
 	CHECK(door.shape.width == kTileSize);
 	CHECK(door.transform.position.x == kOrigin.x + 2 * kTileSize);
 	CHECK(door.transform.position.y + door.shape.height / 2.0f == kOrigin.y + 2.5f * kTileSize);
+}
+
+TEST_CASE("Pellets and power pellets know their tile", "[game][maze]")
+{
+	Registry registry;
+	game::SpawnMaze(registry, SmallMaze(), kOrigin);
+
+	std::vector<game::TilePosition> pellets;
+	registry.Each<game::Pellet, game::OnTile>([&pellets](Entity, const game::Pellet&, const game::OnTile& on)
+	{
+		pellets.push_back(on.tile);
+	});
+	CHECK(pellets == std::vector<game::TilePosition>{{.column = 3, .row = 1}});
+
+	std::vector<game::TilePosition> power;
+	registry.Each<game::PowerPellet, game::OnTile>([&power](Entity, const game::PowerPellet&, const game::OnTile& on)
+	{
+		power.push_back(on.tile);
+	});
+	CHECK(power == std::vector<game::TilePosition>{{.column = 2, .row = 1}});
+}
+
+TEST_CASE("SpawnPellets records the pellets in a command buffer", "[game][maze]")
+{
+	Registry registry;
+	engine::ecs::CommandBuffer commands;
+	game::SpawnPellets(registry, commands, SmallMaze(), kOrigin);
+	CHECK(Tagged<game::Pellet>(registry).empty()); // nothing until the commands are applied
+	CHECK_FALSE(commands.Empty());
+
+	commands.Apply(registry);
+	CHECK(Tagged<game::Pellet>(registry).size() == 1);
+	CHECK(Tagged<game::PowerPellet>(registry).size() == 1);
+	CHECK(Tagged<game::Wall>(registry).empty()); // pellets only
 }

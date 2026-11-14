@@ -12,6 +12,7 @@
 #include "input/keyboard.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "scoring.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -40,6 +41,8 @@ namespace
 	{
 		game::MazeGame maze{TestMaze()};
 		engine::input::Keyboard keyboard;
+
+		Harness() { maze.world.resources.Get<game::ConsoleHud>().enabled = false; }
 
 		void Update(int steps = 1)
 		{
@@ -83,6 +86,18 @@ namespace
 		}
 
 		[[nodiscard]] bool Paused() const { return maze.world.resources.Get<game::GameState>().paused; }
+
+		[[nodiscard]] int Points() const { return maze.world.resources.Get<game::Score>().points; }
+
+		template <typename Tag> [[nodiscard]] int Count()
+		{
+			int count = 0;
+			maze.world.registry.Each<Tag>([&count](Entity, const Tag&)
+			{
+				++count;
+			});
+			return count;
+		}
 	};
 
 	// The top-left corner of a tile of the test maze, where the player is drawn when it stands
@@ -109,7 +124,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 2);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 0);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 1);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
@@ -228,4 +243,16 @@ TEST_CASE("The stress test toggles while paused", "[game][systems]")
 	h.Tap(Key::P);
 	h.Tap(Key::F1);
 	CHECK(h.StressShapeCount() == game::kStressShapeCount);
+}
+
+TEST_CASE("The player eats the pellets it walks over", "[game][systems]")
+{
+	Harness h;
+	CHECK(h.Points() == 0);
+	CHECK(h.Count<game::Pellet>() == 8);
+
+	h.Tap(Key::Right);
+	h.Update(2 * 60); // to the wall at column 5, over the pellets at columns 3 and 5
+	CHECK(h.Count<game::Pellet>() == 6);
+	CHECK(h.Points() == 2 * game::kPelletPoints);
 }

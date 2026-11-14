@@ -15,12 +15,14 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "events.hpp"
 #include "gamestate.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/renderer2d.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
+#include "scoring.hpp"
 #include "systems.hpp"
 
 namespace game
@@ -77,6 +79,8 @@ namespace game
 
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
+		world.resources.Emplace<Score>();
+		world.resources.Emplace<ConsoleHud>();
 		world.resources.Emplace<FrameStats>();
 		world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
@@ -101,6 +105,15 @@ namespace game
 		scheduler.Add(Phase::Input, GameStateSystem);
 		scheduler.Add(Phase::Update, PlayerInputSystem, NotPaused);
 		scheduler.Add(Phase::Update, GridMovementSystem, NotPaused);
+		scheduler.Add(Phase::LateUpdate, CollisionSystem, NotPaused);
 		scheduler.Add(Phase::Render, RenderSystem);
+
+		// Who reacts to what, in delivery order.
+		world.events.Subscribe<PelletEaten>(AddPelletScore);
+		world.events.Subscribe<PelletEaten>(PrintScore<PelletEaten>);
+		world.events.Subscribe<PelletEaten>(CheckLevelCleared<PelletEaten>);
+		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
+		world.events.Subscribe<PowerPelletEaten>(PrintScore<PowerPelletEaten>);
+		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
 	}
 } // namespace game

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <random>
 
 #include "components.hpp"
@@ -17,6 +18,7 @@
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
 #include "mazegame.hpp"
+#include "scoring.hpp"
 #include "tilemap.hpp"
 
 namespace game
@@ -131,6 +133,66 @@ namespace game
 			transform.position = MoverTopLeft(origin, mover);
 		});
 	}
+
+	void CollisionSystem(World& world, const FrameContext&)
+	{
+		engine::ecs::Registry& registry = world.registry;
+		registry.Each<PlayerControlled, GridMover>([&](Entity, const PlayerControlled&, const GridMover& player)
+		{
+			registry.Each<Pellet, OnTile>([&](Entity pellet, const Pellet&, const OnTile& on)
+			{
+				if (on.tile != player.tile) return;
+				world.commands.Destroy(pellet);
+				world.events.Publish(PelletEaten{.tile = on.tile});
+			});
+			registry.Each<PowerPellet, OnTile>([&](Entity pellet, const PowerPellet&, const OnTile& on)
+			{
+				if (on.tile != player.tile) return;
+				world.commands.Destroy(pellet);
+				world.events.Publish(PowerPelletEaten{.tile = on.tile});
+			});
+			registry.Each<Enemy, GridMover>([&](Entity, const Enemy&, const GridMover& enemy)
+			{
+				if (enemy.tile == player.tile) world.events.Publish(PlayerCaught{});
+			});
+		});
+	}
+
+	void AddPelletScore(World& world, const PelletEaten&)
+	{
+		world.resources.Get<Score>().points += kPelletPoints;
+	}
+
+	void AddPowerPelletScore(World& world, const PowerPelletEaten&)
+	{
+		world.resources.Get<Score>().points += kPowerPelletPoints;
+	}
+
+	template <typename Eaten> void PrintScore(World& world, const Eaten&)
+	{
+		if (!world.resources.Get<ConsoleHud>().enabled) return;
+		std::printf("score %d\n", world.resources.Get<Score>().points);
+		std::fflush(stdout);
+	}
+
+	template <typename Eaten> void CheckLevelCleared(World& world, const Eaten&)
+	{
+		bool anyLeft = false;
+		world.registry.Each<Pellet>([&anyLeft](Entity, const Pellet&)
+		{
+			anyLeft = true;
+		});
+		world.registry.Each<PowerPellet>([&anyLeft](Entity, const PowerPellet&)
+		{
+			anyLeft = true;
+		});
+		if (!anyLeft) world.events.Publish(LevelCleared{});
+	}
+
+	template void PrintScore<PelletEaten>(World&, const PelletEaten&);
+	template void PrintScore<PowerPelletEaten>(World&, const PowerPelletEaten&);
+	template void CheckLevelCleared<PelletEaten>(World&, const PelletEaten&);
+	template void CheckLevelCleared<PowerPelletEaten>(World&, const PowerPelletEaten&);
 
 	void RenderSystem(World& world, const FrameContext& context)
 	{

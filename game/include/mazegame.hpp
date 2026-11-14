@@ -28,16 +28,16 @@ namespace game
 	// Where the maze's top-left tile is drawn: centred across the screen, below the HUD rows.
 	[[nodiscard]] engine::graphics::Position MazeOrigin(const TileMap& maze);
 
-	// The maze game: its resources, entities and systems. For now it draws the maze, with a
-	// square for the player that moves along the maze grid, steered with the arrow keys or WASD.
-	// P or Escape pauses; F1 toggles the rendering stress test.
+	// The maze game: its resources, entities and systems. The player, a square steered along
+	// the maze grid with the arrow keys or WASD, eats pellets for points; the score is printed
+	// to stdout. P or Escape pauses; F1 toggles the rendering stress test.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;
 
-		// Adds the resources (Controls, GameState, FrameStats, Renderer2D and a copy of the
-		// maze), spawns the maze and the player at its spawn, and registers the systems in run
-		// order.
+		// Adds the resources (Controls, GameState, Score, ConsoleHud, FrameStats, Renderer2D and
+		// a copy of the maze), spawns the maze and the player at its spawn, registers the
+		// systems in run order and subscribes the event handlers.
 		void Build(const TileMap& maze);
 
 	public:
