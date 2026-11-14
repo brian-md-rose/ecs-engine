@@ -12,6 +12,6 @@ namespace engine::graphics
 	{
 		int logicalWidth = 0;
 		int logicalHeight = 0;
-		Position position;
+		Position position{};
 	};
 } // namespace engine::graphics

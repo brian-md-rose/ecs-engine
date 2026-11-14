@@ -30,7 +30,7 @@ namespace engine::graphics
 	public:
 		Camera camera;
 
-		explicit Renderer2D(const Camera& camera);
+		explicit Renderer2D(const Camera& initialCamera);
 		~Renderer2D();
 
 		Renderer2D(const Renderer2D&) = delete;

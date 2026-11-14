@@ -15,7 +15,7 @@ namespace engine::graphics
 		}
 	} // namespace
 
-	Renderer2D::Renderer2D(const Camera& camera) : camera(camera)
+	Renderer2D::Renderer2D(const Camera& initialCamera) : camera(initialCamera)
 	{
 	}
 
