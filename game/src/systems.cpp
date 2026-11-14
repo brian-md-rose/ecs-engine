@@ -10,6 +10,7 @@
 #include "core/assert.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "enemymodes.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/color.hpp"
@@ -190,9 +191,19 @@ namespace game
 				world.commands.Destroy(pellet);
 				world.events.Publish(PowerPelletEaten{.tile = on.tile});
 			});
-			registry.Each<Enemy, GridMover>([&](Entity, const Enemy&, const GridMover& enemy)
+			registry.Each<Enemy, GridMover>([&](Entity enemy, const Enemy&, const GridMover& mover)
 			{
-				if (enemy.tile == player.tile) world.events.Publish(PlayerCaught{});
+				if (mover.tile != player.tile) return;
+				// Enemies without a brain (tests place bare ones) are always dangerous.
+				const EnemyBrain* brain = registry.TryGetComponent<EnemyBrain>(enemy);
+				if (brain == nullptr || IsDangerous(*brain))
+				{
+					world.events.Publish(PlayerCaught{});
+				}
+				else if (CanBeEaten(*brain))
+				{
+					world.events.Publish(EnemyEaten{.enemy = enemy});
+				}
 			});
 		});
 	}
@@ -294,6 +305,7 @@ namespace game
 
 	template void PrintScore<PelletEaten>(World&, const PelletEaten&);
 	template void PrintScore<PowerPelletEaten>(World&, const PowerPelletEaten&);
+	template void PrintScore<EnemyEaten>(World&, const EnemyEaten&);
 	template void CheckLevelCleared<PelletEaten>(World&, const PelletEaten&);
 	template void CheckLevelCleared<PowerPelletEaten>(World&, const PowerPelletEaten&);
 

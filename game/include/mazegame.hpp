@@ -30,16 +30,19 @@ namespace game
 
 	// The maze game: its resources, entities and systems. The player, a square steered along
 	// the maze grid with the arrow keys or WASD, eats pellets for points; the score is printed
-	// to stdout. Each round starts after a short Ready pause; clearing every pellet completes
-	// the level, which restarts with its pellets back (see gameflow.hpp). P or Escape pauses;
-	// F1 toggles the rendering stress test.
+	// to stdout. Four enemies leave the house one by one and hunt the player, each in its own
+	// way (see docs/enemies.md); being caught costs a life. A power pellet frightens them for a
+	// while, and a frightened enemy can be eaten for points. Each round starts after a short
+	// Ready pause; clearing every pellet completes the level, which restarts with its pellets
+	// back (see gameflow.hpp). P or Escape pauses; F1 toggles the rendering stress test.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;
 
 		// Adds the resources (Controls, GameState, GameFlow, Score, ConsoleHud, FrameStats,
-		// Renderer2D and a copy of the maze), spawns the maze and the player at its spawn, registers the
-		// systems in run order and subscribes the event handlers.
+		// ModeClock, EnemyDice, EnemyHouse, Renderer2D and a copy of the maze), spawns the maze,
+		// the player and the enemies at their spawns, registers the systems in run order and
+		// subscribes the event handlers.
 		void Build(const TileMap& maze);
 
 	public:

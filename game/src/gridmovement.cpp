@@ -141,4 +141,13 @@ namespace game
 		}
 		return position;
 	}
+
+	engine::graphics::Position MoverShapeTopLeft(engine::graphics::Position origin, const GridMover& mover,
+	                                             const engine::graphics::Shape& shape)
+	{
+		engine::graphics::Position position = MoverTopLeft(origin, mover);
+		position.x += (kTileSize - shape.BoundsWidth()) / 2.0f;
+		position.y += (kTileSize - shape.BoundsHeight()) / 2.0f;
+		return position;
+	}
 } // namespace game

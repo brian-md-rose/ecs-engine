@@ -15,6 +15,8 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "enemymodes.hpp"
+#include "enemysystems.hpp"
 #include "events.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
@@ -25,6 +27,7 @@
 #include "gridmovement.hpp"
 #include "scoring.hpp"
 #include "systems.hpp"
+#include "targeting.hpp"
 
 namespace game
 {
@@ -84,9 +87,12 @@ namespace game
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ConsoleHud>();
 		world.resources.Emplace<FrameStats>();
+		world.resources.Emplace<ModeClock>();
+		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
 		const TileMap& map = world.resources.Emplace<TileMap>(maze);
+		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
 		engine::ecs::Registry& registry = world.registry;
 		const engine::graphics::Position origin = MazeOrigin(map);
@@ -102,14 +108,18 @@ namespace game
 		registry.Add<PlayerControlled>(player);
 		registry.Add<Shape>(
 		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
+		SpawnEnemies(registry, map, origin);
 
 		// The whole frame, in run order.
 		scheduler.Add(Phase::Input, ControlsSystem);
 		scheduler.Add(Phase::Input, GameStateSystem);
 		scheduler.Add(Phase::Update, GameFlowSystem, NotPaused);
 		scheduler.Add(Phase::Update, PlayerInputSystem, IsPlaying);
+		scheduler.Add(Phase::Update, EnemyModeSystem, IsPlaying);
+		scheduler.Add(Phase::Update, EnemySteeringSystem, IsPlaying);
 		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
+		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.
@@ -119,9 +129,14 @@ namespace game
 		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
 		world.events.Subscribe<PowerPelletEaten>(PrintScore<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
+		world.events.Subscribe<PowerPelletEaten>(FrightenEnemies);
+		world.events.Subscribe<EnemyEaten>(AddEnemyScore);
+		world.events.Subscribe<EnemyEaten>(PrintScore<EnemyEaten>);
+		world.events.Subscribe<EnemyEaten>(SendEnemyHome);
 		world.events.Subscribe<PlayerCaught>(LoseLife);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<StageChanged>(ResetRound);
+		world.events.Subscribe<StageChanged>(ResetEnemies);
 		world.events.Subscribe<StageChanged>(PrintStage);
 	}
 } // namespace game

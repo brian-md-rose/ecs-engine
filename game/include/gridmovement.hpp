@@ -3,6 +3,7 @@
 
 #include "components.hpp"
 #include "direction.hpp"
+#include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "tilemap.hpp"
 
@@ -42,4 +43,9 @@ namespace game
 	// Where to draw a tile-sized sprite for mover: the top-left corner of its tile, shifted by
 	// its offset, for a maze whose top-left tile is drawn at origin (see TileTopLeft).
 	[[nodiscard]] engine::graphics::Position MoverTopLeft(engine::graphics::Position origin, const GridMover& mover);
+
+	// Where to draw shape so it sits centred on the tile-sized square MoverTopLeft gives.
+	[[nodiscard]] engine::graphics::Position MoverShapeTopLeft(engine::graphics::Position origin,
+	                                                           const GridMover& mover,
+	                                                           const engine::graphics::Shape& shape);
 } // namespace game
