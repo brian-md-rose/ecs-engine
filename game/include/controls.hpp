@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "direction.hpp"
 #include "input/keyboard.hpp"
 
 namespace game
@@ -20,15 +21,6 @@ namespace game
 		Confirm,
 		ToggleStressTest, // debug: fill the screen with shapes to check rendering speed
 		Count
-	};
-
-	enum class Direction : std::uint8_t
-	{
-		None,
-		Up,
-		Down,
-		Left,
-		Right
 	};
 
 	inline constexpr std::size_t kActionCount = static_cast<std::size_t>(Action::Count);
