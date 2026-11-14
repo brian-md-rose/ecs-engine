@@ -13,6 +13,24 @@ namespace game
 	{
 	};
 
+	// Tags for the maze's tiles (see SpawnMaze).
+	struct Wall
+	{
+	};
+
+	struct Pellet
+	{
+	};
+
+	struct PowerPellet
+	{
+	};
+
+	// The enemy house's door: enemies pass through it, the player doesn't.
+	struct Door
+	{
+	};
+
 	// Tag: spawned by the rendering stress test, removed when it ends.
 	struct StressShape
 	{
