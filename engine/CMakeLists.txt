@@ -1,13 +1,9 @@
-add_library(engine STATIC
-    src/application/application.cpp
-    src/core/assert.cpp
-    src/core/clock.cpp
-    src/core/fixedtimestep.cpp
-    src/ecs/registry.cpp
-    src/graphics/renderer.cpp
-    src/graphics/window.cpp
-    src/input/keyboard.cpp
-)
+# Every engine header and source, picked up automatically (CONFIGURE_DEPENDS re-globs on
+# each build, so new files appear without editing this list).
+file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS include/*.hpp)
+file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+add_library(engine STATIC ${ENGINE_SOURCES} ${ENGINE_HEADERS})
 add_library(engine::engine ALIAS engine)
 
 # ENGINE_ASSERT is active in Debug builds only. PUBLIC so every target that
@@ -20,7 +16,5 @@ target_compile_features(engine PUBLIC cxx_std_20)
 # still links SDL through the engine, since engine is a static library.
 target_link_libraries(engine PRIVATE engine::warnings SDL3::SDL3)
 
-# Show the headers in IDE project trees alongside the sources.
-file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS include/*.hpp)
-target_sources(engine PRIVATE ${ENGINE_HEADERS})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_HEADERS})
+# Mirror the folder layout as IDE filters: include/ and src/.
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCES} ${ENGINE_HEADERS})
