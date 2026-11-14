@@ -31,9 +31,8 @@ namespace engine::graphics
 
 		void Clear(std::uint8_t r, std::uint8_t g, std::uint8_t b);
 
-		// Filled rectangle in logical coordinates (origin top-left).
-		// Placeholder until Renderer2D (#13) draws Shape components.
-		void FillRect(float x, float y, float width, float height, std::uint8_t r, std::uint8_t g, std::uint8_t b);
+		// For engine code that draws with SDL directly, such as Renderer2D.
+		[[nodiscard]] SDL_Renderer* GetRendererHandle() const noexcept { return renderer; }
 
 		void Present();
 	};

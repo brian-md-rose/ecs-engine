@@ -47,6 +47,7 @@ namespace game
 		Bind(Key::Escape, Action::Pause);
 		Bind(Key::Enter, Action::Confirm);
 		Bind(Key::Space, Action::Confirm);
+		Bind(Key::F1, Action::ToggleStressTest);
 	}
 
 	void Controls::Bind(Key key, Action action)

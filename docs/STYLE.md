@@ -114,6 +114,24 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 - Components are plain structs with default member initialisers. They must satisfy the
   `Component` concept: a non-const, movable class type. Empty tag structs are fine.
 
+## Systems and phases
+
+- A system is a free function `void XSystem(World&, const FrameContext&)`, named `...System`.
+  State it keeps between runs goes in a resource (see `docs/decisions/0001-shared-game-data.md`),
+  never in a `static` or a captured variable.
+- A game derives from `ScheduledGame` and, in its constructor, adds its resources and
+  registers its systems in run order, so the whole frame reads top to bottom. `main.cpp` only
+  creates the `Application` and the game and runs it. Pick the phase by what the system does:
+  - `Input`: read devices and toggle game state (pause, menus).
+  - `Update`: game logic and movement.
+  - `LateUpdate`: fix-ups that need everything moved first (clamping, collisions).
+  - `Render`: draw only; never change game state.
+- Skip a system with a run condition (`bool NotPaused(const World&)`) rather than an early
+  return inside it.
+- Queue structural changes (create, add, remove, destroy) on `world.commands`. The scheduler
+  applies them after each phase, so the next phase sees them.
+- Systems never add or remove resources: that asserts while a phase runs. Do it in setup.
+
 ## Errors and invariants
 
 | Situation                                          | Use                                       |
@@ -167,7 +185,7 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 - Convert between numeric types explicitly with `static_cast`. Use `std::size_t` for indices.
 - Use `constexpr` values at namespace scope when a lambda needs them (`std::clamp` and friends
   take references, which forces a capture).
-- New engine `.cpp` files are listed in `engine/CMakeLists.txt`. Game files are picked up by glob.
+- Engine, game and test files are picked up by glob (`CONFIGURE_DEPENDS`), so new files need no CMake edit. Test files end in `_tests.cpp`; those under `tests/game/` go in `game_tests`, the rest in `engine_tests`.
 - Before pushing, build and test Debug and Release: `cmake --build --preset debug`,
   `ctest --preset debug`, and the same for `release`.
 

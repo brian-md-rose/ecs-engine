@@ -46,13 +46,6 @@ namespace engine::graphics
 		SDL_RenderClear(renderer);
 	}
 
-	void Renderer::FillRect(float x, float y, float width, float height, std::uint8_t r, std::uint8_t g, std::uint8_t b)
-	{
-		const SDL_FRect rect{x, y, width, height};
-		SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
-		SDL_RenderFillRect(renderer, &rect);
-	}
-
 	void Renderer::Present()
 	{
 		SDL_RenderPresent(renderer);
