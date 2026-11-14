@@ -40,6 +40,7 @@ namespace engine::ecs
 
 		std::unordered_map<std::type_index, std::unique_ptr<IResource>> items;
 		std::vector<std::type_index> order; // insertion order, for teardown
+		bool locked = false;                // set while a Scheduler phase runs
 
 		template <Resource T> T* Find() const noexcept
 		{
@@ -57,10 +58,30 @@ namespace engine::ecs
 		Resources(Resources&&) = delete;
 		Resources& operator=(Resources&&) = delete;
 
+		// While alive, Emplace and Remove assert: a system holding a reference to a resource
+		// must not see it destroyed mid-phase. Scheduler::Run holds one for each phase.
+		class LockScope
+		{
+			Resources& resources;
+			bool previous;
+
+		public:
+			explicit LockScope(Resources& r) noexcept : resources(r), previous(r.locked) { resources.locked = true; }
+			~LockScope() { resources.locked = previous; }
+
+			LockScope(const LockScope&) = delete;
+			LockScope& operator=(const LockScope&) = delete;
+			LockScope(LockScope&&) = delete;
+			LockScope& operator=(LockScope&&) = delete;
+		};
+
+		[[nodiscard]] bool IsLocked() const noexcept { return locked; }
+
 		// Constructs T in place from args. There is one value per type: adding a type that is
 		// already present asserts, and in Release returns the existing value unchanged.
 		template <Resource T, typename... Args> T& Emplace(Args&&... args)
 		{
+			ENGINE_ASSERT(!locked, "cannot add a resource while systems are running");
 			if (T* existing = Find<T>())
 			{
 				ENGINE_ASSERT(false, "resource already present; use Get to change it");
@@ -99,6 +120,7 @@ namespace engine::ecs
 		// Destroys the resource of type T, if present. References to it become invalid.
 		template <Resource T> void Remove()
 		{
+			ENGINE_ASSERT(!locked, "cannot remove a resource while systems are running");
 			const std::type_index type(typeid(T));
 			if (items.erase(type) > 0)
 			{
