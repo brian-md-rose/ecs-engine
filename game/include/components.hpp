@@ -19,6 +19,7 @@ namespace game
 		Direction direction = Direction::None; // the way it is moving; None when stopped
 		Direction buffered = Direction::None;  // the way it has been asked to go next
 		float speed = 0.0f;                    // tiles per second
+		bool throughDoor = false;              // may pass the enemy-house door (enemies going in or out)
 	};
 
 	// Tag: moved by the player's controls.

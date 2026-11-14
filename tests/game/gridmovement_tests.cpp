@@ -234,6 +234,17 @@ TEST_CASE("The door stops the player", "[game][gridmovement]")
 	CHECK(moved.direction == Direction::None);
 }
 
+TEST_CASE("A mover allowed through the door passes it", "[game][gridmovement]")
+{
+	const TileMap maze = Maze();
+	CHECK(game::CanEnter(maze, At(4, 4), Direction::Down, true));
+	CHECK_FALSE(game::CanEnter(maze, At(3, 3), Direction::Up, true)); // walls still stop it
+
+	GridMover enemy = Mover(At(4, 4), Direction::Down, Direction::Down);
+	enemy.throughDoor = true;
+	CheckAt(Travel(enemy, maze, 2.0f), At(4, 6), 0.0f);
+}
+
 TEST_CASE("A mover can turn back at any point", "[game][gridmovement]")
 {
 	const TileMap maze = Maze();
