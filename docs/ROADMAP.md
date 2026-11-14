@@ -69,9 +69,9 @@ Everything else builds on the registry, so fix its sharp edges first.
 
 ## Phase 5 – Game rules and state
 
-- [ ] Collision based on shared tiles; pellets, power pellets and score.
-- [ ] Engine event bus (`PelletEaten`, `PlayerCaught`, `LevelCleared`), so scoring, audio and UI don't depend on each other.
-- [ ] Game state machine: Ready → Playing → Dying → LevelComplete → GameOver.
+- [x] Collision based on shared tiles; pellets, power pellets and score.
+- [x] Engine event bus (`PelletEaten`, `PlayerCaught`, `LevelCleared`), so scoring, audio and UI don't depend on each other.
+- [x] Game state machine: Ready → Playing → Dying → LevelComplete → GameOver.
 
 **Done when:** you can clear a level with no enemies and the level restarts.
 
