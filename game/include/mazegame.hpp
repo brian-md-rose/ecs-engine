@@ -20,7 +20,7 @@ namespace game
 	inline constexpr std::size_t kHudRows = 2;
 
 	inline constexpr float kPlayerSize = kTileSize;
-	inline constexpr float kPlayerSpeed = 90.0f;    // logical pixels per second
+	inline constexpr float kPlayerSpeed = 7.5f;     // tiles per second
 	inline constexpr std::uint8_t kPlayerLayer = 3; // above the maze and every stress-test shape
 	inline constexpr int kStressShapeCount = 1000;
 	inline constexpr engine::graphics::Color kPausedTint{128, 128, 128};
@@ -29,7 +29,7 @@ namespace game
 	[[nodiscard]] engine::graphics::Position MazeOrigin(const TileMap& maze);
 
 	// The maze game: its resources, entities and systems. For now it draws the maze, with a
-	// square for the player steered with the arrow keys or WASD; it doesn't stop at walls yet.
+	// square for the player that moves along the maze grid, steered with the arrow keys or WASD.
 	// P or Escape pauses; F1 toggles the rendering stress test.
 	class MazeGame final : public engine::application::ScheduledGame
 	{

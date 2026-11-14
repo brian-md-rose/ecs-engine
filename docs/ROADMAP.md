@@ -61,9 +61,9 @@ Everything else builds on the registry, so fix its sharp edges first.
 
 ## Phase 4 – Grid movement
 
-- [ ] `GridMover` component: current tile, direction, buffered direction, speed.
-- [ ] Turns are allowed only near a tile's centre, with a small tolerance so corners feel smooth. Stop at walls. Wrap through tunnels.
-- [ ] Movement written as pure functions, unit-tested without SDL.
+- [x] `GridMover` component: current tile, direction, buffered direction, speed.
+- [x] Turns are allowed only near a tile's centre, with a small tolerance so corners feel smooth. Stop at walls. Wrap through tunnels.
+- [x] Movement written as pure functions, unit-tested without SDL.
 
 **Done when:** the player moves smoothly around the maze and corners feel smooth.
 

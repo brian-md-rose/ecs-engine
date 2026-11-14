@@ -1,6 +1,5 @@
 #include "systems.hpp"
 
-#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <random>
@@ -16,7 +15,9 @@
 #include "graphics/renderer2d.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
+#include "gridmovement.hpp"
 #include "mazegame.hpp"
+#include "tilemap.hpp"
 
 namespace game
 {
@@ -112,52 +113,22 @@ namespace game
 
 	void PlayerInputSystem(World& world, const FrameContext&)
 	{
-		const auto& controls = world.resources.Get<Controls>();
-
-		Velocity heading{};
-		switch (controls.BufferedDirection())
+		const Direction asked = world.resources.Get<Controls>().BufferedDirection();
+		world.registry.Each<PlayerControlled, GridMover>([asked](Entity, const PlayerControlled&, GridMover& mover)
 		{
-		case Direction::Up:
-			heading = {0.0f, -kPlayerSpeed};
-			break;
-		case Direction::Down:
-			heading = {0.0f, kPlayerSpeed};
-			break;
-		case Direction::Left:
-			heading = {-kPlayerSpeed, 0.0f};
-			break;
-		case Direction::Right:
-			heading = {kPlayerSpeed, 0.0f};
-			break;
-		case Direction::None:
-			break;
-		}
-
-		world.registry.Each<PlayerControlled, Velocity>([heading](Entity, const PlayerControlled&, Velocity& velocity)
-		{
-			velocity = heading;
+			mover.buffered = asked;
 		});
 	}
 
-	void MovementSystem(World& world, const FrameContext& context)
+	void GridMovementSystem(World& world, const FrameContext& context)
 	{
 		const auto dt = static_cast<float>(context.dt);
-		world.registry.Each<Transform, Velocity>([dt](Entity, Transform& transform, const Velocity& v)
+		const auto& maze = world.resources.Get<TileMap>();
+		const Position origin = MazeOrigin(maze);
+		world.registry.Each<GridMover, Transform>([&](Entity, GridMover& mover, Transform& transform)
 		{
-			transform.position.x += v.x * dt;
-			transform.position.y += v.y * dt;
-		});
-	}
-
-	void ClampToScreenSystem(World& world, const FrameContext&)
-	{
-		world.registry.Each<Transform, Shape, Velocity>(
-		    [](Entity, Transform& transform, const Shape& shape, const Velocity&)
-		{
-			transform.position.x =
-			    std::clamp(transform.position.x, 0.0f, static_cast<float>(kLogicalWidth) - shape.BoundsWidth());
-			transform.position.y =
-			    std::clamp(transform.position.y, 0.0f, static_cast<float>(kLogicalHeight) - shape.BoundsHeight());
+			mover = StepGridMover(mover, maze, dt);
+			transform.position = MoverTopLeft(origin, mover);
 		});
 	}
 

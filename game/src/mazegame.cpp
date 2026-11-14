@@ -20,6 +20,7 @@
 #include "graphics/renderer2d.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
+#include "gridmovement.hpp"
 #include "systems.hpp"
 
 namespace game
@@ -88,8 +89,9 @@ namespace game
 		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
 		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
 		const engine::ecs::Entity player = registry.Create();
-		registry.Add<Transform>(player, TileTopLeft(origin, spawns.front()));
-		registry.Add<Velocity>(player);
+		const GridMover mover{.tile = spawns.front(), .speed = kPlayerSpeed};
+		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
+		registry.Add<GridMover>(player, mover);
 		registry.Add<PlayerControlled>(player);
 		registry.Add<Shape>(
 		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
@@ -98,8 +100,7 @@ namespace game
 		scheduler.Add(Phase::Input, ControlsSystem);
 		scheduler.Add(Phase::Input, GameStateSystem);
 		scheduler.Add(Phase::Update, PlayerInputSystem, NotPaused);
-		scheduler.Add(Phase::Update, MovementSystem, NotPaused);
-		scheduler.Add(Phase::LateUpdate, ClampToScreenSystem, NotPaused);
+		scheduler.Add(Phase::Update, GridMovementSystem, NotPaused);
 		scheduler.Add(Phase::Render, RenderSystem);
 	}
 } // namespace game
