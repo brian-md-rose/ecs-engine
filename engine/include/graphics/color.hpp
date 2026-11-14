@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace game
+namespace engine::graphics
 {
 	struct Color
 	{
@@ -9,4 +9,4 @@ namespace game
 		std::uint8_t g = 255;
 		std::uint8_t b = 255;
 	};
-} // namespace game
+} // namespace engine::graphics

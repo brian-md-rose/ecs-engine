@@ -2,22 +2,22 @@
 #include <cstdint>
 
 #include "application/application.hpp"
-#include "color.hpp"
-#include "components/shape.hpp"
-#include "components/transform.hpp"
 #include "controls.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "graphics/color.hpp"
 #include "graphics/renderer.hpp"
+#include "graphics/shape.hpp"
+#include "graphics/transform.hpp"
 #include "input/keyboard.hpp"
 
 namespace
 {
 	using engine::ecs::Entity;
-	using game::Color;
-	using game::Position;
-	using game::Shape;
-	using game::Transform;
+	using engine::graphics::Color;
+	using engine::graphics::Position;
+	using engine::graphics::Shape;
+	using engine::graphics::Transform;
 
 	constexpr int kLogicalWidth = 320;
 	constexpr int kLogicalHeight = 180;
@@ -79,9 +79,9 @@ namespace
 		registry.Each<Transform, Shape>([](Entity, Transform& transform, const Shape& shape)
 		{
 			transform.position.x =
-			    std::clamp(transform.position.x, 0.0f, static_cast<float>(kLogicalWidth) - shape.width);
+			    std::clamp(transform.position.x, 0.0f, static_cast<float>(kLogicalWidth) - shape.BoundsWidth());
 			transform.position.y =
-			    std::clamp(transform.position.y, 0.0f, static_cast<float>(kLogicalHeight) - shape.height);
+			    std::clamp(transform.position.y, 0.0f, static_cast<float>(kLogicalHeight) - shape.BoundsHeight());
 		});
 	}
 
@@ -106,7 +106,7 @@ namespace
 			registry.Add<Transform>(player, Position{152.0f, 82.0f});
 			registry.Add<Velocity>(player);
 			registry.Add<PlayerControlled>(player);
-			registry.Add<Shape>(player, kSquareSize, kSquareSize, Color{255, 210, 0});
+			registry.Add<Shape>(player, Shape{.width = kSquareSize, .height = kSquareSize, .color = {255, 210, 0}});
 		}
 
 		void Update(double dt, const engine::input::Keyboard& keyboard) override
@@ -130,8 +130,8 @@ namespace
 			const auto draw = [&renderer, dim](Entity, const Transform& transform, const Shape& shape)
 			{
 				const Color color = dim ? Dimmed(shape.color) : shape.color;
-				renderer.FillRect(transform.position.x, transform.position.y, shape.width, shape.height, color.r,
-				                  color.g, color.b);
+				renderer.FillRect(transform.position.x, transform.position.y, shape.BoundsWidth(), shape.BoundsHeight(),
+				                  color.r, color.g, color.b);
 			};
 			registry.Each<Transform, Shape>(draw);
 		}
