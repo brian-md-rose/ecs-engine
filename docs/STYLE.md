@@ -167,7 +167,7 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 - Convert between numeric types explicitly with `static_cast`. Use `std::size_t` for indices.
 - Use `constexpr` values at namespace scope when a lambda needs them (`std::clamp` and friends
   take references, which forces a capture).
-- New engine `.cpp` files are listed in `engine/CMakeLists.txt`. Game files are picked up by glob.
+- Engine, game and test files are picked up by glob (`CONFIGURE_DEPENDS`), so new files need no CMake edit. Test files end in `_tests.cpp`; those under `tests/game/` go in `game_tests`, the rest in `engine_tests`.
 - Before pushing, build and test Debug and Release: `cmake --build --preset debug`,
   `ctest --preset debug`, and the same for `release`.
 
