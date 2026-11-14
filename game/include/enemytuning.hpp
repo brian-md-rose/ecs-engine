@@ -2,8 +2,11 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 #include "direction.hpp"
+#include "graphics/color.hpp"
+#include "graphics/shape.hpp"
 
 // Every number that decides how the enemies move and think, in one place, so the game can be
 // tuned here without hunting through the code. All of them are our own (see docs/enemies.md).
@@ -78,4 +81,85 @@ namespace game
 	// The first enemy eaten in one fright is worth this many points, the second twice as many,
 	// the third three times, and so on.
 	inline constexpr int kEnemyPointsStep = 60;
+
+	// Personalities (targeting.hpp)
+
+	// The four enemies. Each has its own way of hunting the player, its own corner to patrol,
+	// its own release time and its own look. Enemy spawns in the maze get them in this order,
+	// in reading order (left to right, top to bottom), starting again after the fourth.
+	enum class Personality : std::uint8_t
+	{
+		Grit,  // the bloodhound: goes straight for the player's tile
+		Snare, // the trapper: waits at the next junction on the player's path
+		Clasp, // the flanker: closes the far side of the player from Grit
+		Wisp,  // the stalker: follows from afar, slips away when the player comes close
+		Count
+	};
+
+	inline constexpr std::size_t kPersonalityCount = static_cast<std::size_t>(Personality::Count);
+
+	enum class Corner : std::uint8_t
+	{
+		TopLeft,
+		TopRight,
+		BottomLeft,
+		BottomRight
+	};
+
+	struct PersonalityTuning
+	{
+		std::string_view name;
+		Corner corner;                // patrols around the maze's corner tile on this side
+		float releaseSeconds;         // leaves the house this long after the round starts
+		engine::graphics::Shape look; // drawn centred on its tile
+	};
+
+	inline constexpr std::uint8_t kEnemyLayer = 2; // above the pellets, below the player
+
+	inline constexpr std::array<PersonalityTuning, kPersonalityCount> kPersonalities = {{
+	    {"Grit", Corner::TopLeft, 0.0f,
+	     engine::graphics::Shape{.width = 7.0f, .height = 7.0f, .color = {90, 210, 70}, .layer = kEnemyLayer}},
+	    {"Snare", Corner::TopRight, 2.0f,
+	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
+	                             .radius = 3.5f,
+	                             .color = {165, 90, 235},
+	                             .layer = kEnemyLayer}},
+	    {"Clasp", Corner::BottomLeft, 5.0f,
+	     engine::graphics::Shape{.width = 6.0f, .height = 6.0f, .color = {235, 235, 235}, .layer = kEnemyLayer}},
+	    {"Wisp", Corner::BottomRight, 8.0f,
+	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
+	                             .radius = 3.0f,
+	                             .color = {215, 195, 120},
+	                             .layer = kEnemyLayer}},
+	}};
+
+	[[nodiscard]] constexpr const PersonalityTuning& TuningFor(Personality personality) noexcept
+	{
+		return kPersonalities[static_cast<std::size_t>(personality)];
+	}
+
+	// Snare looks along the player's way for the next junction (a tile with three or more
+	// open sides), at most this many tiles ahead, and waits there.
+	inline constexpr int kSnareLookahead = 6;
+
+	// Clasp aims this many tiles past the player, on the side away from Grit, along whichever
+	// axis Grit is further off on.
+	inline constexpr int kClaspReach = 5;
+	inline constexpr Personality kClaspAlly = Personality::Grit;
+
+	// Wisp chases while it is further than this from the player (counting tiles across plus
+	// tiles down); this close or closer, it backs away instead.
+	inline constexpr int kWispComfortDistance = 6;
+
+	// Looks for the other states (enemysystems.hpp).
+
+	inline constexpr engine::graphics::Color kFrightenedColor{110, 110, 125}; // drained of colour
+	inline constexpr engine::graphics::Color kFrightFlashColor{255, 170, 90}; // the warning flash
+	// An eaten enemy shrinks to a small dot on its way home.
+	inline constexpr engine::graphics::Shape kReturningLook{
+	    .kind = engine::graphics::ShapeKind::Circle, .radius = 1.5f, .color = {170, 170, 170}, .layer = kEnemyLayer};
+
+	// Frightened enemies' random turns come from a generator seeded with this, so a game
+	// plays the same way each time it is given the same input.
+	inline constexpr std::uint32_t kEnemyRandomSeed = 20261114u;
 } // namespace game
