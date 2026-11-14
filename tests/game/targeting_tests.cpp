@@ -152,15 +152,15 @@ TEST_CASE("Wisp chases from afar and backs away when close", "[game][targeting]"
 	const int comfort = game::kWispComfortDistance;
 
 	// Further than its comfort distance: it heads for the player.
-	const ChaseView far = View(At(1, 1), At(1 + static_cast<std::size_t>(comfort) - 2, 4));
-	CHECK(game::WispTarget(far) == To(comfort - 1, 4));
-	CHECK(game::ChaseTarget(map, Personality::Wisp, far) == To(comfort - 1, 4));
+	const ChaseView distant = View(At(1, 1), At(1 + static_cast<std::size_t>(comfort) - 2, 4));
+	CHECK(game::WispTarget(distant) == To(comfort - 1, 4));
+	CHECK(game::ChaseTarget(map, Personality::Wisp, distant) == To(comfort - 1, 4));
 
 	// Exactly at it, or closer: it aims directly away, as far again beyond itself.
-	const ChaseView edge = View(At(4, 3), At(4 + static_cast<std::size_t>(comfort), 3));
-	CHECK(game::WispTarget(edge) == To(4 - comfort, 3));
-	const ChaseView close = View(At(5, 3), At(6, 5));
-	CHECK(game::WispTarget(close) == To(4, 1));
+	const ChaseView atEdge = View(At(4, 3), At(4 + static_cast<std::size_t>(comfort), 3));
+	CHECK(game::WispTarget(atEdge) == To(4 - comfort, 3));
+	const ChaseView nearby = View(At(5, 3), At(6, 5));
+	CHECK(game::WispTarget(nearby) == To(4, 1));
 }
 
 TEST_CASE("The house is found from its door, inside towards the enemy spawns", "[game][targeting]")

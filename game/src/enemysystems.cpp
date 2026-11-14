@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "components.hpp"
@@ -156,7 +157,8 @@ namespace game
 			const Goal goal = GoalFor(brain, mode);
 			if (goal == Goal::Wander)
 			{
-				turn = SteerRandomly(maze, mover.tile, mover.direction, mover.throughDoor, dice());
+				turn = SteerRandomly(maze, mover.tile, mover.direction, mover.throughDoor,
+				                     static_cast<std::uint32_t>(dice()));
 			}
 			else if (goal != Goal::Stay)
 			{
