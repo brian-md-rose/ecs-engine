@@ -12,6 +12,7 @@ add_executable(engine_tests
     ecs/componentpool_tests.cpp
     ecs/commandbuffer_tests.cpp
     ecs/entity_tests.cpp
+    graphics/components_tests.cpp
     input/keyboard_tests.cpp
 )
 target_link_libraries(engine_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
