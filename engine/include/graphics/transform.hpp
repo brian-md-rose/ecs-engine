@@ -12,6 +12,6 @@ namespace engine::graphics
 	// Where an entity is. Room to add scale and rotation once something uses them.
 	struct Transform
 	{
-		Position position;
+		Position position{};
 	};
 } // namespace engine::graphics
