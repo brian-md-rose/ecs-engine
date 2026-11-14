@@ -5,12 +5,6 @@
 
 namespace game
 {
-	struct Velocity
-	{
-		float x = 0; // logical pixels per second
-		float y = 0;
-	};
-
 	// Moves an entity along the maze grid, one lane at a time (see gridmovement.hpp).
 	//
 	// A mover is always on the centre line of a row or a column. tile is the tile it is in, and

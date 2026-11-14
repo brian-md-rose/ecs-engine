@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
+
 #include "components.hpp"
+#include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/scheduler.hpp"
 #include "gamestate.hpp"
@@ -20,7 +23,7 @@ namespace
 
 	constexpr double kStep = 1.0 / 60.0;
 
-	// A maze with room to move; walls don't stop the player yet. The spawn is column 2, row 2.
+	// Two corridors, one above the other, with the spawn at column 2, row 2.
 	[[nodiscard]] game::TileMap TestMaze()
 	{
 		game::TileMapResult result = game::ParseTileMap("#######\n"
@@ -82,10 +85,17 @@ namespace
 		[[nodiscard]] bool Paused() const { return maze.world.resources.Get<game::GameState>().paused; }
 	};
 
-	// Where the player starts: the top-left corner of the spawn tile.
+	// The top-left corner of a tile of the test maze, where the player is drawn when it stands
+	// on that tile's centre.
+	[[nodiscard]] engine::graphics::Position TileCorner(std::size_t column, std::size_t row)
+	{
+		return game::TileTopLeft(game::MazeOrigin(TestMaze()), {.column = column, .row = row});
+	}
+
+	// Where the player starts: the spawn tile.
 	[[nodiscard]] engine::graphics::Position Start()
 	{
-		return game::TileTopLeft(game::MazeOrigin(TestMaze()), {.column = 2, .row = 2});
+		return TileCorner(2, 2);
 	}
 } // namespace
 
@@ -99,13 +109,24 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 2);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 1);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 0);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
 	CHECK(start.position.x == Start().x);
 	CHECK(start.position.y == Start().y);
 	CHECK_FALSE(h.Paused());
+
+	int movers = 0;
+	h.maze.world.registry.Each<game::PlayerControlled, game::GridMover>(
+	    [&movers](Entity, const game::PlayerControlled&, const game::GridMover& mover)
+	{
+		CHECK(mover.tile == game::TilePosition{.column = 2, .row = 2});
+		CHECK(mover.direction == game::Direction::None);
+		CHECK(mover.speed == game::kPlayerSpeed);
+		++movers;
+	});
+	CHECK(movers == 1);
 }
 
 TEST_CASE("The player stays put until a direction is pressed", "[game][systems]")
@@ -126,25 +147,37 @@ TEST_CASE("The player keeps moving in the last direction tapped", "[game][system
 
 	h.Update(10); // key released, still moving
 	CHECK(h.PlayerTransform().position.x > afterTap);
-
-	h.Tap(Key::Up);
-	const Transform turned = h.PlayerTransform();
-	h.Update();
-	CHECK(h.PlayerTransform().position.y < turned.position.y);
-	CHECK(h.PlayerTransform().position.x == turned.position.x);
+	CHECK(h.PlayerTransform().position.y == Start().y);
 }
 
-TEST_CASE("The player stops at the screen edge", "[game][systems]")
+TEST_CASE("The player turns on the grid at the next open tile", "[game][systems]")
 {
 	Harness h;
+	h.Tap(Key::Right);
+	h.Update(10); // 12 updates at 7.5 tiles/s: 1.5 tiles, half-way into column 4
+
+	h.Tap(Key::Up); // asked before the centre of column 4: the turn is taken there
+	h.Update(30);
+	CHECK(h.PlayerTransform().position.x == TileCorner(4, 2).x);
+	CHECK(h.PlayerTransform().position.y == TileCorner(4, 1).y); // stopped by the outer wall
+}
+
+TEST_CASE("The player stops at walls", "[game][systems]")
+{
+	Harness h;
+	h.Tap(Key::Right);
+	h.Update(2 * 60); // far more than the 3 tiles to the wall
+	CHECK(h.PlayerTransform().position.x == TileCorner(5, 2).x);
+	CHECK(h.PlayerTransform().position.y == TileCorner(5, 2).y);
+
+	h.Tap(Key::Down); // a wall below: stays put
+	h.Update(30);
+	CHECK(h.PlayerTransform().position.x == TileCorner(5, 2).x);
+	CHECK(h.PlayerTransform().position.y == TileCorner(5, 2).y);
+
 	h.Tap(Key::Left);
-	h.Update(5 * 60); // 5 s at 90 px/s is far past the edge
-
-	CHECK(h.PlayerTransform().position.x == 0.0f);
-
-	h.Tap(Key::Down);
-	h.Update(5 * 60);
-	CHECK(h.PlayerTransform().position.y == game::kLogicalHeight - game::kPlayerSize);
+	h.Update(2 * 60);
+	CHECK(h.PlayerTransform().position.x == TileCorner(1, 2).x);
 }
 
 TEST_CASE("Pausing stops movement until unpaused", "[game][systems]")

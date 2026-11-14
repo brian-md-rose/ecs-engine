@@ -20,16 +20,12 @@ namespace game
 
 	// Update (skipped while paused)
 
-	// Steers player-controlled entities toward the last direction pressed. They keep moving
-	// after the key is released, the way the maze game's player will.
+	// Passes the last direction pressed to player-controlled grid movers. The player keeps
+	// moving after the key is released, and a turn pressed before a junction is taken there.
 	void PlayerInputSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
-	void MovementSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
-
-	// LateUpdate (skipped while paused)
-
-	// Stops moving entities at the screen edges.
-	void ClampToScreenSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	// Moves every grid mover through the maze (StepGridMover) and places its Transform to match.
+	void GridMovementSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Render
 
