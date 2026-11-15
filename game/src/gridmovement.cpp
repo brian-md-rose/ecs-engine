@@ -48,10 +48,12 @@ namespace game
 		return std::nullopt;
 	}
 
-	bool CanEnter(const TileMap& map, TilePosition tile, Direction direction)
+	bool CanEnter(const TileMap& map, TilePosition tile, Direction direction, bool throughDoor)
 	{
 		const std::optional<TilePosition> next = Neighbour(map, tile, direction);
-		return next && IsWalkable(map.At(*next));
+		if (!next) return false;
+		const Tile tileThere = map.At(*next);
+		return IsWalkable(tileThere) || (throughDoor && tileThere == Tile::Door);
 	}
 
 	GridMover StepGridMover(GridMover mover, const TileMap& map, float seconds)
@@ -75,18 +77,19 @@ namespace game
 			if (along == 0.0f)
 			{
 				mover.offset = 0.0f;
-				if (mover.buffered != Direction::None && CanEnter(map, mover.tile, mover.buffered))
+				if (mover.buffered != Direction::None && CanEnter(map, mover.tile, mover.buffered, mover.throughDoor))
 				{
 					mover.direction = mover.buffered;
 				}
-				if (mover.direction != Direction::None && !CanEnter(map, mover.tile, mover.direction))
+				if (mover.direction != Direction::None &&
+				    !CanEnter(map, mover.tile, mover.direction, mover.throughDoor))
 				{
 					mover.direction = Direction::None; // a wall ahead: stop on the centre
 				}
 				if (mover.direction == Direction::None) break;
 			}
 			else if (along > 0.0f && along <= kTurnTolerance && IsPerpendicular(mover.direction, mover.buffered) &&
-			         CanEnter(map, mover.tile, mover.buffered))
+			         CanEnter(map, mover.tile, mover.buffered, mover.throughDoor))
 			{
 				// Asked to turn just after passing the centre: turn as if it had happened on the
 				// centre, carrying the distance already covered into the new direction.
@@ -136,6 +139,15 @@ namespace game
 		{
 			position.y += shift;
 		}
+		return position;
+	}
+
+	engine::graphics::Position MoverShapeTopLeft(engine::graphics::Position origin, const GridMover& mover,
+	                                             const engine::graphics::Shape& shape)
+	{
+		engine::graphics::Position position = MoverTopLeft(origin, mover);
+		position.x += (kTileSize - shape.BoundsWidth()) / 2.0f;
+		position.y += (kTileSize - shape.BoundsHeight()) / 2.0f;
 		return position;
 	}
 } // namespace game

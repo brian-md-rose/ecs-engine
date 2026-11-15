@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/entity.hpp"
 #include "gameflow.hpp"
 #include "tilemap.hpp"
 
@@ -19,9 +20,15 @@ namespace game
 		TilePosition tile;
 	};
 
-	// An enemy reached the player's tile.
+	// A dangerous enemy (not frightened, not on its way home) reached the player's tile.
 	struct PlayerCaught
 	{
+	};
+
+	// The player ate a frightened enemy.
+	struct EnemyEaten
+	{
+		engine::ecs::Entity enemy;
 	};
 
 	// The last pellet or power pellet of the level was eaten.

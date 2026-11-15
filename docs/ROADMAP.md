@@ -77,11 +77,12 @@ Everything else builds on the registry, so fix its sharp edges first.
 
 ## Phase 6 – Enemy AI
 
-- [ ] Each enemy picks a target tile. At every intersection it takes the exit closest to that target, never reversing.
-- [ ] Modes on timers: patrol, chase, frightened (after a power pellet), and returning home after being eaten.
-- [ ] Four original personalities, for example a direct chaser, one that cuts you off ahead, one that pincers with an ally, and one that keeps its distance.
+- [x] Each enemy picks a target tile. At every intersection it takes the exit closest to that target, never reversing.
+- [x] Modes on timers: patrol, chase, frightened (after a power pellet), and returning home after being eaten.
+- [x] Four original personalities, for example a direct chaser, one that cuts you off ahead, one that pincers with an ally, and one that keeps its distance.
 
 **Done when:** all four enemies behave differently, the modes switch correctly, and the pathing has unit tests.
+See [enemies.md](enemies.md) for the personalities, the schedule and the tuning.
 
 ## Phase 7 – Polish
 

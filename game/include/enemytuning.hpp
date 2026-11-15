@@ -1,0 +1,165 @@
+#pragma once
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
+
+#include "direction.hpp"
+#include "graphics/color.hpp"
+#include "graphics/shape.hpp"
+
+// Every number that decides how the enemies move and think, in one place, so the game can be
+// tuned here without hunting through the code. All of them are our own (see docs/enemies.md).
+namespace game
+{
+	// Steering (steering.hpp)
+
+	// When two exits are equally close to an enemy's target, the one earlier in this list wins:
+	// clockwise, starting from Right.
+	inline constexpr std::array<Direction, 4> kTieBreakOrder = {
+	    {Direction::Right, Direction::Down, Direction::Left, Direction::Up}};
+
+	// Speeds, in tiles per second (the player runs at kPlayerSpeed, 7.5).
+
+	inline constexpr float kEnemySpeed = 6.75f;      // patrolling or chasing: a little slower than the player
+	inline constexpr float kFrightenedSpeed = 4.25f; // frightened: easy to run down
+	inline constexpr float kReturningSpeed = 13.0f;  // eaten, hurrying back to the house
+	inline constexpr float kHouseSpeed = 4.0f;       // finding its way out of the house
+
+	// The patrol/chase schedule (enemymodes.hpp)
+
+	// What enemies out in the maze do when they are not frightened.
+	enum class ScheduledMode : std::uint8_t
+	{
+		Patrol, // each heads for its own corner of the maze
+		Chase   // each hunts the player in its own way (see targeting.hpp)
+	};
+
+	// One stretch of the schedule. The last stretch has 0 seconds: it lasts until the round ends.
+	struct ModePhase
+	{
+		ScheduledMode mode = ScheduledMode::Patrol;
+		float seconds = 0.0f;
+	};
+
+	inline constexpr std::size_t kSchedulePhases = 6;
+	using ModeSchedule = std::array<ModePhase, kSchedulePhases>;
+
+	// Level 1: long patrols give the player room to learn the maze.
+	inline constexpr ModeSchedule kEarlySchedule = {{{ScheduledMode::Patrol, 6.0f},
+	                                                 {ScheduledMode::Chase, 18.0f},
+	                                                 {ScheduledMode::Patrol, 6.0f},
+	                                                 {ScheduledMode::Chase, 24.0f},
+	                                                 {ScheduledMode::Patrol, 4.0f},
+	                                                 {ScheduledMode::Chase, 0.0f}}};
+
+	// From kMiddleScheduleLevel: shorter breathers, longer hunts.
+	inline constexpr int kMiddleScheduleLevel = 2;
+	inline constexpr ModeSchedule kMiddleSchedule = {{{ScheduledMode::Patrol, 5.0f},
+	                                                  {ScheduledMode::Chase, 22.0f},
+	                                                  {ScheduledMode::Patrol, 4.0f},
+	                                                  {ScheduledMode::Chase, 30.0f},
+	                                                  {ScheduledMode::Patrol, 3.0f},
+	                                                  {ScheduledMode::Chase, 0.0f}}};
+
+	// From kLateScheduleLevel on.
+	inline constexpr int kLateScheduleLevel = 4;
+	inline constexpr ModeSchedule kLateSchedule = {{{ScheduledMode::Patrol, 4.0f},
+	                                                {ScheduledMode::Chase, 26.0f},
+	                                                {ScheduledMode::Patrol, 3.0f},
+	                                                {ScheduledMode::Chase, 40.0f},
+	                                                {ScheduledMode::Patrol, 2.0f},
+	                                                {ScheduledMode::Chase, 0.0f}}};
+
+	// Fright (after a power pellet)
+
+	// How long a fright lasts on levels 1, 2, ...; every later level uses the last value.
+	inline constexpr std::array<float, 5> kFrightSeconds = {{7.0f, 6.0f, 5.0f, 4.0f, 3.0f}};
+	// Frightened enemies flash for this long before the fright ends, as a warning.
+	inline constexpr float kFrightWarningSeconds = 2.0f;
+	inline constexpr float kFrightFlashesPerSecond = 4.0f;
+	// The first enemy eaten in one fright is worth this many points, the second twice as many,
+	// the third three times, and so on.
+	inline constexpr int kEnemyPointsStep = 60;
+
+	// Personalities (targeting.hpp)
+
+	// The four enemies. Each has its own way of hunting the player, its own corner to patrol,
+	// its own release time and its own look. Enemy spawns in the maze get them in this order,
+	// in reading order (left to right, top to bottom), starting again after the fourth.
+	enum class Personality : std::uint8_t
+	{
+		Grit,  // the bloodhound: goes straight for the player's tile
+		Snare, // the trapper: waits at the next junction on the player's path
+		Clasp, // the flanker: closes the far side of the player from Grit
+		Wisp,  // the stalker: follows from afar, slips away when the player comes close
+		Count
+	};
+
+	inline constexpr std::size_t kPersonalityCount = static_cast<std::size_t>(Personality::Count);
+
+	enum class Corner : std::uint8_t
+	{
+		TopLeft,
+		TopRight,
+		BottomLeft,
+		BottomRight
+	};
+
+	struct PersonalityTuning
+	{
+		std::string_view name;
+		Corner corner;                // patrols around the maze's corner tile on this side
+		float releaseSeconds;         // leaves the house this long after the round starts
+		engine::graphics::Shape look; // drawn centred on its tile
+	};
+
+	inline constexpr std::uint8_t kEnemyLayer = 2; // above the pellets, below the player
+
+	inline constexpr std::array<PersonalityTuning, kPersonalityCount> kPersonalities = {{
+	    {"Grit", Corner::TopLeft, 0.0f,
+	     engine::graphics::Shape{.width = 7.0f, .height = 7.0f, .color = {90, 210, 70}, .layer = kEnemyLayer}},
+	    {"Snare", Corner::TopRight, 2.0f,
+	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
+	                             .radius = 3.5f,
+	                             .color = {165, 90, 235},
+	                             .layer = kEnemyLayer}},
+	    {"Clasp", Corner::BottomLeft, 5.0f,
+	     engine::graphics::Shape{.width = 6.0f, .height = 6.0f, .color = {235, 235, 235}, .layer = kEnemyLayer}},
+	    {"Wisp", Corner::BottomRight, 8.0f,
+	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
+	                             .radius = 3.0f,
+	                             .color = {215, 195, 120},
+	                             .layer = kEnemyLayer}},
+	}};
+
+	[[nodiscard]] constexpr const PersonalityTuning& TuningFor(Personality personality) noexcept
+	{
+		return kPersonalities[static_cast<std::size_t>(personality)];
+	}
+
+	// Snare looks along the player's way for the next junction (a tile with three or more
+	// open sides), at most this many tiles ahead, and waits there.
+	inline constexpr int kSnareLookahead = 6;
+
+	// Clasp aims this many tiles past the player, on the side away from Grit, along whichever
+	// axis Grit is further off on.
+	inline constexpr int kClaspReach = 5;
+	inline constexpr Personality kClaspAlly = Personality::Grit;
+
+	// Wisp chases while it is further than this from the player (counting tiles across plus
+	// tiles down); this close or closer, it backs away instead.
+	inline constexpr int kWispComfortDistance = 6;
+
+	// Looks for the other states (enemysystems.hpp).
+
+	inline constexpr engine::graphics::Color kFrightenedColor{110, 110, 125}; // drained of colour
+	inline constexpr engine::graphics::Color kFrightFlashColor{255, 170, 90}; // the warning flash
+	// An eaten enemy shrinks to a small dot on its way home.
+	inline constexpr engine::graphics::Shape kReturningLook{
+	    .kind = engine::graphics::ShapeKind::Circle, .radius = 1.5f, .color = {170, 170, 170}, .layer = kEnemyLayer};
+
+	// Frightened enemies' random turns come from a generator seeded with this, so a game
+	// plays the same way each time it is given the same input.
+	inline constexpr std::uint32_t kEnemyRandomSeed = 20261114u;
+} // namespace game

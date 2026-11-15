@@ -43,15 +43,16 @@ namespace game
 	// LateUpdate (only while playing)
 
 	// Collision by shared tile: the player eats the pellet or power pellet on its tile
-	// (destroyed through world.commands; publishes PelletEaten or PowerPelletEaten), and an
-	// enemy on the player's tile catches it (publishes PlayerCaught). Runs after everything
+	// (destroyed through world.commands; publishes PelletEaten or PowerPelletEaten), a
+	// frightened enemy on its tile is eaten (publishes EnemyEaten), and any other enemy there
+	// catches it unless it is on its way home (publishes PlayerCaught). Runs after everything
 	// has moved.
 	void CollisionSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Event handlers, delivered at the end of the phase that published the event (see
 	// docs/decisions/0002-events.md). MazeGame subscribes them in this order.
 
-	// Score: adds kPelletPoints or kPowerPelletPoints.
+	// Score: adds kPelletPoints or kPowerPelletPoints (enemies: see enemysystems.hpp).
 	void AddPelletScore(engine::ecs::World& world, const PelletEaten& event);
 	void AddPowerPelletScore(engine::ecs::World& world, const PowerPelletEaten& event);
 
@@ -67,7 +68,7 @@ namespace game
 	void LoseLife(engine::ecs::World& world, const PlayerCaught& event);
 	void CompleteLevel(engine::ecs::World& world, const LevelCleared& event);
 
-	// Puts back what the new stage needs (ResetFor): the player at its Spawn, the pellets,
+	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, the pellets,
 	// the score.
 	void ResetRound(engine::ecs::World& world, const StageChanged& event);
 

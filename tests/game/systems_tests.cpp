@@ -27,12 +27,15 @@ namespace
 	constexpr double kStep = 1.0 / 60.0;
 
 	// Two corridors, one above the other, with the spawn at column 2, row 2: seven pellets and a
-	// power pellet in the top-left corner.
+	// power pellet in the top-left corner. The enemy spawn is shut in below, so its enemy never
+	// gets in the way; tests that need an enemy add one.
 	[[nodiscard]] game::TileMap TestMaze()
 	{
 		game::TileMapResult result = game::ParseTileMap("#######\n"
 		                                                "#o....#\n"
-		                                                "#.P.E.#\n"
+		                                                "#.P. .#\n"
+		                                                "#######\n"
+		                                                "#E#####\n"
 		                                                "#######\n");
 		REQUIRE(result.map.has_value());
 		return *result.map;
@@ -143,8 +146,8 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
-	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 3);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 1);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 2);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();

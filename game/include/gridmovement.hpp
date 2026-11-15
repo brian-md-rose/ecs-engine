@@ -3,6 +3,7 @@
 
 #include "components.hpp"
 #include "direction.hpp"
+#include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "tilemap.hpp"
 
@@ -23,8 +24,8 @@ namespace game
 	// Direction::None, gives nothing.
 	[[nodiscard]] std::optional<TilePosition> Neighbour(const TileMap& map, TilePosition tile, Direction direction);
 
-	// The neighbour in direction exists and is walkable.
-	[[nodiscard]] bool CanEnter(const TileMap& map, TilePosition tile, Direction direction);
+	// The neighbour in direction exists and is walkable, or is the door and throughDoor is set.
+	[[nodiscard]] bool CanEnter(const TileMap& map, TilePosition tile, Direction direction, bool throughDoor = false);
 
 	// Moves mover for seconds at its speed and returns where it ends up. Along the way:
 	// - Asked for the opposite way, it turns back at once, wherever it is.
@@ -32,7 +33,8 @@ namespace game
 	//   or straight away if it is no more than kTurnTolerance past the centre (the distance
 	//   past the centre carries on in the new direction, so the turn costs no time).
 	// - Standing still, it starts moving the way it was asked if that tile is walkable.
-	// - Reaching the centre of a tile with a wall (or the door) ahead, it stops there.
+	// - Reaching the centre of a tile with a wall ahead (or the door, unless mover.throughDoor),
+	//   it stops there.
 	// - Leaving the map through a tunnel, it comes in through the tunnel's pair.
 	// It covers speed * seconds tiles of path unless it stops at a wall, so a second of
 	// movement ends in the same place whether it is taken in one step or many.
@@ -41,4 +43,9 @@ namespace game
 	// Where to draw a tile-sized sprite for mover: the top-left corner of its tile, shifted by
 	// its offset, for a maze whose top-left tile is drawn at origin (see TileTopLeft).
 	[[nodiscard]] engine::graphics::Position MoverTopLeft(engine::graphics::Position origin, const GridMover& mover);
+
+	// Where to draw shape so it sits centred on the tile-sized square MoverTopLeft gives.
+	[[nodiscard]] engine::graphics::Position MoverShapeTopLeft(engine::graphics::Position origin,
+	                                                           const GridMover& mover,
+	                                                           const engine::graphics::Shape& shape);
 } // namespace game
