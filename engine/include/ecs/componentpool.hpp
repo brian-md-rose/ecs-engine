@@ -1,10 +1,13 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "core/assert.hpp"
+#include "core/typename.hpp"
 #include "ecs/component.hpp"
 #include "ecs/entity.hpp"
 
@@ -15,6 +18,10 @@ namespace engine::ecs
 	public:
 		virtual ~IComponentPool() = default;
 		virtual void Remove(Entity entity) = 0;
+
+		// How many entities have this component, and its name (core::TypeName), for diagnostics.
+		[[nodiscard]] virtual std::size_t Size() const noexcept = 0;
+		[[nodiscard]] virtual std::string_view Name() const noexcept = 0;
 	};
 
 	template <Component T> class ComponentPool final : public IComponentPool
@@ -97,5 +104,8 @@ namespace engine::ecs
 		// that process linear blocks of data.
 		std::span<T> Data() { return components; }
 		std::span<const Entity> Entities() const { return entities; }
+
+		[[nodiscard]] std::size_t Size() const noexcept override { return components.size(); }
+		[[nodiscard]] std::string_view Name() const noexcept override { return core::TypeName<T>(); }
 	};
 } // namespace engine::ecs

@@ -12,9 +12,9 @@
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
-#include "core/framestats.hpp"
 #include "core/paths.hpp"
 #include "core/text.hpp"
+#include "debug/debugpanel.hpp"
 #include "difficulty.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -117,7 +117,6 @@ namespace game
 		world.resources.Emplace<GameFlow>(GameFlow{.stage = Stage::Title});
 		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<Score>();
-		world.resources.Emplace<engine::core::FrameStats>("stress test");
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
@@ -154,22 +153,23 @@ namespace game
 		SpawnScreens(registry);
 
 		// The whole frame, in run order.
-		scheduler.Add(Phase::Input, ControlsSystem);
-		scheduler.Add(Phase::Input, ScreenSystem);
-		scheduler.Add(Phase::Input, GameStateSystem);
-		scheduler.Add(Phase::Update, GameFlowSystem, NotPaused);
-		scheduler.Add(Phase::Update, PlayerInputSystem, IsPlaying);
-		scheduler.Add(Phase::Update, EnemyModeSystem, IsPlaying);
-		scheduler.Add(Phase::Update, EnemySteeringSystem, IsPlaying);
-		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
-		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
-		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
-		scheduler.Add(Phase::LateUpdate, PlayerLookSystem);
-		scheduler.Add(Phase::LateUpdate, engine::graphics::AnimationSystem, NotPaused);
-		scheduler.Add(Phase::LateUpdate, HudSystem);
-		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
-		scheduler.Add(Phase::LateUpdate, AudioSystem);
-		scheduler.Add(Phase::Render, RenderSystem);
+		scheduler.Add(Phase::Input, "Controls", ControlsSystem);
+		scheduler.Add(Phase::Input, "Screen", ScreenSystem);
+		scheduler.Add(Phase::Input, "GameState", GameStateSystem);
+		scheduler.Add(Phase::Update, "GameFlow", GameFlowSystem, NotPaused);
+		scheduler.Add(Phase::Update, "PlayerInput", PlayerInputSystem, IsPlaying);
+		scheduler.Add(Phase::Update, "EnemyMode", EnemyModeSystem, IsPlaying);
+		scheduler.Add(Phase::Update, "EnemySteering", EnemySteeringSystem, IsPlaying);
+		scheduler.Add(Phase::Update, "GridMovement", GridMovementSystem, IsPlaying);
+		scheduler.Add(Phase::LateUpdate, "Collision", CollisionSystem, IsPlaying);
+		scheduler.Add(Phase::LateUpdate, "EnemyLook", EnemyLookSystem);
+		scheduler.Add(Phase::LateUpdate, "PlayerLook", PlayerLookSystem);
+		scheduler.Add(Phase::LateUpdate, "Animation", engine::graphics::AnimationSystem, NotPaused);
+		scheduler.Add(Phase::LateUpdate, "Hud", HudSystem);
+		scheduler.Add(Phase::LateUpdate, "ScreenText", ScreenTextSystem);
+		scheduler.Add(Phase::LateUpdate, "Audio", AudioSystem);
+		engine::debug::AddDebugPanel(world, scheduler); // F3; before RenderSystem, so its text is current
+		scheduler.Add(Phase::Render, "Render", RenderSystem);
 
 		// Who reacts to what, in delivery order.
 		world.events.Subscribe<PelletEaten>(AddPelletScore);

@@ -24,6 +24,7 @@ namespace engine::input
 		Enter,
 		Escape,
 		F1,
+		F3,
 		Count
 	};
 

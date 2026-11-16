@@ -1,6 +1,7 @@
 #include "graphics/renderer2d.hpp"
 
 #include <SDL3/SDL.h>
+#include <chrono>
 #include <utility>
 
 #include "graphics/renderer.hpp"
@@ -35,6 +36,13 @@ namespace engine::graphics
 	}
 
 	void Renderer2D::Draw(Renderer& renderer, ecs::Registry& registry, float alpha)
+	{
+		const auto start = std::chrono::steady_clock::now();
+		Submit(renderer, registry, alpha);
+		lastDrawTime = std::chrono::steady_clock::now() - start;
+	}
+
+	void Renderer2D::Submit(Renderer& renderer, ecs::Registry& registry, float alpha)
 	{
 		if (uploadPending)
 		{

@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <memory>
 #include <span>
+#include <string_view>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -185,5 +186,18 @@ namespace engine::ecs
 		// Number of component pools that exist. Diagnostic; tests use it to prove that
 		// read-only queries don't create pools.
 		[[nodiscard]] std::size_t PoolCount() const noexcept { return pools.size(); }
+
+		// How many entities are alive.
+		[[nodiscard]] std::size_t EntityCount() const noexcept { return generations.size() - freeEntities.size(); }
+
+		// How many entities have each kind of component, by name (core::TypeName), sorted by name.
+		// Every component ever added is listed, at 0 once none are left. Diagnostic: the debug
+		// panel shows it.
+		struct ComponentCount
+		{
+			std::string_view name;
+			std::size_t count = 0;
+		};
+		[[nodiscard]] std::vector<ComponentCount> ComponentCounts() const;
 	};
 } // namespace engine::ecs

@@ -34,13 +34,13 @@ namespace game
 	// pellet frightens them for a while, and a frightened enemy can be eaten for points. Each
 	// round starts after a short Ready pause; clearing every pellet completes the level, which
 	// restarts with its pellets back (see gameflow.hpp). The game opens on a title screen, and P
-	// or Escape pauses it (see screens.hpp); F1 toggles the rendering stress test.
+	// or Escape pauses it (see screens.hpp); F1 toggles the rendering stress test and F3 the debug panel.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;
 
 		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, SoundBank,
-		// SpriteClips, FrameStats, ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets,
+		// SpriteClips, ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets, the debug panel,
 		// and a copy of the maze),
 		// spawns the maze, the player and the enemies at their spawns and the HUD, registers the
 		// systems in run order and subscribes the event handlers.

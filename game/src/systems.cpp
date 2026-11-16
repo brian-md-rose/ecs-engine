@@ -1,6 +1,5 @@
 #include "systems.hpp"
 
-#include <chrono>
 #include <cstdint>
 #include <random>
 
@@ -8,7 +7,6 @@
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
-#include "core/framestats.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "enemymodes.hpp"
@@ -137,7 +135,6 @@ namespace game
 			if (state.stressTest)
 			{
 				SpawnStressShapes(world);
-				world.resources.Get<engine::core::FrameStats>().Reset();
 			}
 			else
 			{
@@ -295,12 +292,6 @@ namespace game
 		const bool behindScreen = state.paused || world.resources.Get<GameFlow>().stage == Stage::Title;
 		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
-		const auto drawStart = std::chrono::steady_clock::now();
 		renderer2D.Draw(renderer, world.registry, static_cast<float>(context.alpha));
-		if (state.stressTest)
-		{
-			world.resources.Get<engine::core::FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,
-			                                                         renderer2D.ItemCount());
-		}
 	}
 } // namespace game

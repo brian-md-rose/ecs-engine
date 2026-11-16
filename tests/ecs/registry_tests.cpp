@@ -379,3 +379,31 @@ TEST_CASE("Registry read-only queries don't create pools", "[ecs][registry]")
 	registry.Add<Velocity>(e, 0.0f, 0.0f); // Add is what creates a pool
 	CHECK(registry.PoolCount() == 2);
 }
+
+TEST_CASE("The registry counts live entities and each component's entities", "[ecs][registry]")
+{
+	Registry registry;
+	CHECK(registry.EntityCount() == 0);
+	CHECK(registry.ComponentCounts().empty());
+
+	const Entity a = registry.Create();
+	const Entity b = registry.Create();
+	const Entity c = registry.Create();
+	registry.Add<Velocity>(a);
+	registry.Add<Position>(a);
+	registry.Add<Position>(b);
+	registry.Destroy(c);
+	CHECK(registry.EntityCount() == 2);
+
+	std::vector<Registry::ComponentCount> counts = registry.ComponentCounts();
+	REQUIRE(counts.size() == 2);
+	CHECK(counts[0].name == "Position"); // sorted by name
+	CHECK(counts[0].count == 2);
+	CHECK(counts[1].name == "Velocity");
+	CHECK(counts[1].count == 1);
+
+	registry.Destroy(a);
+	counts = registry.ComponentCounts();
+	CHECK(counts[0].count == 1);
+	CHECK(counts[1].count == 0); // still listed once none are left
+}

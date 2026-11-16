@@ -2,8 +2,8 @@
 
 namespace game
 {
-	// Game-wide flags, kept as a resource. While stressTest is on, an engine::core::FrameStats
-	// resource prints how fast the game draws.
+	// Game-wide flags, kept as a resource. stressTest fills the screen with shapes; the debug
+	// panel (F3) shows how fast they draw.
 	struct GameState
 	{
 		bool paused = false;
