@@ -4,7 +4,9 @@
 
 #include "components.hpp"
 #include "ecs/entity.hpp"
-#include "graphics/shape.hpp"
+#include "graphics/animation.hpp"
+#include "graphics/sprite.hpp"
+#include "walltiles.hpp"
 
 namespace game
 {
@@ -13,34 +15,30 @@ namespace game
 		using engine::ecs::CommandBuffer;
 		using engine::ecs::Entity;
 		using engine::ecs::Registry;
+		using engine::graphics::Animation;
+		using engine::graphics::Clip;
 		using engine::graphics::Position;
-		using engine::graphics::Shape;
-		using engine::graphics::ShapeKind;
+		using engine::graphics::Sprite;
 		using engine::graphics::Transform;
 
-		// A circle of this radius centred on the tile whose top-left corner is at tile.
-		[[nodiscard]] Position CentredCircle(Position tile, float radius)
-		{
-			const float offset = kTileSize / 2.0f - radius;
-			return {tile.x + offset, tile.y + offset};
-		}
-
-		template <typename Tag> void SpawnTile(Registry& registry, Position position, const Shape& shape)
+		template <typename Tag> void SpawnTile(Registry& registry, Position position, const Sprite& sprite)
 		{
 			const Entity entity = registry.Create();
 			registry.Add<Transform>(entity, position);
-			registry.Add<Shape>(entity, shape);
+			registry.Add<Sprite>(entity, sprite);
 			registry.Add<Tag>(entity);
 		}
 
-		// Created now, its components recorded in commands.
+		// Created now, its components recorded in commands. Animated if its clip has frames to
+		// step through.
 		template <typename Tag>
 		void SpawnEdible(Registry& registry, CommandBuffer& commands, TilePosition tile, Position position,
-		                 const Shape& shape)
+		                 const Clip& clip)
 		{
 			const Entity entity = registry.Create();
 			commands.Add<Transform>(entity, position);
-			commands.Add<Shape>(entity, shape);
+			commands.Add<Sprite>(entity, Sprite{.source = clip.firstFrame, .layer = kPelletLayer});
+			if (clip.frames > 1) commands.Add<Animation>(entity, Animation{.clip = clip});
 			commands.Add<Tag>(entity);
 			commands.Add<OnTile>(entity, OnTile{.tile = tile});
 		}
@@ -52,23 +50,22 @@ namespace game
 		        origin.y + static_cast<float>(tile.row) * kTileSize};
 	}
 
-	void SpawnMaze(Registry& registry, const TileMap& map, Position origin)
+	void SpawnMaze(Registry& registry, const TileMap& map, Position origin, const SpriteClips& clips)
 	{
-		const Shape wall{.width = kTileSize, .height = kTileSize, .color = kWallColor, .layer = kWallLayer};
-		const Shape door{.width = kTileSize, .height = kDoorThickness, .color = kDoorColor, .layer = kPelletLayer};
-
 		for (std::size_t row = 0; row < map.Height(); ++row)
 		{
 			for (std::size_t column = 0; column < map.Width(); ++column)
 			{
-				const Position tile = TileTopLeft(origin, {.column = column, .row = row});
-				switch (map.At({.column = column, .row = row}))
+				const TilePosition tile{.column = column, .row = row};
+				const Position at = TileTopLeft(origin, tile);
+				switch (map.At(tile))
 				{
 				case Tile::Wall:
-					SpawnTile<Wall>(registry, tile, wall);
+					SpawnTile<Wall>(registry, at,
+					                Sprite{.source = clips.walls[WallMask(map, tile)].firstFrame, .layer = kWallLayer});
 					break;
 				case Tile::Door:
-					SpawnTile<Door>(registry, {tile.x, tile.y + (kTileSize - kDoorThickness) / 2.0f}, door);
+					SpawnTile<Door>(registry, at, Sprite{.source = clips.door.firstFrame, .layer = kPelletLayer});
 					break;
 				case Tile::Pellet:
 				case Tile::PowerPellet: // SpawnPellets, below
@@ -82,26 +79,20 @@ namespace game
 		}
 
 		CommandBuffer commands;
-		SpawnPellets(registry, commands, map, origin);
+		SpawnPellets(registry, commands, map, origin, clips);
 		commands.Apply(registry);
 	}
 
-	void SpawnPellets(Registry& registry, CommandBuffer& commands, const TileMap& map, Position origin)
+	void SpawnPellets(Registry& registry, CommandBuffer& commands, const TileMap& map, Position origin,
+	                  const SpriteClips& clips)
 	{
-		const Shape pellet{
-		    .kind = ShapeKind::Circle, .radius = kPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
-		const Shape powerPellet{
-		    .kind = ShapeKind::Circle, .radius = kPowerPelletRadius, .color = kPelletColor, .layer = kPelletLayer};
-
 		for (const TilePosition& tile : map.Find(Tile::Pellet))
 		{
-			SpawnEdible<Pellet>(registry, commands, tile, CentredCircle(TileTopLeft(origin, tile), kPelletRadius),
-			                    pellet);
+			SpawnEdible<Pellet>(registry, commands, tile, TileTopLeft(origin, tile), clips.pellet);
 		}
 		for (const TilePosition& tile : map.Find(Tile::PowerPellet))
 		{
-			SpawnEdible<PowerPellet>(registry, commands, tile,
-			                         CentredCircle(TileTopLeft(origin, tile), kPowerPelletRadius), powerPellet);
+			SpawnEdible<PowerPellet>(registry, commands, tile, TileTopLeft(origin, tile), clips.powerPellet);
 		}
 	}
 } // namespace game

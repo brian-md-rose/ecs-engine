@@ -22,12 +22,14 @@
 #include "events.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
+#include "graphics/animation.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/renderer2d.hpp"
-#include "graphics/shape.hpp"
+#include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
 #include "hud.hpp"
+#include "looks.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "sounds.hpp"
@@ -92,7 +94,8 @@ namespace game
 	void MazeGame::Build(const TileMap& maze, const GameAssets& assets)
 	{
 		using engine::ecs::Phase;
-		using engine::graphics::Shape;
+		using engine::graphics::Animation;
+		using engine::graphics::Sprite;
 		using engine::graphics::Transform;
 
 		world.resources.Emplace<Controls>();
@@ -116,7 +119,8 @@ namespace game
 
 		engine::ecs::Registry& registry = world.registry;
 		const engine::graphics::Position origin = MazeOrigin(map);
-		SpawnMaze(registry, map, origin);
+		const SpriteClips& clips = world.resources.Emplace<SpriteClips>(assets.clips);
+		SpawnMaze(registry, map, origin, clips);
 
 		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
 		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
@@ -126,9 +130,10 @@ namespace game
 		registry.Add<GridMover>(player, mover);
 		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
 		registry.Add<PlayerControlled>(player);
-		registry.Add<Shape>(
-		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
-		SpawnEnemies(registry, map, origin);
+		registry.Add<Facing>(player);
+		registry.Add<Sprite>(player, Sprite{.layer = kPlayerLayer});
+		registry.Add<Animation>(player, Animation{.clip = clips.playerDown});
+		SpawnEnemies(registry, map, origin, clips);
 		SpawnHud(registry, map, origin);
 		SpawnScreens(registry);
 
@@ -143,6 +148,8 @@ namespace game
 		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
+		scheduler.Add(Phase::LateUpdate, PlayerLookSystem);
+		scheduler.Add(Phase::LateUpdate, AnimationSystem, NotPaused);
 		scheduler.Add(Phase::LateUpdate, HudSystem);
 		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
 		scheduler.Add(Phase::LateUpdate, AudioSystem);

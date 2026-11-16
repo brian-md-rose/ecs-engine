@@ -25,10 +25,10 @@ second Snare, and so on.
 
 | Enemy | Look                    | Leaves the house | Patrols to   | Chase rule |
 |-------|-------------------------|------------------|--------------|------------|
-| Grit  | green square            | at once          | top-left     | **The bloodhound.** Aims at the player's tile. |
-| Snare | violet circle           | after 2 s        | top-right    | **The trapper.** Aims at the next junction on the player's way (a tile with 3+ open sides), looking at most 6 tiles ahead; the player's tile if they stand still. |
-| Clasp | small white square      | after 5 s        | bottom-left  | **The flanker.** Aims 5 tiles past the player on the side away from Grit, along the axis Grit is further off on (across, on a tie). |
-| Wisp  | small sand-coloured circle | after 8 s     | bottom-right | **The stalker.** Chases while more than 6 tiles away (across plus down); at 6 or closer it aims as far again beyond itself, directly away from the player. |
+| Grit  | green block, all jaw    | at once          | top-left     | **The bloodhound.** Aims at the player's tile. |
+| Snare | violet spider           | after 2 s        | top-right    | **The trapper.** Aims at the next junction on the player's way (a tile with 3+ open sides), looking at most 6 tiles ahead; the player's tile if they stand still. |
+| Clasp | pale crab               | after 5 s        | bottom-left  | **The flanker.** Aims 5 tiles past the player on the side away from Grit, along the axis Grit is further off on (across, on a tie). |
+| Wisp  | sand-coloured flame        | after 8 s     | bottom-right | **The stalker.** Chases while more than 6 tiles away (across plus down); at 6 or closer it aims as far again beyond itself, directly away from the player. |
 
 "Patrols to" is the maze's corner tile on that side, usually a wall, so a patrolling enemy loops
 around the walls nearest its corner.
@@ -48,8 +48,8 @@ InHouse ──(its release time)──► Leaving ──(out of the door)──�
 - **Frightened**: a power pellet frightens every enemy not on its way home. A frightened enemy
   turns at random at each tile, moves slower, can be eaten, and flashes for the last 2 s of the
   fright. While a fright lasts the schedule waits.
-- **Returning**: an eaten enemy shrinks to a dot and hurries back through the door to the tile
-  just inside it, then turns round and leaves again, no longer frightened.
+- **Returning**: an eaten enemy becomes a small glowing core and hurries back through the door
+  to the tile just inside it, then turns round and leaves again, no longer frightened.
 - **Turning back**: a roaming enemy turns back at once when the schedule switches between
   patrol and chase, and when it becomes frightened. The end of a fright does not turn it back.
 
@@ -83,4 +83,5 @@ Another power pellet restarts the count.
 
 Each frame, while playing: `EnemyModeSystem` steps the clock, `EnemySteeringSystem` picks each
 enemy's next turn and speed, `GridMovementSystem` moves everyone, `CollisionSystem` publishes
-`PlayerCaught` or `EnemyEaten`, and `EnemyLookSystem` updates colours and shapes.
+`PlayerCaught` or `EnemyEaten`, and `EnemyLookSystem` picks each enemy's animation (the sprites
+are in `game/assets/sprites/sprites.txt`).

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <random>
 
+#include "assets.hpp"
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
@@ -251,7 +252,7 @@ namespace game
 		if (reset.pellets)
 		{
 			DestroyPellets(world);
-			SpawnPellets(world.registry, world.commands, maze, origin);
+			SpawnPellets(world.registry, world.commands, maze, origin, world.resources.Get<SpriteClips>());
 		}
 		if (reset.actors)
 		{

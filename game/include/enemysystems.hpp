@@ -2,13 +2,14 @@
 #include <optional>
 #include <random>
 
+#include "assets.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
 #include "enemymodes.hpp"
 #include "enemytuning.hpp"
 #include "events.hpp"
-#include "graphics/shape.hpp"
+#include "graphics/animation.hpp"
 #include "graphics/transform.hpp"
 #include "targeting.hpp"
 #include "tilemap.hpp"
@@ -35,13 +36,23 @@ namespace game
 	// Setup: creates an enemy on every enemy spawn of map, with the personalities in turn
 	// (PersonalityForSpawn), each waiting in the house for its release time. Creates entities
 	// directly, so call it during setup, not from a system.
-	void SpawnEnemies(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin);
+	void SpawnEnemies(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin,
+	                  const SpriteClips& clips);
 
-	// How an enemy looks right now: its personality's shape, drained of colour while it is
-	// frightened (flashing kFrightFlashColor in the fright's last kFrightWarningSeconds), or a
-	// small dot on its way home.
-	[[nodiscard]] engine::graphics::Shape EnemyLook(Personality personality, const EnemyBrain& brain,
-	                                                const ModeClock& clock) noexcept;
+	// How an enemy looks right now.
+	enum class EnemyAppearance : std::uint8_t
+	{
+		Normal,      // its own sprite
+		Frightened,  // drained of colour and shivering
+		FrightFlash, // the warning: alternates with Frightened in the fright's last kFrightWarningSeconds
+		Returning    // eaten: a small glowing core on its way home
+	};
+
+	[[nodiscard]] EnemyAppearance EnemyLook(const EnemyBrain& brain, const ModeClock& clock) noexcept;
+
+	// The animation for a personality's appearance.
+	[[nodiscard]] const engine::graphics::Clip& EnemyClip(const SpriteClips& clips, Personality personality,
+	                                                      EnemyAppearance appearance) noexcept;
 
 	// Update (only while playing), after PlayerInputSystem and before GridMovementSystem
 
@@ -58,7 +69,7 @@ namespace game
 
 	// LateUpdate (always, so a reset shows at once)
 
-	// Gives every enemy its EnemyLook and centres it on its tile.
+	// Gives every enemy the animation for its EnemyLook and places it on its tile.
 	void EnemyLookSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Event handlers. MazeGame subscribes them in this order.

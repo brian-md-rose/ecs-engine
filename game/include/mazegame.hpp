@@ -20,7 +20,6 @@ namespace game
 	// Tile rows kept free above the maze for the score.
 	inline constexpr std::size_t kHudRows = 2;
 
-	inline constexpr float kPlayerSize = kTileSize;
 	inline constexpr std::uint8_t kPlayerLayer = 3; // above the maze and every stress-test shape
 	inline constexpr int kStressShapeCount = 1000;
 	inline constexpr engine::graphics::Color kPausedTint{128, 128, 128};
@@ -40,8 +39,9 @@ namespace game
 	{
 		bool valid = true;
 
-		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, SoundBank, FrameStats,
-		// ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets, and a copy of the maze),
+		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, SoundBank,
+		// SpriteClips, FrameStats, ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets,
+		// and a copy of the maze),
 		// spawns the maze, the player and the enemies at their spawns and the HUD, registers the
 		// systems in run order and subscribes the event handlers.
 		void Build(const TileMap& maze, const GameAssets& assets);

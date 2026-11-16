@@ -1,9 +1,10 @@
 # Pixel sheets
 
-The game's pictures (the font and, from Phase 7, every sprite) are drawn by hand as text, in
-`game/assets/sprites/*.txt`. Text keeps them small, readable in a diff, editable in any editor,
-and loadable without an image library. The engine parses them (`graphics/pixelsheet.hpp`),
-packs every picture into one atlas (`graphics/atlas.hpp`) and draws them from one texture.
+The game's pictures (the font in `font.txt`, and every sprite in `sprites.txt`) are drawn by
+hand as text, in `game/assets/sprites/`. Text keeps them small, readable in a diff, editable in
+any editor, and loadable without an image library. The engine parses them
+(`graphics/pixelsheet.hpp`), packs every picture into one atlas (`graphics/atlas.hpp`) and draws
+them from one texture.
 
 ## Format
 
@@ -33,3 +34,15 @@ XsXsX.XsX.
 draws them 6 pixels apart on lines 8 pixels apart, at the logical resolution, so they stay
 sharp at every window scale. Glyphs are white and take the colour of the `Text` drawing them.
 The font has capitals, digits and `! - : . / < >`; `@` is the life icon.
+
+## The sprites
+
+`sprites.txt` holds every other picture, all 8 x 8 (one maze tile): the player's walk in three
+directions (left is right, mirrored) and its death; Grit, Snare, Clasp and Wisp; the frightened
+look, its warning flash and the eaten "returning" look; the pellet, the pulsing power pellet
+and the door. How fast each animation plays is set in `game/src/assets.cpp`.
+
+Walls are not drawn one by one. `sprites.txt` has a wall core and an edge for each side, and the
+game builds the sixteen wall tiles from them at start-up (`walltiles.hpp`): each wall shows an
+edge only on the sides that don't face another wall, so the maze's walls join up into outlined
+blocks.

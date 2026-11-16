@@ -5,8 +5,6 @@
 #include <string_view>
 
 #include "direction.hpp"
-#include "graphics/color.hpp"
-#include "graphics/shape.hpp"
 
 // Every number that decides how the enemies move and think, in one place, so the game can be
 // tuned here without hunting through the code. All of them are our own (see docs/enemies.md).
@@ -83,28 +81,18 @@ namespace game
 	struct PersonalityTuning
 	{
 		std::string_view name;
-		Corner corner;                // patrols around the maze's corner tile on this side
-		float releaseSeconds;         // leaves the house this long after the round starts
-		engine::graphics::Shape look; // drawn centred on its tile
+		Corner corner;           // patrols around the maze's corner tile on this side
+		float releaseSeconds;    // leaves the house this long after the round starts
+		std::string_view sprite; // its animation in assets/sprites/sprites.txt
 	};
 
 	inline constexpr std::uint8_t kEnemyLayer = 2; // above the pellets, below the player
 
 	inline constexpr std::array<PersonalityTuning, kPersonalityCount> kPersonalities = {{
-	    {"Grit", Corner::TopLeft, 0.0f,
-	     engine::graphics::Shape{.width = 7.0f, .height = 7.0f, .color = {90, 210, 70}, .layer = kEnemyLayer}},
-	    {"Snare", Corner::TopRight, 2.0f,
-	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
-	                             .radius = 3.5f,
-	                             .color = {165, 90, 235},
-	                             .layer = kEnemyLayer}},
-	    {"Clasp", Corner::BottomLeft, 5.0f,
-	     engine::graphics::Shape{.width = 6.0f, .height = 6.0f, .color = {235, 235, 235}, .layer = kEnemyLayer}},
-	    {"Wisp", Corner::BottomRight, 8.0f,
-	     engine::graphics::Shape{.kind = engine::graphics::ShapeKind::Circle,
-	                             .radius = 3.0f,
-	                             .color = {215, 195, 120},
-	                             .layer = kEnemyLayer}},
+	    {"Grit", Corner::TopLeft, 0.0f, "grit"},
+	    {"Snare", Corner::TopRight, 2.0f, "snare"},
+	    {"Clasp", Corner::BottomLeft, 5.0f, "clasp"},
+	    {"Wisp", Corner::BottomRight, 8.0f, "wisp"},
 	}};
 
 	[[nodiscard]] constexpr const PersonalityTuning& TuningFor(Personality personality) noexcept
@@ -124,14 +112,6 @@ namespace game
 	// Wisp chases while it is further than this from the player (counting tiles across plus
 	// tiles down); this close or closer, it backs away instead.
 	inline constexpr int kWispComfortDistance = 6;
-
-	// Looks for the other states (enemysystems.hpp).
-
-	inline constexpr engine::graphics::Color kFrightenedColor{110, 110, 125}; // drained of colour
-	inline constexpr engine::graphics::Color kFrightFlashColor{255, 170, 90}; // the warning flash
-	// An eaten enemy shrinks to a small dot on its way home.
-	inline constexpr engine::graphics::Shape kReturningLook{
-	    .kind = engine::graphics::ShapeKind::Circle, .radius = 1.5f, .color = {170, 170, 170}, .layer = kEnemyLayer};
 
 	// Frightened enemies' random turns come from a generator seeded with this, so a game
 	// plays the same way each time it is given the same input.
