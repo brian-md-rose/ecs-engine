@@ -83,13 +83,13 @@ namespace
 		[[nodiscard]] std::size_t WorldKindsPresent()
 		{
 			std::size_t kinds = 0;
-			kinds += Count<game::Wall>() > 0 ? 1 : 0;
-			kinds += Count<game::Door>() > 0 ? 1 : 0;
-			kinds += Count<game::Pellet>() > 0 ? 1 : 0;
-			kinds += Count<game::PowerPellet>() > 0 ? 1 : 0;
-			kinds += Count<game::PlayerControlled>() > 0 ? 1 : 0;
-			kinds += Count<game::Enemy>() > 0 ? 1 : 0;
-			kinds += Count<game::HudText>() > 0 ? 1 : 0;
+			kinds += Count<game::Wall>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::Door>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::Pellet>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::PowerPellet>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::PlayerControlled>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::Enemy>() > 0 ? std::size_t{1} : std::size_t{0};
+			kinds += Count<game::HudText>() > 0 ? std::size_t{1} : std::size_t{0};
 			return kinds;
 		}
 	};
