@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+#include "ecs/states.hpp"
+
 // The game's flow, built on the engine's states (ecs/states.hpp). Screen is the state machine
 // proper; Round and Pause are sub-states of Screen::Playing.
 //
@@ -58,6 +60,22 @@ namespace game
 		int level = 1;
 		float seconds = 0.0f; // time in the current timed state: Ready, Dying or LevelTransition
 	};
+
+	// Resource: whether the game's entities (maze, pellets, player, enemies, HUD) exist. They are
+	// created on entering Playing, if not already there (SpawnGameWorld), so coming back from a
+	// LevelTransition keeps the world. Only entering the Title removes them and clears this.
+	// Invariant: every way back to Playing from the end of a game goes through the Title. A future
+	// shortcut (a "Retry" from GameOver) must clear this too, or it would reuse an eaten maze.
+	struct GameWorld
+	{
+		bool spawned = false;
+	};
+
+	// Every entity of the game's world carries this: it is destroyed on entering the Title.
+	[[nodiscard]] inline engine::ecs::DespawnOnEnter<Screen> WorldScope() noexcept
+	{
+		return {Screen::Title};
+	}
 
 	// True once Ready or Dying has lasted its time (the other rounds have no timer).
 	[[nodiscard]] bool RoundTimeUp(Round round, float seconds) noexcept;

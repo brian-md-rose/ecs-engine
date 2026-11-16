@@ -32,4 +32,8 @@ namespace game
 	// put the pellets back when a level restarts.
 	void SpawnPellets(engine::ecs::Registry& registry, engine::ecs::CommandBuffer& commands, const TileMap& map,
 	                  engine::graphics::Position origin, const SpriteClips& clips);
+
+	// The player, at the map's one player spawn, running at speed.
+	void SpawnPlayer(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin,
+	                 const SpriteClips& clips, float speed);
 } // namespace game

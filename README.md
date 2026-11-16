@@ -27,7 +27,7 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 - **Scheduler**: systems run in ordered phases (input, update, late update, render), each
   with an optional run condition.
 - **States**: `State<T>` / `NextState<T>` with enter and exit systems, `InState` run conditions,
-  `DespawnOnExit` for screen-scoped entities and sub-states, applied once per update before input
+  `DespawnOnExit` / `DespawnOnEnter` for screen-scoped entities and sub-states, applied once per update before input
   ([ADR 0003](docs/decisions/0003-game-states.md)).
 - **Events**: a typed event bus so scoring, audio and UI don't depend on each other
   ([ADR 0002](docs/decisions/0002-events.md)).

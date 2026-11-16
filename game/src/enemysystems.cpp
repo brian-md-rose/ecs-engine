@@ -76,6 +76,7 @@ namespace game
 			registry.Add<Enemy>(enemy);
 			registry.Add<EnemyPersonality>(enemy, EnemyPersonality{.kind = personality});
 			registry.Add<EnemyBrain>(enemy, EnemyBrain{.releaseSeconds = TuningFor(personality).releaseSeconds});
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(enemy, WorldScope());
 		}
 	}
 

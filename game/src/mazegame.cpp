@@ -124,6 +124,7 @@ namespace game
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
 		world.resources.Emplace<GameFlow>();
+		world.resources.Emplace<GameWorld>(); // the maze, player, enemies and HUD wait for START
 		world.resources.Emplace<Settings>();
 		world.resources.Emplace<NameEntry>();
 		world.resources.Emplace<MenuCursor>();
@@ -134,7 +135,7 @@ namespace game
 		world.resources.Emplace<SaveFile>(); // no path: saves nothing until MazeGame() sets one
 		world.resources.Emplace<SoundBank>();
 		world.resources.Emplace<SoundQueue>();
-		const DifficultyTable& difficulty = world.resources.Emplace<DifficultyTable>(assets.difficulty);
+		world.resources.Emplace<DifficultyTable>(assets.difficulty);
 		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
 		renderer2D.SetAtlas(assets.atlas);
@@ -142,25 +143,7 @@ namespace game
 		const TileMap& map = world.resources.Emplace<TileMap>(maze);
 		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
-		engine::ecs::Registry& registry = world.registry;
-		const engine::graphics::Position origin = MazeOrigin(map);
-		const SpriteClips& clips = world.resources.Emplace<SpriteClips>(assets.clips);
-		SpawnMaze(registry, map, origin, clips);
-
-		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
-		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
-		const engine::ecs::Entity player = registry.Create();
-		const GridMover mover{.tile = spawns.front(), .speed = difficulty.ForLevel(1).playerSpeed};
-		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
-		registry.Add<GridMover>(player, mover);
-		registry.Add<engine::graphics::Interpolation>(player, kMoverInterpolation);
-		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
-		registry.Add<PlayerControlled>(player);
-		registry.Add<Facing>(player);
-		registry.Add<Sprite>(player, Sprite{.layer = kPlayerLayer});
-		registry.Add<Animation>(player, Animation{.clip = clips.playerDown});
-		SpawnEnemies(registry, map, origin, clips);
-		SpawnHud(registry, map, origin);
+		world.resources.Emplace<SpriteClips>(assets.clips);
 
 		// The whole frame, in run order. A system for one screen carries an InState condition.
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);

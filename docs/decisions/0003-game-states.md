@@ -31,6 +31,9 @@ The engine gets states, modelled on Bevy's (`engine/include/ecs/states.hpp`).
   type. `NotInState` is its opposite.
 - **Scoped entities.** `DespawnOnExit<T>{value}` destroys the entity when `T` leaves `value`.
   Screens spawn their text on enter and are gone on exit, with no one hiding anything.
+  `DespawnOnEnter<T>{value}` is the other way round: it destroys the entity when `T` enters
+  `value`, **before** the enter systems run, so what an enter system spawns with the same scope
+  survives the entry that spawned it. A game uses it to clear its world on return to a menu.
 - **Sub-states.** `AddSubState<Sub>(world, parentValue, initial)`. A sub-state exists only while
   its parent is in `parentValue`: it starts from `initial` on each entry, its exit systems run
   before the parent's when the parent leaves, and while it doesn't exist `InState` is false for

@@ -1,11 +1,17 @@
 #include "maze.hpp"
 
 #include <cstddef>
+#include <vector>
 
 #include "components.hpp"
+#include "core/assert.hpp"
 #include "ecs/entity.hpp"
+#include "gameflow.hpp"
 #include "graphics/animation.hpp"
 #include "graphics/sprite.hpp"
+#include "gridmovement.hpp"
+#include "looks.hpp"
+#include "mazegame.hpp"
 #include "walltiles.hpp"
 
 namespace game
@@ -27,6 +33,7 @@ namespace game
 			registry.Add<Transform>(entity, position);
 			registry.Add<Sprite>(entity, sprite);
 			registry.Add<Tag>(entity);
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 		}
 
 		// Created now, its components recorded in commands. Animated if its clip has frames to
@@ -41,6 +48,7 @@ namespace game
 			if (clip.frames > 1) commands.Add<Animation>(entity, Animation{.clip = clip});
 			commands.Add<Tag>(entity);
 			commands.Add<OnTile>(entity, OnTile{.tile = tile});
+			commands.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 		}
 	} // namespace
 
@@ -94,5 +102,22 @@ namespace game
 		{
 			SpawnEdible<PowerPellet>(registry, commands, tile, TileTopLeft(origin, tile), clips.powerPellet);
 		}
+	}
+
+	void SpawnPlayer(Registry& registry, const TileMap& map, Position origin, const SpriteClips& clips, float speed)
+	{
+		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
+		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
+		const Entity player = registry.Create();
+		const GridMover mover{.tile = spawns.front(), .speed = speed};
+		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
+		registry.Add<GridMover>(player, mover);
+		registry.Add<engine::graphics::Interpolation>(player, kMoverInterpolation);
+		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
+		registry.Add<PlayerControlled>(player);
+		registry.Add<Facing>(player);
+		registry.Add<Sprite>(player, Sprite{.layer = kPlayerLayer});
+		registry.Add<Animation>(player, Animation{.clip = clips.playerDown});
+		registry.Add<engine::ecs::DespawnOnEnter<Screen>>(player, WorldScope());
 	}
 } // namespace game

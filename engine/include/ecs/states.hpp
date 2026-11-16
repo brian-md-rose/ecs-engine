@@ -74,6 +74,15 @@ namespace engine::ecs
 		T value{};
 	};
 
+	// Component: destroy the entity when T's state enters value, before the enter systems run.
+	// Before, so that what an enter system spawns with the same scope is not destroyed by the entry
+	// that spawned it. This is how a world is cleared away on return to a menu: the entities that
+	// belong to the game carry DespawnOnEnter<Screen>{Screen::Title}.
+	template <StateValue T> struct DespawnOnEnter
+	{
+		T value{};
+	};
+
 	// Run conditions. Pass them to Scheduler::Add with the value as a template argument:
 	//
 	//     scheduler.Add(Phase::Update, "Move", Move, InState<Screen::Playing>);
@@ -174,6 +183,11 @@ namespace engine::ecs
 
 			void Enter(T value, World& world, const FrameContext& context)
 			{
+				world.registry.template Each<DespawnOnEnter<T>>([&](Entity entity, const DespawnOnEnter<T>& scope)
+				{
+					if (scope.value == value) world.commands.Destroy(entity);
+				});
+				world.commands.Apply(world.registry);
 				RunHooks(HooksOf(enter, value), world, context);
 				for (const Child& child : children)
 				{
