@@ -9,8 +9,8 @@
 #include "core/paths.hpp"
 #include "core/savedata.hpp"
 #include "core/text.hpp"
-#include "gameflow.hpp"
 #include "hud.hpp"
+#include "nameentry.hpp"
 #include "scoring.hpp"
 
 namespace game
@@ -35,10 +35,40 @@ namespace game
 		return folder / kSaveFileName;
 	}
 
-	int LoadHighScore(const std::filesystem::path& file)
+	SavedGame LoadSavedGame(const std::filesystem::path& file)
 	{
-		if (file.empty()) return 0;
-		return std::max(ReadSave(file).GetInt(kHighScoreKey).value_or(0), 0);
+		SavedGame saved;
+		if (file.empty()) return saved;
+		const engine::core::SaveData data = ReadSave(file);
+		saved.highScore = std::max(data.GetInt(kHighScoreKey).value_or(0), 0);
+		saved.highScoreName = CleanName(data.Get(kHighScoreNameKey).value_or(""));
+		saved.settings = SettingsFrom(data);
+		return saved;
+	}
+
+	void ApplySavedGame(engine::ecs::World& world, const SavedGame& saved)
+	{
+		SaveFile& save = world.resources.Get<SaveFile>();
+		save.savedHighScore = saved.highScore;
+		save.savedName = saved.highScoreName;
+
+		HighScore& high = world.resources.Get<HighScore>();
+		high.points = saved.highScore;
+		high.record = saved.highScore;
+		high.name = saved.highScoreName;
+
+		world.resources.Get<Settings>() = saved.settings;
+		if (!saved.highScoreName.empty()) world.resources.Get<NameEntry>() = EntryFor(saved.highScoreName);
+	}
+
+	void RecordScore(engine::ecs::World& world, std::string_view name)
+	{
+		HighScore& high = world.resources.Get<HighScore>();
+		const int score = world.resources.Get<Score>().points;
+		if (score <= high.record) return;
+		high.record = score;
+		high.name = std::string(name);
+		high.points = std::max(high.points, score);
 	}
 
 	void SaveHighScore(engine::ecs::World& world)
@@ -46,16 +76,33 @@ namespace game
 		SaveFile* save = world.resources.TryGet<SaveFile>();
 		if (save == nullptr || save->path.empty()) return;
 
-		const int best = std::max(world.resources.Get<HighScore>().points, world.resources.Get<Score>().points);
-		if (best <= save->savedHighScore) return;
+		const HighScore& high = world.resources.Get<HighScore>();
+		if (high.record <= save->savedHighScore) return;
 
 		engine::core::SaveData data = ReadSave(save->path);
-		data.SetInt(kHighScoreKey, best);
-		if (engine::core::WriteSaveData(save->path, data)) save->savedHighScore = best;
+		data.SetInt(kHighScoreKey, high.record);
+		if (high.name.empty())
+		{
+			data.Set(kHighScoreNameKey, std::string(kDefaultName));
+		}
+		else
+		{
+			data.Set(kHighScoreNameKey, high.name);
+		}
+		if (engine::core::WriteSaveData(save->path, data))
+		{
+			save->savedHighScore = high.record;
+			save->savedName = high.name;
+		}
 	}
 
-	void SaveHighScoreOnStageChange(engine::ecs::World& world, const StageChanged& event)
+	void SaveSettings(engine::ecs::World& world)
 	{
-		if (event.to == Stage::GameOver || event.to == Stage::Title) SaveHighScore(world);
+		const SaveFile* save = world.resources.TryGet<SaveFile>();
+		if (save == nullptr || save->path.empty()) return;
+
+		engine::core::SaveData data = ReadSave(save->path);
+		StoreSettings(data, world.resources.Get<Settings>());
+		(void)engine::core::WriteSaveData(save->path, data);
 	}
 } // namespace game

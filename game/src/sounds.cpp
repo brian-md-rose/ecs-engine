@@ -1,6 +1,7 @@
 #include "sounds.hpp"
 
 #include "audio/audiodevice.hpp"
+#include "options.hpp"
 
 namespace game
 {
@@ -102,6 +103,11 @@ namespace game
 	{
 		SoundQueue& queue = world.resources.Get<SoundQueue>();
 		const SoundBank& bank = world.resources.Get<SoundBank>();
+		if (!world.resources.Get<Settings>().sound)
+		{
+			queue.pending.clear(); // muted in the options: nothing plays, so nothing counts as played
+			return;
+		}
 		std::array<bool, kSfxCount> started{};
 		for (const Sfx sfx : queue.pending)
 		{

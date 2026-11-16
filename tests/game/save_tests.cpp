@@ -8,15 +8,14 @@
 #include "hud.hpp"
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
+#include "nameentry.hpp"
+#include "options.hpp"
 #include "save.hpp"
 #include "scoring.hpp"
-#include "systems.hpp"
 #include "tilemap.hpp"
 
 namespace
 {
-	using game::Stage;
-
 	[[nodiscard]] game::TileMap TestMaze()
 	{
 		game::TileMapResult result = game::ParseTileMap("#######\n"
@@ -47,64 +46,110 @@ namespace
 		TempSave& operator=(TempSave&&) = delete;
 	};
 
-	[[nodiscard]] int SavedHighScore(const std::filesystem::path& file)
+	[[nodiscard]] engine::core::SaveData Saved(const std::filesystem::path& file)
 	{
-		const engine::core::SaveDataResult result = engine::core::LoadSaveData(file);
+		engine::core::SaveDataResult result = engine::core::LoadSaveData(file);
 		REQUIRE(result.data.has_value());
-		return result.data->GetInt(game::kHighScoreKey).value_or(-1);
+		return std::move(*result.data);
 	}
 
-	// Moves the game to stage, as the game does, and runs an update so the change is handled.
-	void EnterStage(game::MazeGame& maze, Stage stage)
+	void WriteText(const TempSave& save, const char* text)
 	{
-		game::GameFlow next = maze.world.resources.Get<game::GameFlow>();
-		next.stage = stage;
-		game::SetFlow(maze.world, next);
-		maze.Update(1.0 / 60.0, engine::input::Keyboard{});
+		std::filesystem::create_directories(save.folder);
+		std::ofstream stream(save.file);
+		stream << text;
 	}
 } // namespace
 
-TEST_CASE("LoadHighScore is 0 without a save, and reads the saved one", "[game][save]")
+TEST_CASE("LoadSavedGame gives the defaults without a save, and reads the saved values", "[game][save]")
 {
 	const TempSave save("ecs_engine_game_save_load");
-	CHECK(game::LoadHighScore({}) == 0);
-	CHECK(game::LoadHighScore(save.file) == 0);
+	const game::SavedGame none = game::LoadSavedGame(save.file);
+	CHECK(none.highScore == 0);
+	CHECK(none.highScoreName.empty());
+	CHECK(none.settings.sound);
+	CHECK(none.settings.lives == game::kStartingLives);
+	CHECK(game::LoadSavedGame({}).highScore == 0);
 
 	engine::core::SaveData data;
 	data.SetInt(game::kHighScoreKey, 4200);
+	data.Set(game::kHighScoreNameKey, "ADA");
+	data.SetInt(game::kSoundKey, 0);
+	data.SetInt(game::kLivesKey, 5);
 	REQUIRE(engine::core::WriteSaveData(save.file, data));
-	CHECK(game::LoadHighScore(save.file) == 4200);
+
+	const game::SavedGame saved = game::LoadSavedGame(save.file);
+	CHECK(saved.highScore == 4200);
+	CHECK(saved.highScoreName == "ADA");
+	CHECK_FALSE(saved.settings.sound);
+	CHECK(saved.settings.lives == 5);
 }
 
-TEST_CASE("A broken save counts as no high score", "[game][save]")
+TEST_CASE("A broken save counts as an empty one", "[game][save]")
 {
 	const TempSave save("ecs_engine_game_save_broken");
-	std::filesystem::create_directories(save.folder);
-	{
-		std::ofstream stream(save.file);
-		stream << "highScore\n";
-	}
-	CHECK(game::LoadHighScore(save.file) == 0);
+	WriteText(save, "highScore\n");
+	const game::SavedGame saved = game::LoadSavedGame(save.file);
+	CHECK(saved.highScore == 0);
+	CHECK(saved.settings.lives == game::kStartingLives);
 }
 
-TEST_CASE("The high score is saved when a game ends or is abandoned, if it is a new best", "[game][save]")
+TEST_CASE("A saved name is cleaned up, and settings out of range are ignored", "[game][save]")
 {
-	const TempSave save("ecs_engine_game_save_stage");
+	const TempSave save("ecs_engine_game_save_clean");
+	WriteText(save, "highScoreName ada!? lovelace\nlives 99\nsound 1\n");
+	const game::SavedGame saved = game::LoadSavedGame(save.file);
+	CHECK(saved.highScoreName == "ADA   LO"); // upper case, odd characters blanked, cut at 8
+	CHECK(saved.settings.lives == game::kStartingLives);
+	CHECK(saved.settings.sound);
+}
+
+TEST_CASE("A loaded game puts its high score, name and settings in the world", "[game][save]")
+{
+	game::MazeGame maze{TestMaze()};
+	game::ApplySavedGame(maze.world,
+	                     {.highScore = 700, .highScoreName = "ADA", .settings = {.sound = false, .lives = 4}});
+
+	const auto& high = maze.world.resources.Get<game::HighScore>();
+	CHECK(high.points == 700);
+	CHECK(high.record == 700);
+	CHECK(high.name == "ADA");
+	CHECK_FALSE(maze.world.resources.Get<game::Settings>().sound);
+	CHECK(maze.world.resources.Get<game::Settings>().lives == 4);
+	CHECK(maze.world.resources.Get<game::SaveFile>().savedHighScore == 700);
+	CHECK(game::NameOf(maze.world.resources.Get<game::NameEntry>()) == "ADA"); // the next entry starts from it
+}
+
+TEST_CASE("RecordScore sets the record only if the score beats it", "[game][save]")
+{
+	game::MazeGame maze{TestMaze()};
+	maze.world.resources.Get<game::HighScore>().record = 100;
+	maze.world.resources.Get<game::Score>().points = 100;
+	game::RecordScore(maze.world, "TIE");
+	CHECK(maze.world.resources.Get<game::HighScore>().name.empty());
+
+	maze.world.resources.Get<game::Score>().points = 101;
+	game::RecordScore(maze.world, "WIN");
+	CHECK(maze.world.resources.Get<game::HighScore>().record == 101);
+	CHECK(maze.world.resources.Get<game::HighScore>().name == "WIN");
+}
+
+TEST_CASE("The high score and its name are saved only if the record beats the saved one", "[game][save]")
+{
+	const TempSave save("ecs_engine_game_save_record");
 	game::MazeGame maze{TestMaze()};
 	maze.world.resources.Get<game::SaveFile>() = game::SaveFile{.path = save.file, .savedHighScore = 100};
 
-	EnterStage(maze, Stage::Ready);
-	maze.world.resources.Get<game::Score>().points = 50;
-	EnterStage(maze, Stage::GameOver);
+	maze.world.resources.Get<game::HighScore>().record = 50;
+	game::SaveHighScore(maze.world);
 	CHECK_FALSE(std::filesystem::exists(save.file)); // 50 doesn't beat the saved 100
 
-	EnterStage(maze, Stage::Ready);
-	maze.world.resources.Get<game::Score>().points = 300;
-	EnterStage(maze, Stage::Playing);
-	CHECK_FALSE(std::filesystem::exists(save.file)); // only at the end of a game
-
-	EnterStage(maze, Stage::Title); // abandoned from the pause menu
-	CHECK(SavedHighScore(save.file) == 300);
+	maze.world.resources.Get<game::HighScore>().record = 300;
+	maze.world.resources.Get<game::HighScore>().name = "ADA";
+	game::SaveHighScore(maze.world);
+	const engine::core::SaveData data = Saved(save.file);
+	CHECK(data.GetInt(game::kHighScoreKey) == 300);
+	CHECK(data.Get(game::kHighScoreNameKey) == "ADA");
 	CHECK(maze.world.resources.Get<game::SaveFile>().savedHighScore == 300);
 }
 
@@ -117,19 +162,23 @@ TEST_CASE("Saving keeps the other values in the save file", "[game][save]")
 
 	game::MazeGame maze{TestMaze()};
 	maze.world.resources.Get<game::SaveFile>().path = save.file;
-	maze.world.resources.Get<game::HighScore>().points = 900;
+	maze.world.resources.Get<game::HighScore>().record = 900;
 	game::SaveHighScore(maze.world);
+	maze.world.resources.Get<game::Settings>() = {.sound = false, .lives = 2};
+	game::SaveSettings(maze.world);
 
-	const engine::core::SaveDataResult result = engine::core::LoadSaveData(save.file);
-	REQUIRE(result.data.has_value());
-	CHECK(result.data->GetInt(game::kHighScoreKey) == 900);
-	CHECK(result.data->Get("volume") == "7");
+	const engine::core::SaveData result = Saved(save.file);
+	CHECK(result.GetInt(game::kHighScoreKey) == 900);
+	CHECK(result.GetInt(game::kSoundKey) == 0);
+	CHECK(result.GetInt(game::kLivesKey) == 2);
+	CHECK(result.Get("volume") == "7");
 }
 
 TEST_CASE("A game without a save path never writes", "[game][save]")
 {
 	game::MazeGame maze{TestMaze()};
-	maze.world.resources.Get<game::Score>().points = 500;
+	maze.world.resources.Get<game::HighScore>().record = 500;
 	game::SaveHighScore(maze.world);
+	game::SaveSettings(maze.world);
 	CHECK(maze.world.resources.Get<game::SaveFile>().savedHighScore == 0);
 }

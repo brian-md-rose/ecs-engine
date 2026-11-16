@@ -9,15 +9,20 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "ecs/states.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "grid/direction.hpp"
+#include "hud.hpp"
 #include "input/keyboard.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "nameentry.hpp"
+#include "options.hpp"
 #include "scoring.hpp"
+#include "stage.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -26,6 +31,7 @@ namespace
 	using engine::graphics::Shape;
 	using engine::graphics::Transform;
 	using engine::input::Key;
+	using gametest::Stage;
 
 	constexpr double kStep = 1.0 / 60.0;
 
@@ -55,22 +61,24 @@ namespace
 		// Ready pause, unless told not to.
 		explicit Harness(bool startPlaying = true)
 		{
-			REQUIRE(Flow().stage == game::Stage::Title);
+			REQUIRE(Now() == Stage::Title);
 			Tap(Key::Enter);
-			REQUIRE(Flow().stage == game::Stage::Ready);
-			if (startPlaying) UpdateUntil(game::Stage::Playing);
+			REQUIRE(Now() == Stage::Ready);
+			if (startPlaying) UpdateUntil(Stage::Playing);
 		}
 
 		[[nodiscard]] game::GameFlow& Flow() { return maze.world.resources.Get<game::GameFlow>(); }
 
+		[[nodiscard]] Stage Now() const { return gametest::StageOf(maze); }
+
 		// Updates until the game reaches stage, failing if that takes over a minute.
-		void UpdateUntil(game::Stage stage)
+		void UpdateUntil(Stage stage)
 		{
-			for (int i = 0; i < 60 * 60 && Flow().stage != stage; ++i)
+			for (int i = 0; i < 60 * 60 && Now() != stage; ++i)
 			{
 				Update();
 			}
-			REQUIRE(Flow().stage == stage);
+			REQUIRE(Now() == stage);
 		}
 
 		void Update(int steps = 1)
@@ -114,7 +122,7 @@ namespace
 			return count;
 		}
 
-		[[nodiscard]] bool Paused() const { return maze.world.resources.Get<game::GameState>().paused; }
+		[[nodiscard]] bool Paused() const { return gametest::IsPaused(maze); }
 
 		[[nodiscard]] int Points() const { return maze.world.resources.Get<game::Score>().points; }
 
@@ -152,8 +160,8 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
-	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 4); // with the debug panel's toggle
-	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 8); // with the debug panel's toggle
+	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 6);
 	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 7);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 2); // the debug panel, then Render
 
@@ -290,13 +298,13 @@ TEST_CASE("The player eats the pellets it walks over", "[game][systems]")
 TEST_CASE("A round starts Ready, and the player waits for Playing", "[game][systems][gameflow]")
 {
 	Harness h(false);
-	CHECK(h.Flow().stage == game::Stage::Ready);
+	CHECK(h.Now() == Stage::Ready);
 
 	h.Tap(Key::Right); // pressed during Ready: remembered, not acted on
 	h.Update(30);
 	CHECK(h.PlayerTransform().position.x == Start().x);
 
-	h.UpdateUntil(game::Stage::Playing);
+	h.UpdateUntil(Stage::Playing);
 	h.Update(10);
 	CHECK(h.PlayerTransform().position.x > Start().x);
 }
@@ -314,12 +322,12 @@ TEST_CASE("Clearing every pellet completes the level, which restarts with the pe
 	walk(Key::Right); // columns 3 and 5 of row 2
 	walk(Key::Up);
 	walk(Key::Left); // row 1, the power pellet last
-	CHECK(h.Flow().stage == game::Stage::Playing);
+	CHECK(h.Now() == Stage::Playing);
 	CHECK(h.Count<game::Pellet>() == 1);
 	CHECK(h.Count<game::PowerPellet>() == 0);
 
 	walk(Key::Down); // the last pellet, at column 1 of row 2
-	CHECK(h.Flow().stage == game::Stage::LevelComplete);
+	CHECK(h.Now() == Stage::LevelTransition);
 	CHECK(h.Count<game::Pellet>() == 0);
 	CHECK(h.Points() == 7 * game::kPelletPoints + game::kPowerPelletPoints);
 
@@ -329,7 +337,7 @@ TEST_CASE("Clearing every pellet completes the level, which restarts with the pe
 	h.Update(30);
 	CHECK(h.PlayerTransform().position.x == done.position.x);
 
-	h.UpdateUntil(game::Stage::Ready);
+	h.UpdateUntil(Stage::Ready);
 	CHECK(h.Flow().level == 2);
 	CHECK(h.Flow().lives == game::kStartingLives);
 	CHECK(h.Count<game::Pellet>() == 7);
@@ -339,7 +347,7 @@ TEST_CASE("Clearing every pellet completes the level, which restarts with the pe
 	CHECK(h.Points() == 7 * game::kPelletPoints + game::kPowerPelletPoints); // the score carries on
 
 	// The new round plays like the first: the player stays put until told to move, then eats.
-	h.UpdateUntil(game::Stage::Playing);
+	h.UpdateUntil(Stage::Playing);
 	h.Update(30);
 	CHECK(h.PlayerTransform().position.x == Start().x);
 	walk(Key::Right);
@@ -356,10 +364,10 @@ TEST_CASE("An enemy catching the player costs a life and puts the player back", 
 
 	h.Tap(Key::Right);
 	h.Update(30); // through column 3 into the enemy at column 4
-	CHECK(h.Flow().stage == game::Stage::Dying);
+	CHECK(h.Now() == Stage::Dying);
 	CHECK(h.Flow().lives == game::kStartingLives - 1);
 
-	h.UpdateUntil(game::Stage::Ready);
+	h.UpdateUntil(Stage::Ready);
 	CHECK(h.PlayerTransform().position.x == Start().x);
 	CHECK(h.Count<game::Pellet>() == 6); // the pellet eaten on the way stays eaten
 	CHECK(h.Points() == game::kPelletPoints);
@@ -370,22 +378,23 @@ TEST_CASE("Losing the last life ends the game; Confirm goes to the title, which 
 {
 	Harness h;
 	h.Flow().lives = 1;
+	h.maze.world.resources.Get<game::HighScore>().record = 1000; // out of reach: no name entry
 	engine::ecs::Registry& registry = h.maze.world.registry;
 	const Entity enemy = registry.Create();
 	registry.Add<game::Enemy>(enemy);
 	registry.Add<game::GridMover>(enemy, game::GridMover{.tile = {.column = 4, .row = 2}});
 
 	h.Tap(Key::Right);
-	h.UpdateUntil(game::Stage::GameOver);
+	h.UpdateUntil(Stage::GameOver);
 	CHECK(h.Points() == game::kPelletPoints);
 
 	h.Update(5 * 60); // waits for a key
-	CHECK(h.Flow().stage == game::Stage::GameOver);
+	CHECK(h.Now() == Stage::GameOver);
 
 	h.Tap(Key::Enter);
-	CHECK(h.Flow().stage == game::Stage::Title);
+	CHECK(h.Now() == Stage::Title);
 	h.Tap(Key::Enter);
-	CHECK(h.Flow().stage == game::Stage::Ready);
+	CHECK(h.Now() == Stage::Ready);
 	CHECK(h.Flow().lives == game::kStartingLives);
 	CHECK(h.Flow().level == 1);
 	CHECK(h.Points() == 0);
@@ -398,8 +407,149 @@ TEST_CASE("Pausing stops the Ready timer", "[game][systems][gameflow]")
 	Harness h(false);
 	h.Tap(Key::P);
 	h.Update(10 * 60);
-	CHECK(h.Flow().stage == game::Stage::Ready);
+	CHECK(h.Now() == Stage::Ready);
 
 	h.Tap(Key::P);
-	h.UpdateUntil(game::Stage::Playing);
+	h.UpdateUntil(Stage::Playing);
+}
+
+namespace
+{
+	// Walks the player into an enemy at column 4 of the test maze with one life left.
+	void LoseTheLastLife(Harness& h)
+	{
+		h.Flow().lives = 1;
+		engine::ecs::Registry& registry = h.maze.world.registry;
+		const Entity enemy = registry.Create();
+		registry.Add<game::Enemy>(enemy);
+		registry.Add<game::GridMover>(enemy, game::GridMover{.tile = {.column = 4, .row = 2}});
+		h.Tap(Key::Right);
+	}
+
+	[[nodiscard]] game::HighScore& High(Harness& h)
+	{
+		return h.maze.world.resources.Get<game::HighScore>();
+	}
+
+	[[nodiscard]] std::size_t ScreenEntities(Harness& h)
+	{
+		std::size_t count = 0;
+		h.maze.world.registry.Each<engine::ecs::DespawnOnExit<game::Screen>>(
+		    [&count](Entity, const engine::ecs::DespawnOnExit<game::Screen>&)
+		{
+			++count;
+		});
+		return count;
+	}
+} // namespace
+
+TEST_CASE("A game that beats the high score goes to the name entry before GAME OVER", "[game][systems][gameflow]")
+{
+	Harness h;
+	LoseTheLastLife(h);
+	h.UpdateUntil(Stage::NameEntry);
+	CHECK(h.Points() == game::kPelletPoints);
+	CHECK(High(h).record == 0); // not recorded until a name is entered
+
+	h.Tap(Key::Up); // the first slot's A becomes B
+	h.Tap(Key::Right);
+	h.Tap(Key::Up);
+	h.Tap(Key::Up); // the second slot, a space, becomes A and then B
+	CHECK(h.maze.world.resources.Get<game::NameEntry>().slots.substr(0, 2) == "BB");
+
+	h.Tap(Key::Enter);
+	CHECK(h.Now() == Stage::GameOver);
+	CHECK(High(h).record == game::kPelletPoints);
+	CHECK(High(h).name == "BB");
+
+	h.Tap(Key::Enter);
+	CHECK(h.Now() == Stage::Title);
+}
+
+TEST_CASE("The name-entry screen is spawned on entry and gone on exit", "[game][systems][gameflow]")
+{
+	Harness h;
+	const std::size_t title = ScreenEntities(h);
+	CHECK(title == 0); // the title's entities went when it was left
+	LoseTheLastLife(h);
+	h.UpdateUntil(Stage::NameEntry);
+	CHECK(ScreenEntities(h) > 0);
+	h.Tap(Key::Enter);
+	h.Tap(Key::Enter);
+	REQUIRE(h.Now() == Stage::Title);
+	CHECK(ScreenEntities(h) > 0); // the title again
+}
+
+TEST_CASE("Leaving a game with a new best score from the pause menu goes to the name entry",
+          "[game][systems][gameflow]")
+{
+	Harness h;
+	h.Tap(Key::Right);
+	h.Update(30); // a pellet or two
+	REQUIRE(h.Points() > 0);
+	h.Tap(Key::P);
+	h.Tap(Key::Down); // QUIT TO TITLE
+	h.Tap(Key::Enter);
+	CHECK(h.Now() == Stage::NameEntry);
+	CHECK_FALSE(h.Paused()); // Playing was left, and with it the pause
+}
+
+TEST_CASE("Leaving a game from the pause menu without a new best score goes back to the title",
+          "[game][systems][gameflow]")
+{
+	Harness h;
+	High(h).record = 1000;
+	h.Tap(Key::P);
+	h.Tap(Key::Down);
+	h.Tap(Key::Enter);
+	CHECK(h.Now() == Stage::Title);
+	CHECK(h.PlayerTransform().position.x == Start().x);
+}
+
+TEST_CASE("The pause menu exists only while paused", "[game][systems][gameflow]")
+{
+	Harness h;
+	const std::size_t before = h.maze.world.registry.EntityCount();
+	h.Tap(Key::P);
+	REQUIRE(h.Paused());
+	CHECK(h.maze.world.registry.EntityCount() > before);
+	h.Tap(Key::Enter); // CONTINUE
+	CHECK_FALSE(h.Paused());
+	CHECK(h.maze.world.registry.EntityCount() == before);
+}
+
+TEST_CASE("Clearing a level shows the level screen, then starts the next level", "[game][systems][gameflow]")
+{
+	Harness h;
+	const auto walk = [&h](Key key)
+	{
+		h.Tap(key);
+		h.Update(60);
+	};
+	walk(Key::Right);
+	walk(Key::Up);
+	walk(Key::Left);
+	walk(Key::Down);
+	REQUIRE(h.Now() == Stage::LevelTransition);
+	CHECK(h.Flow().level == 2);
+	CHECK(ScreenEntities(h) > 0);
+
+	h.Update(static_cast<int>(game::kLevelTransitionSeconds * 60.0f) - 60); // just short of the end
+	CHECK(h.Now() == Stage::LevelTransition);
+	h.UpdateUntil(Stage::Ready);
+	CHECK(ScreenEntities(h) == 0);
+	CHECK(h.Flow().level == 2);
+}
+
+TEST_CASE("A game starts with the lives chosen in the options", "[game][systems][gameflow]")
+{
+	game::MazeGame maze{TestMaze()};
+	engine::input::Keyboard keyboard;
+	maze.world.resources.Get<game::Settings>().lives = 5;
+	keyboard.OnKeyDown(Key::Enter);
+	maze.Update(kStep, keyboard);
+	keyboard.EndUpdate();
+	maze.Update(kStep, keyboard); // the change to Playing takes effect
+	CHECK(gametest::StageOf(maze) == Stage::Ready);
+	CHECK(maze.world.resources.Get<game::GameFlow>().lives == 5);
 }

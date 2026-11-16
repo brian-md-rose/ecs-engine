@@ -14,6 +14,7 @@
 #include "input/keyboard.hpp"
 #include "looks.hpp"
 #include "mazegame.hpp"
+#include "stage.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -42,12 +43,12 @@ namespace
 
 		Harness() : maze(Maze(), Assets())
 		{
-			maze.world.resources.Get<game::GameFlow>() = game::GameFlow{};
-			for (int i = 0; i < 5 * 60 && Stage() != game::Stage::Playing; ++i)
+			gametest::RequestPlaying(maze);
+			for (int i = 0; i < 5 * 60 && Stage() != gametest::Stage::Playing; ++i)
 			{
 				Update();
 			}
-			REQUIRE(Stage() == game::Stage::Playing);
+			REQUIRE(Stage() == gametest::Stage::Playing);
 		}
 
 		[[nodiscard]] static game::TileMap Maze()
@@ -63,7 +64,7 @@ namespace
 			return *result.map;
 		}
 
-		[[nodiscard]] game::Stage Stage() const { return maze.world.resources.Get<game::GameFlow>().stage; }
+		[[nodiscard]] gametest::Stage Stage() const { return gametest::StageOf(maze); }
 
 		void Update(int steps = 1)
 		{
@@ -146,7 +147,7 @@ TEST_CASE("Animations stand still while the game is paused", "[game][looks]")
 {
 	Harness h;
 	h.Tap(Key::P);
-	REQUIRE(h.maze.world.resources.Get<game::GameState>().paused);
+	REQUIRE(gametest::IsPaused(h.maze));
 	const float elapsed = h.PlayerComponent<Animation>().elapsed;
 	h.Update(60);
 	CHECK(h.PlayerComponent<Animation>().elapsed == elapsed);

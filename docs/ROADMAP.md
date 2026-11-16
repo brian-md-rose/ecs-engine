@@ -71,7 +71,7 @@ Everything else builds on the registry, so fix its sharp edges first.
 
 - [x] Collision based on shared tiles; pellets, power pellets and score.
 - [x] Engine event bus (`PelletEaten`, `PlayerCaught`, `LevelCleared`), so scoring, audio and UI don't depend on each other.
-- [x] Game state machine: Ready → Playing → Dying → LevelComplete → GameOver.
+- [x] Game state machine: Ready → Playing → Dying → LevelComplete → GameOver (later moved onto engine states, Phase 8).
 
 **Done when:** you can clear a level with no enemies and the level restarts.
 
@@ -94,6 +94,16 @@ See [enemies.md](enemies.md) for the personalities, the schedule and the tuning.
 
 See [pixel-sheets.md](pixel-sheets.md) for the font and sprite format, and
 [difficulty.md](difficulty.md) for the per-level table.
+
+---
+
+## Phase 8 – Game states and screens
+
+- [x] Engine states: `State`, `NextState`, enter and exit systems, `InState`, `DespawnOnExit`, sub-states ([0003](decisions/0003-game-states.md)).
+- [x] The game's flow moved onto states; menus are spawned on enter and removed on exit.
+- [x] Options screen (sound, lives), name entry for a new high score, and a level-transition screen.
+
+See [screens.md](screens.md).
 
 ---
 

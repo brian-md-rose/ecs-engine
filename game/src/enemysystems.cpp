@@ -257,9 +257,8 @@ namespace game
 		if (brain != nullptr) *brain = Eat(*brain);
 	}
 
-	void ResetEnemies(World& world, const StageChanged& event)
+	void ResetEnemies(World& world)
 	{
-		if (!ResetFor(event.from, event.to).actors) return;
 		world.resources.Get<ModeClock>() = ModeClock{};
 		world.registry.Each<EnemyBrain>([](Entity, EnemyBrain& brain)
 		{

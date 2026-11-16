@@ -2,6 +2,7 @@
 
 #include "components.hpp"
 #include "ecs/entity.hpp"
+#include "ecs/states.hpp"
 #include "gameflow.hpp"
 #include "graphics/sprite.hpp"
 
@@ -39,7 +40,7 @@ namespace game
 	void PlayerLookSystem(World& world, const FrameContext&)
 	{
 		const SpriteClips& clips = world.resources.Get<SpriteClips>();
-		const bool dying = world.resources.Get<GameFlow>().stage == Stage::Dying;
+		const bool dying = engine::ecs::InState<Round::Dying>(world);
 		world.registry.Each<PlayerControlled, GridMover, Facing, Animation, Sprite>(
 		    [&](Entity, const PlayerControlled&, const GridMover& mover, Facing& facing, Animation& animation,
 		        Sprite& sprite)

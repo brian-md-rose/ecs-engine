@@ -33,8 +33,9 @@ namespace game
 	// player, each in its own way (see docs/enemies.md); being caught costs a life. A power
 	// pellet frightens them for a while, and a frightened enemy can be eaten for points. Each
 	// round starts after a short Ready pause; clearing every pellet completes the level, which
-	// restarts with its pellets back (see gameflow.hpp). The game opens on a title screen, and P
-	// or Escape pauses it (see screens.hpp); F1 toggles the rendering stress test and F3 the debug panel.
+	// restarts with its pellets back after a level screen (see gameflow.hpp and docs/screens.md). The game opens on a
+	// title screen with an options screen, a name entry for a new high score, and P or Escape pauses it (see
+	// screens.hpp); F1 toggles the rendering stress test and F3 the debug panel.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;

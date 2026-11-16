@@ -9,7 +9,9 @@
 #include "core/assert.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "ecs/states.hpp"
 #include "enemymodes.hpp"
+#include "enemysystems.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/color.hpp"
@@ -18,14 +20,19 @@
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
+#include "hud.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "options.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "tilemap.hpp"
 
 namespace game
 {
+	using engine::ecs::InState;
+	using engine::ecs::NextState;
+	using engine::ecs::State;
 	using engine::grid::Direction;
 
 	namespace
@@ -95,27 +102,61 @@ namespace game
 		}
 	} // namespace
 
-	void SetFlow(World& world, const GameFlow& next)
-	{
-		GameFlow& flow = world.resources.Get<GameFlow>();
-		const Stage from = flow.stage;
-		flow = next;
-		if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
-	}
-
 	const LevelTuning& LevelTuningOf(const World& world)
 	{
 		return world.resources.Get<DifficultyTable>().ForLevel(world.resources.Get<GameFlow>().level);
 	}
 
-	bool NotPaused(const World& world)
+	bool IsRoundLive(const World& world)
 	{
-		return !world.resources.Get<GameState>().paused;
+		return InState<Round::Active>(world) && InState<Pause::Running>(world);
 	}
 
-	bool IsPlaying(const World& world)
+	void StartNewGame(World& world)
 	{
-		return NotPaused(world) && world.resources.Get<GameFlow>().stage == Stage::Playing;
+		world.resources.Get<GameFlow>() = GameFlow{.lives = world.resources.Get<Settings>().lives};
+		world.resources.Get<Score>().points = 0;
+		ResetPellets(world);
+	}
+
+	void EndGame(World& world)
+	{
+		const int score = world.resources.Get<Score>().points;
+		const int record = world.resources.Get<HighScore>().record;
+		world.resources.Get<NextState<Screen>>().Set(ScreenAfterGame(score, record));
+	}
+
+	void AbandonGame(World& world)
+	{
+		const bool record = world.resources.Get<Score>().points > world.resources.Get<HighScore>().record;
+		world.resources.Get<NextState<Screen>>().Set(record ? Screen::NameEntry : Screen::Title);
+	}
+
+	void ResetPellets(World& world)
+	{
+		const auto& maze = world.resources.Get<TileMap>();
+		DestroyPellets(world);
+		SpawnPellets(world.registry, world.commands, maze, MazeOrigin(maze), world.resources.Get<SpriteClips>());
+	}
+
+	void ResetActors(World& world)
+	{
+		const Position origin = MazeOrigin(world.resources.Get<TileMap>());
+		world.registry.Each<Spawn, GridMover, Transform>(
+		    [origin](Entity, const Spawn& spawn, GridMover& mover, Transform& transform)
+		{
+			mover = GridMover{.tile = spawn.tile, .speed = mover.speed};
+			transform.position = MoverTopLeft(origin, mover);
+		});
+		const float playerSpeed = LevelTuningOf(world).playerSpeed;
+		world.registry.Each<PlayerControlled, GridMover>(
+		    [playerSpeed](Entity, const PlayerControlled&, GridMover& mover)
+		{
+			mover.speed = playerSpeed;
+		});
+		// A direction pressed before the reset would send the player off at once.
+		world.resources.Get<Controls>().ClearBufferedDirection();
+		ResetEnemies(world);
 	}
 
 	void ControlsSystem(World& world, const FrameContext& context)
@@ -143,15 +184,32 @@ namespace game
 		}
 	}
 
-	void GameFlowSystem(World& world, const FrameContext& context)
+	void RoundTimerSystem(World& world, const FrameContext& context)
 	{
-		const auto& controls = world.resources.Get<Controls>();
-		const GameFlow& flow = world.resources.Get<GameFlow>();
+		GameFlow& flow = world.resources.Get<GameFlow>();
+		flow.seconds += static_cast<float>(context.dt);
 
-		// Confirm only from GameOver, before the timers: a game that ends on this update waits
-		// for a press on a later one.
-		const bool confirm = flow.stage == Stage::GameOver && controls.WasPressed(Action::Confirm);
-		SetFlow(world, confirm ? Confirm(flow) : Tick(flow, static_cast<float>(context.dt)));
+		const Round round = world.resources.Get<State<Round>>().value;
+		if (!RoundTimeUp(round, flow.seconds)) return;
+		if (round == Round::Ready)
+		{
+			world.resources.Get<NextState<Round>>().Set(Round::Active);
+		}
+		else if (flow.lives > 0)
+		{
+			world.resources.Get<NextState<Round>>().Set(Round::Ready);
+		}
+		else
+		{
+			EndGame(world);
+		}
+	}
+
+	void LevelTransitionSystem(World& world, const FrameContext& context)
+	{
+		GameFlow& flow = world.resources.Get<GameFlow>();
+		flow.seconds += static_cast<float>(context.dt);
+		if (flow.seconds >= kLevelTransitionSeconds) world.resources.Get<NextState<Screen>>().Set(Screen::Playing);
 	}
 
 	void PlayerInputSystem(World& world, const FrameContext&)
@@ -233,48 +291,29 @@ namespace game
 		if (!anyLeft) world.events.Publish(LevelCleared{});
 	}
 
+	namespace
+	{
+		// True once the round has already been asked to change, or the game to leave Playing: the
+		// first thing that happened this update decides, as the later events are about a round
+		// that is already over.
+		bool AlreadyEnding(const World& world)
+		{
+			return world.resources.Get<NextState<Round>>().requested.has_value() ||
+			       world.resources.Get<NextState<Screen>>().requested.has_value();
+		}
+	} // namespace
+
 	void LoseLife(World& world, const PlayerCaught&)
 	{
-		SetFlow(world, CatchPlayer(world.resources.Get<GameFlow>()));
+		if (!InState<Round::Active>(world) || AlreadyEnding(world)) return;
+		--world.resources.Get<GameFlow>().lives;
+		world.resources.Get<NextState<Round>>().Set(Round::Dying);
 	}
 
 	void CompleteLevel(World& world, const LevelCleared&)
 	{
-		SetFlow(world, ClearLevel(world.resources.Get<GameFlow>()));
-	}
-
-	void ResetRound(World& world, const StageChanged& event)
-	{
-		const RoundReset reset = ResetFor(event.from, event.to);
-		const auto& maze = world.resources.Get<TileMap>();
-		const Position origin = MazeOrigin(maze);
-
-		if (reset.pellets)
-		{
-			DestroyPellets(world);
-			SpawnPellets(world.registry, world.commands, maze, origin, world.resources.Get<SpriteClips>());
-		}
-		if (reset.actors)
-		{
-			world.registry.Each<Spawn, GridMover, Transform>(
-			    [origin](Entity, const Spawn& spawn, GridMover& mover, Transform& transform)
-			{
-				mover = GridMover{.tile = spawn.tile, .speed = mover.speed};
-				transform.position = MoverTopLeft(origin, mover);
-			});
-			const float playerSpeed = LevelTuningOf(world).playerSpeed;
-			world.registry.Each<PlayerControlled, GridMover>(
-			    [playerSpeed](Entity, const PlayerControlled&, GridMover& mover)
-			{
-				mover.speed = playerSpeed;
-			});
-			// A direction pressed before the reset would send the player off at once.
-			world.resources.Get<Controls>().ClearBufferedDirection();
-		}
-		if (reset.score)
-		{
-			world.resources.Get<Score>().points = 0;
-		}
+		if (!InState<Round::Active>(world) || AlreadyEnding(world)) return;
+		world.resources.Get<NextState<Screen>>().Set(Screen::LevelTransition);
 	}
 
 	template void CheckLevelCleared<PelletEaten>(World&, const PelletEaten&);
@@ -284,12 +323,14 @@ namespace game
 	{
 		ENGINE_VERIFY(context.renderer != nullptr, "RenderSystem must run in the Render phase");
 		engine::graphics::Renderer& renderer = *context.renderer;
-		const auto& state = world.resources.Get<GameState>();
 		auto& renderer2D = world.resources.Get<engine::graphics::Renderer2D>();
 
 		renderer.Clear(0, 0, 0);
-		// Behind the title and pause screens the game is dimmed; their text, above it, is not.
-		const bool behindScreen = state.paused || world.resources.Get<GameFlow>().stage == Stage::Title;
+		// Behind the screens that sit on top of the game the game is dimmed; their text, above it,
+		// is not.
+		const bool behindScreen =
+		    InState<Pause::Paused>(world) ||
+		    InState<Screen::Title, Screen::Options, Screen::NameEntry, Screen::LevelTransition>(world);
 		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
 		renderer2D.Draw(renderer, world.registry, static_cast<float>(context.alpha));

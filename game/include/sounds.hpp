@@ -82,7 +82,8 @@ namespace game
 		world.resources.Get<SoundQueue>().pending.push_back(SoundFor(event));
 	}
 
-	// LateUpdate (last, always): plays every queued sound on context.audio, if there is one,
+	// LateUpdate (last, always): plays every queued sound on context.audio, if there is one and the
+	// Settings have sound on (otherwise the queue is just emptied),
 	// counts it as played, and empties the queue. A sound queued twice in one update plays once.
 	void AudioSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 } // namespace game

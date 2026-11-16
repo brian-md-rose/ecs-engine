@@ -5,6 +5,7 @@
 
 #include "assets.hpp"
 #include "ecs/entity.hpp"
+#include "ecs/states.hpp"
 #include "graphics/font.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
@@ -64,19 +65,8 @@ namespace game
 		case HudField::Message:
 			break;
 		}
-		switch (view.stage)
-		{
-		case Stage::Ready:
-			return "READY!";
-		case Stage::LevelComplete:
-			return "WELL DONE!";
-		case Stage::GameOver:
-			return "GAME OVER";
-		case Stage::Title:
-		case Stage::Playing:
-		case Stage::Dying:
-			break;
-		}
+		if (view.screen == Screen::Playing && view.round == Round::Ready) return "READY!";
+		if (view.screen == Screen::GameOver) return "GAME OVER";
 		return {};
 	}
 
@@ -106,8 +96,14 @@ namespace game
 		HighScore& high = world.resources.Get<HighScore>();
 		high.points = std::max(high.points, score);
 
-		const HudView view{
-		    .score = score, .highScore = high.points, .level = flow.level, .lives = flow.lives, .stage = flow.stage};
+		const auto& screen = world.resources.Get<engine::ecs::State<Screen>>();
+		const auto& round = world.resources.Get<engine::ecs::State<Round>>();
+		const HudView view{.score = score,
+		                   .highScore = high.points,
+		                   .level = flow.level,
+		                   .lives = flow.lives,
+		                   .screen = screen.value,
+		                   .round = round.value};
 		world.registry.Each<HudText, Text, Transform>([&view](Entity, const HudText& hud, Text& text, Transform& at)
 		{
 			text.value = HudLine(hud.field, view);
