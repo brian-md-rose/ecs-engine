@@ -28,6 +28,7 @@
 #include "gridmovement.hpp"
 #include "hud.hpp"
 #include "scoring.hpp"
+#include "screens.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
 
@@ -80,6 +81,12 @@ namespace game
 		Build(maze, assets);
 	}
 
+	bool MazeGame::WantsToQuit() const
+	{
+		const GameState* state = world.resources.TryGet<GameState>();
+		return state != nullptr && state->quitRequested;
+	}
+
 	void MazeGame::Build(const TileMap& maze, const GameAssets& assets)
 	{
 		using engine::ecs::Phase;
@@ -88,7 +95,8 @@ namespace game
 
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
-		world.resources.Emplace<GameFlow>();
+		world.resources.Emplace<GameFlow>(GameFlow{.stage = Stage::Title});
+		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<FrameStats>();
 		world.resources.Emplace<ModeClock>();
@@ -117,9 +125,11 @@ namespace game
 		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
 		SpawnEnemies(registry, map, origin);
 		SpawnHud(registry, map, origin);
+		SpawnScreens(registry);
 
 		// The whole frame, in run order.
 		scheduler.Add(Phase::Input, ControlsSystem);
+		scheduler.Add(Phase::Input, ScreenSystem);
 		scheduler.Add(Phase::Input, GameStateSystem);
 		scheduler.Add(Phase::Update, GameFlowSystem, NotPaused);
 		scheduler.Add(Phase::Update, PlayerInputSystem, IsPlaying);
@@ -129,6 +139,7 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
 		scheduler.Add(Phase::LateUpdate, HudSystem);
+		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.

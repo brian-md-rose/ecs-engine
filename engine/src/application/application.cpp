@@ -77,7 +77,7 @@ namespace engine::application
 		core::FixedTimestep timestep(updateStep);
 		double previous = clock.Now();
 
-		while (PumpEvents())
+		while (PumpEvents() && !game.WantsToQuit())
 		{
 			const double now = clock.Now();
 			const int updates = timestep.Advance(now - previous);

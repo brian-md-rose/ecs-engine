@@ -33,6 +33,10 @@ namespace engine::application
 		// alpha in [0, 1) is how far the game is into the next update, for optional
 		// interpolation between the last two states.
 		virtual void Render(graphics::Renderer& renderer, double alpha) = 0;
+
+		// Asked after each update: true closes the application, as closing the window does (a
+		// menu's Quit, for one). Games that never ask to quit needn't override it.
+		[[nodiscard]] virtual bool WantsToQuit() const { return false; }
 	};
 
 	// Owns the platform (SDL, window, renderer) and runs the main loop.
@@ -70,7 +74,7 @@ namespace engine::application
 		Application(Application&&) = delete;
 		Application& operator=(Application&&) = delete;
 
-		// Runs until the window is closed. Returns 0 on a normal exit, 1 if the window or
+		// Runs until the window is closed or the game asks to quit. Returns 0 on a normal exit, 1 if the window or
 		// renderer couldn't be created.
 		int Run(Game& game);
 

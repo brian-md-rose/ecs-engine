@@ -35,8 +35,8 @@ namespace game
 	// player, each in its own way (see docs/enemies.md); being caught costs a life. A power
 	// pellet frightens them for a while, and a frightened enemy can be eaten for points. Each
 	// round starts after a short Ready pause; clearing every pellet completes the level, which
-	// restarts with its pellets back (see gameflow.hpp). P or Escape pauses; F1 toggles the
-	// rendering stress test.
+	// restarts with its pellets back (see gameflow.hpp). The game opens on a title screen, and P
+	// or Escape pauses it (see screens.hpp); F1 toggles the rendering stress test.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;
@@ -50,7 +50,7 @@ namespace game
 	public:
 		// The window and logical resolution the game wants.
 		static constexpr engine::application::ApplicationConfig kConfig{
-		    .title = "ecs-engine",
+		    .title = "Tangle Run",
 		    .windowWidth = kLogicalWidth * kWindowScale,
 		    .windowHeight = kLogicalHeight * kWindowScale,
 		    .logicalWidth = kLogicalWidth,
@@ -68,5 +68,8 @@ namespace game
 
 		// False if the assets couldn't be loaded.
 		[[nodiscard]] bool IsValid() const noexcept { return valid; }
+
+		// True once Quit was chosen on the title screen.
+		[[nodiscard]] bool WantsToQuit() const override;
 	};
 } // namespace game

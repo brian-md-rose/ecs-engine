@@ -30,6 +30,7 @@ namespace game
 				return Enter(flow, Stage::Ready);
 			}
 			break;
+		case Stage::Title:
 		case Stage::Playing:
 		case Stage::GameOver:
 			break;
@@ -53,14 +54,26 @@ namespace game
 	GameFlow Confirm(GameFlow flow) noexcept
 	{
 		if (flow.stage != Stage::GameOver) return flow;
+		return GameFlow{.stage = Stage::Title};
+	}
+
+	GameFlow StartGame(GameFlow flow) noexcept
+	{
+		if (flow.stage != Stage::Title) return flow;
 		return GameFlow{};
+	}
+
+	GameFlow ReturnToTitle(GameFlow) noexcept
+	{
+		return GameFlow{.stage = Stage::Title};
 	}
 
 	RoundReset ResetFor(Stage from, Stage to) noexcept
 	{
-		if (to != Stage::Ready || from == Stage::Ready) return {};
-		return {.pellets = from == Stage::LevelComplete || from == Stage::GameOver,
-		        .actors = true,
-		        .score = from == Stage::GameOver};
+		if (from == to) return {};
+		if (to == Stage::Title) return {.actors = true};
+		if (to != Stage::Ready) return {};
+		const bool newGame = from == Stage::Title || from == Stage::GameOver;
+		return {.pellets = newGame || from == Stage::LevelComplete, .actors = true, .score = newGame};
 	}
 } // namespace game

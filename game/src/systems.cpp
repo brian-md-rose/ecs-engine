@@ -21,6 +21,7 @@
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
+#include "screens.hpp"
 #include "tilemap.hpp"
 
 namespace game
@@ -71,15 +72,6 @@ namespace game
 			}
 		}
 
-		// Moves the state machine on to next, announcing a change of stage.
-		void SetFlow(World& world, const GameFlow& next)
-		{
-			GameFlow& flow = world.resources.Get<GameFlow>();
-			const Stage from = flow.stage;
-			flow = next;
-			if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
-		}
-
 		void DestroyPellets(World& world)
 		{
 			world.registry.Each<Pellet>([&world](Entity entity, const Pellet&)
@@ -100,6 +92,14 @@ namespace game
 			});
 		}
 	} // namespace
+
+	void SetFlow(World& world, const GameFlow& next)
+	{
+		GameFlow& flow = world.resources.Get<GameFlow>();
+		const Stage from = flow.stage;
+		flow = next;
+		if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
+	}
 
 	bool NotPaused(const World& world)
 	{
@@ -122,10 +122,6 @@ namespace game
 		const auto& controls = world.resources.Get<Controls>();
 		auto& state = world.resources.Get<GameState>();
 
-		if (controls.WasPressed(Action::Pause))
-		{
-			state.paused = !state.paused;
-		}
 		if (controls.WasPressed(Action::ToggleStressTest))
 		{
 			state.stressTest = !state.stressTest;
@@ -280,7 +276,9 @@ namespace game
 		auto& renderer2D = world.resources.Get<engine::graphics::Renderer2D>();
 
 		renderer.Clear(0, 0, 0);
-		renderer2D.SetTint(state.paused ? kPausedTint : Color{});
+		// Behind the title and pause screens the game is dimmed; their text, above it, is not.
+		const bool behindScreen = state.paused || world.resources.Get<GameFlow>().stage == Stage::Title;
+		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
 		const auto drawStart = std::chrono::steady_clock::now();
 		renderer2D.Draw(renderer, world.registry);

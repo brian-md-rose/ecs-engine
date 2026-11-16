@@ -9,6 +9,7 @@ namespace game
 	{
 		bool paused = false;
 		bool stressTest = false;
+		bool quitRequested = false; // the title screen's Quit: the application closes
 	};
 
 	// Resource: prints frames per second and the average time spent drawing, once a second,

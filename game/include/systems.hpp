@@ -7,6 +7,10 @@
 // The game's systems, in the phase each belongs to. MazeGame registers them in this order.
 namespace game
 {
+	// Moves the state machine (the GameFlow resource) on to next, publishing StageChanged if the
+	// stage changes.
+	void SetFlow(engine::ecs::World& world, const GameFlow& next);
+
 	// Run conditions.
 
 	// False while the game is paused.
@@ -22,7 +26,7 @@ namespace game
 	// actions.
 	void ControlsSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
-	// Pause and the stress-test toggle. Runs even while paused, so the game can be unpaused.
+	// The stress-test toggle. Runs even while paused. (Pausing is ScreenSystem's, screens.hpp.)
 	void GameStateSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Update (skipped while paused)
@@ -71,6 +75,6 @@ namespace game
 
 	// Render
 
-	// Draws every shape, dimmed while paused, and reports frame times during the stress test.
+	// Draws everything, dimmed behind the title and pause screens, and reports frame times during the stress test.
 	void RenderSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 } // namespace game

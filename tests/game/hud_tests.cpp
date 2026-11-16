@@ -85,6 +85,10 @@ TEST_CASE("The HUD follows the score, the high score, the lives and the level", 
 {
 	game::MazeGame maze{TestMaze()};
 	Update(maze);
+	CHECK(Shown(maze, HudField::Message).empty()); // the title screen has its own text
+
+	maze.world.resources.Get<game::GameFlow>() = game::GameFlow{};
+	Update(maze);
 	CHECK(Shown(maze, HudField::Score) == "0");
 	CHECK(Shown(maze, HudField::Level) == "1");
 	CHECK(Shown(maze, HudField::Lives) == std::string(static_cast<std::size_t>(game::kStartingLives), '@'));

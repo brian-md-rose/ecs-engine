@@ -48,9 +48,13 @@ namespace
 		game::MazeGame maze{TestMaze()};
 		engine::input::Keyboard keyboard;
 
-		// Starts with the round under way, past the Ready pause, unless told not to.
+		// Chooses START on the title screen, then waits for the round to be under way, past the
+		// Ready pause, unless told not to.
 		explicit Harness(bool startPlaying = true)
 		{
+			REQUIRE(Flow().stage == game::Stage::Title);
+			Tap(Key::Enter);
+			REQUIRE(Flow().stage == game::Stage::Ready);
 			if (startPlaying) UpdateUntil(game::Stage::Playing);
 		}
 
@@ -144,9 +148,9 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
-	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 3);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 3);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 4);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
@@ -357,7 +361,8 @@ TEST_CASE("An enemy catching the player costs a life and puts the player back", 
 	CHECK(h.Points() == game::kPelletPoints);
 }
 
-TEST_CASE("Losing the last life ends the game, and Confirm starts a new one", "[game][systems][gameflow]")
+TEST_CASE("Losing the last life ends the game; Confirm goes to the title, which starts a new one",
+          "[game][systems][gameflow]")
 {
 	Harness h;
 	h.Flow().lives = 1;
@@ -373,6 +378,8 @@ TEST_CASE("Losing the last life ends the game, and Confirm starts a new one", "[
 	h.Update(5 * 60); // waits for a key
 	CHECK(h.Flow().stage == game::Stage::GameOver);
 
+	h.Tap(Key::Enter);
+	CHECK(h.Flow().stage == game::Stage::Title);
 	h.Tap(Key::Enter);
 	CHECK(h.Flow().stage == game::Stage::Ready);
 	CHECK(h.Flow().lives == game::kStartingLives);

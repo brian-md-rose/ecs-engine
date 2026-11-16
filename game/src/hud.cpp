@@ -71,6 +71,7 @@ namespace game
 			return "WELL DONE!";
 		case Stage::GameOver:
 			return "GAME OVER";
+		case Stage::Title:
 		case Stage::Playing:
 		case Stage::Dying:
 			break;
