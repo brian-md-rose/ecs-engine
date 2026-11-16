@@ -20,8 +20,13 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 **Engine** (`engine::engine`, a static library)
 
 - **ECS**: `Entity` handles with generations, sparse-set `ComponentPool`s, a `Registry` whose
-  `Each` loops over the smallest pool, and a `CommandBuffer` for creating and destroying
-  entities safely during iteration. Debug builds assert on dead entities and missing components.
+  `Each` loops over the smallest pool and can leave some out (`Each<Enemy>(Without<Frightened>, ...)`),
+  hooks that run when a component is added or removed (`OnAdd<T>`, `OnRemove<T>`), and a
+  `CommandBuffer` for creating and destroying entities safely during iteration. Debug builds
+  assert on dead entities and missing components.
+- **Parents and children**: an `ecs::Parent` link plus a `graphics::LocalTransform` places an
+  entity relative to its parent, so a panel and its text move together; `DestroyWithChildren`
+  removes a whole tree.
 - **World and resources**: one-of-a-kind data (maze, score, game state) lives in typed
   `Resources` beside the registry ([ADR 0001](docs/decisions/0001-shared-game-data.md)).
 - **Scheduler**: systems run in ordered phases (input, update, late update, render), each

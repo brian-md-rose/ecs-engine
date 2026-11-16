@@ -1,6 +1,7 @@
 #include "application/scheduledgame.hpp"
 
 #include "graphics/interpolation.hpp"
+#include "graphics/transform.hpp"
 
 namespace engine::application
 {
@@ -13,11 +14,15 @@ namespace engine::application
 		scheduler.Run(ecs::Phase::Input, world, context);
 		scheduler.Run(ecs::Phase::Update, world, context);
 		scheduler.Run(ecs::Phase::LateUpdate, world, context);
+		// Children follow their parents once everything has moved.
+		graphics::UpdateWorldTransforms(world.registry);
 	}
 
 	void ScheduledGame::Render(graphics::Renderer& renderer, double alpha)
 	{
 		const ecs::FrameContext context{.alpha = alpha, .renderer = &renderer};
+		// Again, so anything moved outside an update (and a frame drawn before the first) is right.
+		graphics::UpdateWorldTransforms(world.registry);
 		scheduler.Run(ecs::Phase::Render, world, context);
 	}
 } // namespace engine::application
