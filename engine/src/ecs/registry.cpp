@@ -1,5 +1,7 @@
 #include "ecs/registry.hpp"
 
+#include <algorithm>
+
 #include "ecs/entity.hpp"
 
 namespace engine::ecs
@@ -36,5 +38,17 @@ namespace engine::ecs
 	bool Registry::IsAlive(Entity entity) const
 	{
 		return entity.id < generations.size() && generations[entity.id] == entity.generation;
+	}
+
+	std::vector<Registry::ComponentCount> Registry::ComponentCounts() const
+	{
+		std::vector<ComponentCount> counts;
+		counts.reserve(pools.size());
+		for (const auto& [type, pool] : pools)
+		{
+			counts.push_back({.name = pool->Name(), .count = pool->Size()});
+		}
+		std::ranges::sort(counts, {}, &ComponentCount::name);
+		return counts;
 	}
 } // namespace engine::ecs

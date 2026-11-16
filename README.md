@@ -34,6 +34,8 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
   texture, with a camera that scales a fixed logical resolution to the window. Sprites and the
   font are hand-drawn as text ([pixel sheets](docs/pixel-sheets.md)).
 - **Audio**: an SDL3 audio device that plays synthesised sound effects.
+- **Debug panel** (F3): frames per second, draw time, entity counts per component and the
+  time each system takes, drawn on screen with the bitmap font. The scheduler times every system.
 
 **Game**
 
@@ -58,6 +60,7 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 | Enter / Space     | Choose a menu item; new game after game over |
 | P / Esc           | Pause                                        |
 | F1                | Toggle the rendering stress test             |
+| F3                | Toggle the debug panel                       |
 
 ## Layout
 

@@ -215,3 +215,68 @@ TEST_CASE("ScheduledGame runs the fixed phases in order on Update", "[ecs][sched
 	CHECK(Calls(game.world) == std::vector<int>{1, 2, 3}); // never Render
 	CHECK(game.world.resources.Get<SeenDt>().value == 1.0 / 60.0);
 }
+
+namespace
+{
+	// Records whether it was handed the scheduler running it.
+	struct SawScheduler
+	{
+		const Scheduler* scheduler = nullptr;
+	};
+
+	void RecordScheduler(World& world, const FrameContext& context)
+	{
+		world.resources.Get<SawScheduler>().scheduler = context.scheduler;
+	}
+
+	bool Never(const World&)
+	{
+		return false;
+	}
+} // namespace
+
+TEST_CASE("Systems are given the scheduler running them", "[ecs][scheduler]")
+{
+	World world;
+	world.resources.Emplace<SawScheduler>();
+	Scheduler scheduler;
+	scheduler.Add(Phase::Update, RecordScheduler);
+	scheduler.Run(Phase::Update, world, FrameContext{});
+	CHECK(world.resources.Get<SawScheduler>().scheduler == &scheduler);
+}
+
+TEST_CASE("The scheduler times each system and names it", "[ecs][scheduler]")
+{
+	World world;
+	world.resources.Emplace<Log>();
+	Scheduler scheduler;
+	scheduler.Add(Phase::Input, Record<1>);
+	scheduler.Add(Phase::Update, "Named", Record<2>);
+	scheduler.Add(Phase::Update, "Skipped", Record<3>, Never);
+
+	CHECK(scheduler.Timings().size() == 3);
+	CHECK(scheduler.Timings()[1].averageMs == 0.0); // never run yet
+
+	scheduler.Run(Phase::Input, world, FrameContext{});
+	scheduler.Run(Phase::Update, world, FrameContext{});
+
+	const std::vector<Scheduler::SystemTiming> timings = scheduler.Timings();
+	REQUIRE(timings.size() == 3);
+	CHECK(timings[0].phase == Phase::Input);
+	CHECK(timings[0].name == "Input #0"); // unnamed: its phase and place
+	CHECK(timings[1].phase == Phase::Update);
+	CHECK(timings[1].name == "Named");
+	CHECK(timings[1].averageMs >= 0.0);
+	CHECK_FALSE(timings[1].skipped);
+	CHECK(timings[2].name == "Skipped");
+	CHECK(timings[2].skipped);
+	CHECK(timings[2].averageMs == 0.0);
+}
+
+TEST_CASE("PhaseName names every phase", "[ecs][scheduler]")
+{
+	CHECK(engine::ecs::PhaseName(Phase::Input) == "Input");
+	CHECK(engine::ecs::PhaseName(Phase::Update) == "Update");
+	CHECK(engine::ecs::PhaseName(Phase::LateUpdate) == "LateUpdate");
+	CHECK(engine::ecs::PhaseName(Phase::Render) == "Render");
+}

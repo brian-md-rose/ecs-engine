@@ -24,7 +24,7 @@ namespace engine::application
 		    {SDL_SCANCODE_S, input::Key::S},          {SDL_SCANCODE_D, input::Key::D},
 		    {SDL_SCANCODE_P, input::Key::P},          {SDL_SCANCODE_SPACE, input::Key::Space},
 		    {SDL_SCANCODE_RETURN, input::Key::Enter}, {SDL_SCANCODE_ESCAPE, input::Key::Escape},
-		    {SDL_SCANCODE_F1, input::Key::F1},
+		    {SDL_SCANCODE_F1, input::Key::F1},        {SDL_SCANCODE_F3, input::Key::F3},
 		};
 
 		std::optional<input::Key> ToKey(SDL_Scancode scancode)

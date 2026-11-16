@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <cstddef>
 #include <vector>
 
@@ -38,6 +39,10 @@ namespace engine::graphics
 		bool uploadPending = false;
 		Color tint{255, 255, 255};
 		int untintedFromLayer = 256;
+		std::chrono::steady_clock::duration lastDrawTime{};
+
+		// Draw without the timing.
+		void Submit(Renderer& renderer, ecs::Registry& registry, float alpha);
 
 	public:
 		Camera camera;
@@ -75,5 +80,8 @@ namespace engine::graphics
 
 		// Shapes, sprites and characters drawn by the last Draw, after culling.
 		[[nodiscard]] std::size_t ItemCount() const noexcept { return batch.ItemCount(); }
+
+		// How long the last Draw took, building the batch and handing it to the GPU.
+		[[nodiscard]] std::chrono::steady_clock::duration LastDrawTime() const noexcept { return lastDrawTime; }
 	};
 } // namespace engine::graphics

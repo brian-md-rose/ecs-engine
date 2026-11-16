@@ -4,6 +4,7 @@
 
 #include "components.hpp"
 #include "core/framestats.hpp"
+#include "debug/debugpanel.hpp"
 #include "difficulty.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -147,13 +148,14 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	Harness h;
 	CHECK(h.maze.world.resources.Has<game::GameState>());
 	CHECK(h.maze.world.resources.Has<engine::core::FrameStats>());
+	CHECK(h.maze.world.resources.Has<engine::debug::DebugPanel>());
 	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
-	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 3);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 4); // with the debug panel's toggle
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
 	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 7);
-	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
+	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 2); // the debug panel, then Render
 
 	const Transform start = h.PlayerTransform();
 	CHECK(start.position.x == Start().x);

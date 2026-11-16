@@ -1,31 +1,28 @@
 #include "core/framestats.hpp"
 
-#include <cstdio>
-
 namespace engine::core
 {
-	void FrameStats::Reset()
+	void FrameStats::Reset(Clock::time_point now)
 	{
-		windowStart = Clock::now();
+		windowStart = now;
 		drawTime = {};
 		frames = 0;
 	}
 
-	void FrameStats::AddFrame(Clock::duration draw, std::size_t items)
+	bool FrameStats::AddFrame(Clock::duration draw, std::size_t drawn, Clock::time_point now)
 	{
 		drawTime += draw;
 		++frames;
 
-		const std::chrono::duration<double> elapsed = Clock::now() - windowStart;
-		if (elapsed.count() < 1.0)
-		{
-			return;
-		}
+		const std::chrono::duration<double> elapsed = now - windowStart;
+		if (elapsed.count() < 1.0) return false;
 
 		const std::chrono::duration<double, std::milli> averageDraw = drawTime / frames;
-		std::printf("%s: %zu items, %.1f fps, draw %.3f ms/frame\n", label.c_str(), items,
-		            static_cast<double>(frames) / elapsed.count(), averageDraw.count());
-		std::fflush(stdout);
-		Reset();
+		fps = static_cast<double>(frames) / elapsed.count();
+		drawMs = averageDraw.count();
+		items = drawn;
+		hasReport = true;
+		Reset(now);
+		return true;
 	}
 } // namespace engine::core
