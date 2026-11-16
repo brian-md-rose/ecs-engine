@@ -11,7 +11,7 @@ Decisions so far:
 
 | Area      | Choice                                                       |
 |-----------|--------------------------------------------------------------|
-| Platform  | SDL3, fetched with CMake `FetchContent`                      |
+| Platform  | SDL3, vendored as a git submodule in `thirdparty/SDL`        |
 | Art       | Coloured shapes first; original sprites since Phase 7        |
 | Levels    | Plain-text maze files loaded from `assets/`                  |
 | Testing   | Gameplay logic stays SDL-free so it can be unit-tested on CI |
@@ -22,21 +22,21 @@ Decisions so far:
 
 Everything else builds on the registry, so fix its sharp edges first.
 
-- [ ] Assert on dead entities and missing components in `Registry` and `ComponentPool`.
-- [ ] Add an `Entity::Null` constant. A default `Entity{}` is currently `{0, 0}`, which is a real entity.
-- [ ] Make `Each` loop over the smallest pool. Stop `HasComponent` and `GetComponent` from creating empty pools.
-- [ ] Add a deferred command buffer so systems can create and destroy entities and components safely while `Each` is iterating.
-- [ ] Small cleanups (see the GitHub issues).
+- [x] Assert on dead entities and missing components in `Registry` and `ComponentPool`.
+- [x] Add an `Entity::Null` constant. A default `Entity{}` is currently `{0, 0}`, which is a real entity.
+- [x] Make `Each` loop over the smallest pool. Stop `HasComponent` and `GetComponent` from creating empty pools.
+- [x] Add a deferred command buffer so systems can create and destroy entities and components safely while `Each` is iterating.
+- [x] Small cleanups (see the GitHub issues).
 
 **Done when:** tests cover destroying entities during iteration and the asserts fire in Debug builds.
 
 ## Phase 1 – Platform layer (`engine/platform/`)
 
-- [ ] Fetch SDL3 via `FetchContent`. Keep SDL types out of public engine headers.
-- [ ] `Window`: create, resize, and scale integer-sized pixels to fit.
-- [ ] `Input`: map raw keys to actions (`MoveUp`, `Pause`, …) and remember the last direction pressed.
-- [ ] `Clock` plus an `Application` main loop with a fixed 60 Hz update and variable-rate rendering.
-- [ ] CI: build SDL on Linux with the dummy video driver, or add an option to skip the platform layer on CI runners.
+- [x] Add SDL3 (a git submodule, built statically). Keep SDL types out of public engine headers.
+- [x] `Window`: create, resize, and scale integer-sized pixels to fit.
+- [x] `Input`: map raw keys to actions (`MoveUp`, `Pause`, …) and remember the last direction pressed.
+- [x] `Clock` plus an `Application` main loop with a fixed 60 Hz update and variable-rate rendering.
+- [x] CI: build SDL on Linux with the dummy video driver, or add an option to skip the platform layer on CI runners.
 
 **Done when:** a window opens, a square moves with the arrow keys, and the update rate is stable.
 

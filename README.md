@@ -2,18 +2,18 @@
 
 [![CI](https://github.com/brian-md-rose/ecs-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/brian-md-rose/ecs-engine/actions/workflows/ci.yml)
 
-A learning-focused 2D game engine built on a hand-written Entity Component System, with an
-original maze-chase game as its test bed: eat every pellet in the maze, avoid the enemies, and
-grab power pellets to turn the tables.
+A learning-focused 2D game engine built on a hand-written Entity Component System, and
+**Tangle Run**, an original maze-chase game made with it: eat every pellet in the maze, dodge
+four enemies with their own personalities, and grab power pellets to turn the tables. The
+name, characters, mazes, art and sound are all original.
 
-The work is **engine-first**: each phase adds a reusable engine system, and the game stays a thin
-layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and progress.
+The work is **engine-first**: each phase added a reusable engine system, and the game stays a
+thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
 ## Status
 
-The roadmap is complete through Phase 5. You can steer the player around the first maze, eat pellets and power
-pellets for points, and clear the level, which then restarts. Enemies and their AI come next
-(Phase 6), then polish: fonts, audio, sprites and menus (Phase 7).
+All seven roadmap phases are done. The game is playable from title screen to game over, with
+enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 
 ## Features
 
@@ -24,44 +24,52 @@ pellets for points, and clear the level, which then restarts. Enemies and their 
   entities safely during iteration. Debug builds assert on dead entities and missing components.
 - **World and resources**: one-of-a-kind data (maze, score, game state) lives in typed
   `Resources` beside the registry ([ADR 0001](docs/decisions/0001-shared-game-data.md)).
-- **Scheduler**: systems run in ordered phases (input → update → late update → render), each
+- **Scheduler**: systems run in ordered phases (input, update, late update, render), each
   with an optional run condition.
 - **Events**: a typed event bus so scoring, audio and UI don't depend on each other
   ([ADR 0002](docs/decisions/0002-events.md)).
 - **Platform**: SDL3 window, keyboard input and an application loop with a fixed 60 Hz update
   and variable-rate rendering. SDL types stay out of the public headers.
-- **Graphics**: `Transform` and `Shape` components drawn in batches by `Renderer2D`, with a
-  camera that scales a fixed logical resolution to the window.
+- **Graphics**: shapes, animated sprites and bitmap-font text drawn in batches from one atlas
+  texture, with a camera that scales a fixed logical resolution to the window. Sprites and the
+  font are hand-drawn as text ([pixel sheets](docs/pixel-sheets.md)).
+- **Audio**: an SDL3 audio device that plays synthesised sound effects.
 
 **Game**
 
-- Plain-text mazes loaded from `game/assets/mazes/` with line-numbered errors
-  ([format](docs/maze-format.md)).
-- Grid movement with buffered turns, corner tolerance, wall stops and wrap tunnels, written as
-  pure functions.
-- Pellets, power pellets and score, and a state machine:
-  Ready → Playing → Dying → LevelComplete → GameOver.
+- Plain-text mazes ([format](docs/maze-format.md)) and grid movement with buffered turns,
+  corner tolerance, wall stops and wrap tunnels, written as pure functions.
+- Four enemies that steer toward a target tile, each choosing it differently, and switch
+  between patrol, chase, frightened and returning home on a per-level schedule
+  ([enemies](docs/enemies.md)).
+- Pellets, power pellets, score, high score and lives, driven by a state machine
+  (Ready, Playing, Dying, LevelComplete, GameOver).
+- A difficulty curve read from `game/assets/levels.txt`, editable without rebuilding
+  ([difficulty](docs/difficulty.md)).
+- Title screen, pause menu and HUD.
+
+Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 
 ## Controls
 
-| Key                  | Action                          |
-|----------------------|---------------------------------|
-| Arrow keys / WASD    | Move                            |
-| P / Esc              | Pause                           |
-| Enter / Space        | Start a new game after game over |
-| F1                   | Toggle the rendering stress test |
+| Key               | Action                                       |
+|-------------------|----------------------------------------------|
+| Arrow keys / WASD | Move; pick a menu item                       |
+| Enter / Space     | Choose a menu item; new game after game over |
+| P / Esc           | Pause                                        |
+| F1                | Toggle the rendering stress test             |
 
 ## Layout
 
 ```
 engine/   static library (engine::engine)
-  include/  application/ core/ ecs/ graphics/ input/
+  include/  application/ audio/ core/ ecs/ graphics/ input/
   src/
-game/     the maze game executable
-  assets/   mazes and other run-time files, copied next to the executable on every build
+game/     Tangle Run, the game executable
+  assets/   mazes, levels, sprites and font, copied next to the executable on every build
   include/ src/
 tests/    Catch2 unit tests for the engine and the game's SDL-free logic
-docs/     roadmap, style guide, maze format and decision records
+docs/     roadmap, style guide, file formats, enemy design and decision records
 thirdparty/SDL   SDL3, as a git submodule
 ```
 
