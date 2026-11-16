@@ -9,6 +9,7 @@
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
+#include "stage.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -16,7 +17,8 @@ namespace
 	using engine::ecs::Entity;
 	using game::HudField;
 	using game::HudView;
-	using game::Stage;
+	using game::Round;
+	using game::Screen;
 
 	constexpr double kStep = 1.0 / 60.0;
 
@@ -55,7 +57,8 @@ namespace
 
 TEST_CASE("HudLine shows the numbers as they are", "[game][hud]")
 {
-	const HudView view{.score = 1230, .highScore = 4500, .level = 3, .lives = 2, .stage = Stage::Playing};
+	const HudView view{
+	    .score = 1230, .highScore = 4500, .level = 3, .lives = 2, .screen = Screen::Playing, .round = Round::Active};
 	CHECK(game::HudLine(HudField::Score, view) == "1230");
 	CHECK(game::HudLine(HudField::HighScore, view) == "4500");
 	CHECK(game::HudLine(HudField::Level, view) == "3");
@@ -63,13 +66,18 @@ TEST_CASE("HudLine shows the numbers as they are", "[game][hud]")
 	CHECK(game::HudLine(HudField::Lives, HudView{.lives = -1}).empty());
 }
 
-TEST_CASE("HudLine's message follows the stage", "[game][hud]")
+TEST_CASE("HudLine's message follows the screen and the round", "[game][hud]")
 {
-	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::Ready}) == "READY!");
-	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::Playing}).empty());
-	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::Dying}).empty());
-	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::LevelComplete}) == "WELL DONE!");
-	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::GameOver}) == "GAME OVER");
+	const auto message = [](Screen screen, Round round)
+	{
+		return game::HudLine(HudField::Message, HudView{.screen = screen, .round = round});
+	};
+	CHECK(message(Screen::Playing, Round::Ready) == "READY!");
+	CHECK(message(Screen::Playing, Round::Active).empty());
+	CHECK(message(Screen::Playing, Round::Dying).empty());
+	CHECK(message(Screen::GameOver, Round::Active) == "GAME OVER");
+	CHECK(message(Screen::Title, Round::Ready).empty()); // a stale round means nothing off the Playing screen
+	CHECK(message(Screen::LevelTransition, Round::Ready).empty());
 }
 
 TEST_CASE("The HUD follows the score, the high score, the lives and the level", "[game][hud]")
@@ -78,7 +86,7 @@ TEST_CASE("The HUD follows the score, the high score, the lives and the level", 
 	Update(maze);
 	CHECK(Shown(maze, HudField::Message).empty()); // the title screen has its own text
 
-	maze.world.resources.Get<game::GameFlow>() = game::GameFlow{};
+	gametest::RequestPlaying(maze);
 	Update(maze);
 	CHECK(Shown(maze, HudField::Score) == "0");
 	CHECK(Shown(maze, HudField::Level) == "1");

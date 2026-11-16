@@ -4,14 +4,14 @@
 #include <string>
 #include <string_view>
 
-#include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
-#include "gameflow.hpp"
 
-// The title screen (start a game, or quit) and the pause screen (carry on, or give up and go
-// back to the title), on top of the state machine in gameflow.hpp. The decisions are pure
-// functions (StepScreens); ScreenSystem applies them and ScreenTextSystem shows them.
+// The screens that sit on top of the game: title, options, name entry, the pause menu and the
+// level transition. Each is spawned by an enter system when its state begins, as entities that
+// carry DespawnOnExit, so they vanish when it ends (see gamestates.cpp for what is registered
+// where). The decisions are pure functions (MoveSelection, options.hpp, nameentry.hpp); the
+// input systems below apply them, and ScreenTextSystem keeps the changing text up to date.
 namespace game
 {
 	inline constexpr std::uint8_t kMenuLayer = 20; // above the HUD, and left undimmed
@@ -21,6 +21,7 @@ namespace game
 	enum class TitleItem : std::uint8_t
 	{
 		Start,
+		Options,
 		Quit,
 		Count
 	};
@@ -39,73 +40,63 @@ namespace game
 	struct MenuCursor
 	{
 		std::size_t title = 0;
+		std::size_t options = 0;
 		std::size_t pause = 0;
-	};
-
-	// This update's menu keys.
-	struct ScreenInput
-	{
-		bool up = false;
-		bool down = false;
-		bool confirm = false;
-		bool pause = false;
-	};
-
-	enum class ScreenAction : std::uint8_t
-	{
-		None,
-		StartGame,  // title: a new game
-		Quit,       // title: close the game
-		Pause,      // during a game
-		Resume,     // pause screen: carry on
-		QuitToTitle // pause screen: abandon the game
-	};
-
-	struct ScreenStep
-	{
-		MenuCursor cursor{};
-		ScreenAction action = ScreenAction::None;
 	};
 
 	// The item selected after up or down, wrapping round at either end.
 	[[nodiscard]] std::size_t MoveSelection(std::size_t selected, std::size_t count, bool up, bool down) noexcept;
 
-	// A game can be paused in every stage but Title and GameOver, which wait for a key anyway.
-	[[nodiscard]] bool CanPause(Stage stage) noexcept;
-
-	// One update of the menus. On the title screen, up and down choose and confirm acts. While
-	// paused, the same on the pause menu, and pause resumes. Otherwise, pause pauses (when
-	// CanPause) and opens the pause menu on its first item. Pure.
-	[[nodiscard]] ScreenStep StepScreens(MenuCursor cursor, Stage stage, bool paused,
-	                                     const ScreenInput& input) noexcept;
-
 	// A menu line: "> LABEL" when selected, "  LABEL" when not, so items stay in line.
 	[[nodiscard]] std::string MenuLine(std::string_view label, bool selected);
 
-	// Which screen a piece of text belongs to.
-	enum class Screen : std::uint8_t
+	// What a piece of changing screen text shows.
+	enum class TextKind : std::uint8_t
 	{
-		Title,
-		Pause
+		TitleItem,  // a title menu line, with its cursor
+		PauseItem,  // a pause menu line, with its cursor
+		OptionItem, // an options line (OptionText), with its cursor
+		NameSlot    // one character of the name being entered
 	};
 
-	// Component: text shown only while its screen is up. A menu item (item < its menu's count)
-	// shows the cursor when selected; anything else (a heading, a hint) is shown as it is.
+	// Component: text that follows the game's resources. item is the menu item or name slot it
+	// belongs to; label is the menu item's own text. Text that never changes is a plain Text.
 	struct ScreenText
 	{
-		Screen screen = Screen::Title;
+		TextKind kind = TextKind::TitleItem;
 		std::string label{};
-		std::size_t item = static_cast<std::size_t>(-1);
+		std::size_t item = 0;
 	};
 
-	// Setup: creates the title and pause screens' text. Creates entities directly, so call it
-	// during setup.
-	void SpawnScreens(engine::ecs::Registry& registry);
+	// Enter systems: spawn what a screen shows. Everything they create is scoped to the state
+	// they are entered for, so leaving it removes it.
+	void SpawnTitleScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	void SpawnOptionsScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	void SpawnNameEntryScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	void SpawnLevelTransitionScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	void SpawnPauseMenu(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
-	// Input, after ControlsSystem: steps the menus and carries out what they say (starts a game,
-	// asks to quit, pauses, resumes, goes back to the title).
-	void ScreenSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	// Input systems, each for its own screen (see MazeGame for the run conditions).
 
-	// LateUpdate (always): shows the text of the screen that is up, and hides the rest.
+	// Title: up and down choose, confirm acts (START begins a game, OPTIONS opens the options,
+	// QUIT asks the game to close).
+	void TitleSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// Options: up and down choose; left, right or confirm change the item (BACK: confirm goes
+	// back); pause (Escape) goes back to the title.
+	void OptionsSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// Name entry: edits the name (nameentry.hpp); confirm records the score under it, saves it
+	// and goes on to GameOver.
+	void NameEntrySystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// GameOver: confirm goes back to the title.
+	void GameOverSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// While Playing: pause pauses, and on the pause menu resumes; up, down and confirm work the
+	// menu (CONTINUE, or QUIT TO TITLE, which abandons the game).
+	void PauseSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// LateUpdate (always): fills in every ScreenText from the cursor, the settings and the name.
 	void ScreenTextSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 } // namespace game

@@ -19,11 +19,13 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "ecs/states.hpp"
 #include "enemymodes.hpp"
 #include "enemysystems.hpp"
 #include "events.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
+#include "gamestates.hpp"
 #include "graphics/animation.hpp"
 #include "graphics/animationsystem.hpp"
 #include "graphics/camera.hpp"
@@ -33,6 +35,8 @@
 #include "gridmovement.hpp"
 #include "hud.hpp"
 #include "looks.hpp"
+#include "nameentry.hpp"
+#include "options.hpp"
 #include "save.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
@@ -84,8 +88,7 @@ namespace game
 
 		SaveFile& save = world.resources.Get<SaveFile>();
 		save.path = DefaultSaveFile();
-		save.savedHighScore = LoadHighScore(save.path);
-		world.resources.Get<HighScore>().points = save.savedHighScore;
+		ApplySavedGame(world, LoadSavedGame(save.path));
 	}
 
 	MazeGame::MazeGame(const TileMap& maze, const GameAssets& assets)
@@ -95,8 +98,12 @@ namespace game
 
 	MazeGame::~MazeGame()
 	{
-		// Closing the window part-way through a game ends it without a GameOver.
-		if (valid) SaveHighScore(world);
+		// Closing the window part-way through a game ends it without a GameOver: a score that beat
+		// the record still counts, under the name last used.
+		if (!valid) return;
+		RecordScore(world, NameOf(world.resources.Get<NameEntry>()));
+		SaveHighScore(world);
+		SaveSettings(world);
 	}
 
 	bool MazeGame::WantsToQuit() const
@@ -107,6 +114,8 @@ namespace game
 
 	void MazeGame::Build(const TileMap& maze, const GameAssets& assets)
 	{
+		using engine::ecs::InState;
+		using engine::ecs::NotInState;
 		using engine::ecs::Phase;
 		using engine::graphics::Animation;
 		using engine::graphics::Sprite;
@@ -114,7 +123,9 @@ namespace game
 
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
-		world.resources.Emplace<GameFlow>(GameFlow{.stage = Stage::Title});
+		world.resources.Emplace<GameFlow>();
+		world.resources.Emplace<Settings>();
+		world.resources.Emplace<NameEntry>();
 		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ModeClock>();
@@ -150,26 +161,33 @@ namespace game
 		registry.Add<Animation>(player, Animation{.clip = clips.playerDown});
 		SpawnEnemies(registry, map, origin, clips);
 		SpawnHud(registry, map, origin);
-		SpawnScreens(registry);
 
-		// The whole frame, in run order.
+		// The whole frame, in run order. A system for one screen carries an InState condition.
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);
-		scheduler.Add(Phase::Input, "Screen", ScreenSystem);
+		scheduler.Add(Phase::Input, "Title", TitleSystem, InState<Screen::Title>);
+		scheduler.Add(Phase::Input, "Options", OptionsSystem, InState<Screen::Options>);
+		scheduler.Add(Phase::Input, "NameEntry", NameEntrySystem, InState<Screen::NameEntry>);
+		scheduler.Add(Phase::Input, "GameOver", GameOverSystem, InState<Screen::GameOver>);
+		scheduler.Add(Phase::Input, "Pause", PauseSystem, InState<Screen::Playing>);
 		scheduler.Add(Phase::Input, "GameState", GameStateSystem);
-		scheduler.Add(Phase::Update, "GameFlow", GameFlowSystem, NotPaused);
-		scheduler.Add(Phase::Update, "PlayerInput", PlayerInputSystem, IsPlaying);
-		scheduler.Add(Phase::Update, "EnemyMode", EnemyModeSystem, IsPlaying);
-		scheduler.Add(Phase::Update, "EnemySteering", EnemySteeringSystem, IsPlaying);
-		scheduler.Add(Phase::Update, "GridMovement", GridMovementSystem, IsPlaying);
-		scheduler.Add(Phase::LateUpdate, "Collision", CollisionSystem, IsPlaying);
+		scheduler.Add(Phase::Update, "RoundTimer", RoundTimerSystem, InState<Pause::Running>);
+		scheduler.Add(Phase::Update, "LevelTransition", LevelTransitionSystem, InState<Screen::LevelTransition>);
+		scheduler.Add(Phase::Update, "PlayerInput", PlayerInputSystem, IsRoundLive);
+		scheduler.Add(Phase::Update, "EnemyMode", EnemyModeSystem, IsRoundLive);
+		scheduler.Add(Phase::Update, "EnemySteering", EnemySteeringSystem, IsRoundLive);
+		scheduler.Add(Phase::Update, "GridMovement", GridMovementSystem, IsRoundLive);
+		scheduler.Add(Phase::LateUpdate, "Collision", CollisionSystem, IsRoundLive);
 		scheduler.Add(Phase::LateUpdate, "EnemyLook", EnemyLookSystem);
 		scheduler.Add(Phase::LateUpdate, "PlayerLook", PlayerLookSystem);
-		scheduler.Add(Phase::LateUpdate, "Animation", engine::graphics::AnimationSystem, NotPaused);
+		scheduler.Add(Phase::LateUpdate, "Animation", engine::graphics::AnimationSystem, NotInState<Pause::Paused>);
 		scheduler.Add(Phase::LateUpdate, "Hud", HudSystem);
 		scheduler.Add(Phase::LateUpdate, "ScreenText", ScreenTextSystem);
 		scheduler.Add(Phase::LateUpdate, "Audio", AudioSystem);
-		engine::debug::AddDebugPanel(world, scheduler); // F3; before RenderSystem, so its text is current
+		// F3 toggles the debug panel; it goes before RenderSystem, so its text is current.
+		engine::debug::AddDebugPanel(world, scheduler);
 		scheduler.Add(Phase::Render, "Render", RenderSystem);
+
+		AddGameStates(world, scheduler);
 
 		// Who reacts to what, in delivery order.
 		world.events.Subscribe<PelletEaten>(AddPelletScore);
@@ -186,8 +204,5 @@ namespace game
 		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
-		world.events.Subscribe<StageChanged>(SaveHighScoreOnStageChange); // first: before ResetRound clears the score
-		world.events.Subscribe<StageChanged>(ResetRound);
-		world.events.Subscribe<StageChanged>(ResetEnemies);
 	}
 } // namespace game

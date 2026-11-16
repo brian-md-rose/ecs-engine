@@ -82,7 +82,7 @@ namespace game
 	void AddEnemyScore(engine::ecs::World& world, const EnemyEaten& event);
 	void SendEnemyHome(engine::ecs::World& world, const EnemyEaten& event);
 
-	// StageChanged: when the actors are put back (ResetFor), the enemies go back into the house
+	// When the actors are put back (ResetActors), the enemies go back into the house
 	// to wait for their release times again, and the ModeClock starts over.
-	void ResetEnemies(engine::ecs::World& world, const StageChanged& event);
+	void ResetEnemies(engine::ecs::World& world);
 } // namespace game

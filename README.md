@@ -12,7 +12,7 @@ thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
 ## Status
 
-All seven roadmap phases are done. The game is playable from title screen to game over, with
+All eight roadmap phases are done. The game is playable from title screen to game over, with
 enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 
 ## Features
@@ -26,6 +26,9 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
   `Resources` beside the registry ([ADR 0001](docs/decisions/0001-shared-game-data.md)).
 - **Scheduler**: systems run in ordered phases (input, update, late update, render), each
   with an optional run condition.
+- **States**: `State<T>` / `NextState<T>` with enter and exit systems, `InState` run conditions,
+  `DespawnOnExit` for screen-scoped entities and sub-states, applied once per update before input
+  ([ADR 0003](docs/decisions/0003-game-states.md)).
 - **Events**: a typed event bus so scoring, audio and UI don't depend on each other
   ([ADR 0002](docs/decisions/0002-events.md)).
 - **Platform**: SDL3 window, keyboard input and an application loop with a fixed 60 Hz update
@@ -44,11 +47,15 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 - Four enemies that steer toward a target tile, each choosing it differently, and switch
   between patrol, chase, frightened and returning home on a per-level schedule
   ([enemies](docs/enemies.md)).
-- Pellets, power pellets, score, high score and lives, driven by a state machine
-  (Ready, Playing, Dying, LevelComplete, GameOver).
+- Pellets, power pellets, score, high score and lives, driven by engine states
+  (screens: Title, Options, NameEntry, Playing, LevelTransition, GameOver; the round and pause
+  are sub-states of Playing; see [screens](docs/screens.md)).
 - A difficulty curve read from `game/assets/levels.txt`, editable without rebuilding
   ([difficulty](docs/difficulty.md)).
 - Title screen, pause menu and HUD.
+- Options screen (sound on or off, starting lives), saved with the high score.
+- Arcade-style name entry for a new high score, shown on the title screen.
+- A level-transition screen between levels.
 
 Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 
@@ -56,9 +63,9 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 
 | Key               | Action                                       |
 |-------------------|----------------------------------------------|
-| Arrow keys / WASD | Move; pick a menu item                       |
-| Enter / Space     | Choose a menu item; new game after game over |
-| P / Esc           | Pause                                        |
+| Arrow keys / WASD | Move; pick a menu item; change an option or a name letter (up/down), move between name slots or change an option (left/right) |
+| Enter / Space     | Choose a menu item or change an option; confirm a name; leave GAME OVER |
+| P / Esc           | Pause; go back from the options screen       |
 | F1                | Toggle the rendering stress test             |
 | F3                | Toggle the debug panel                       |
 

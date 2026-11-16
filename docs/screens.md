@@ -1,0 +1,56 @@
+# Screens
+
+How Tangle Run moves between its screens. The mechanism is the engine's state system
+([ADR 0003](decisions/0003-game-states.md)); the states are in `game/include/gameflow.hpp` and
+what each one sets up is registered in `game/src/gamestates.cpp`.
+
+```
+Title ──START──► Playing ──(no lives, new high score)──► NameEntry ──► GameOver ──► Title
+  │                │  │
+  │                │  └──(no lives)────────────────────────────────────► GameOver
+  │                ├──(level cleared)──► LevelTransition ──(2.5 s)──► Playing
+  │                └──(quit from pause, new high score)──► NameEntry
+  └──OPTIONS──► Options ──Esc / BACK──► Title
+```
+
+Inside `Playing`, `Round` goes Ready (2 s) → Active → Dying (1.5 s) → Ready, and `Pause` goes
+Running ⇄ Paused. Quitting from the pause menu goes to the title, by way of the name entry
+when the score beats the record.
+
+## Options
+
+Up and down choose, left and right (or Enter) change, Esc or BACK goes back.
+
+| Item  | Values             | Effect                                          |
+|-------|--------------------|-------------------------------------------------|
+| SOUND | ON, OFF            | OFF mutes every sound effect (`AudioSystem`)    |
+| LIVES | 1 to 9 (default 3) | Tries at the start of each new game             |
+
+Saved to `save.txt` when the screen is left (and when the game closes) as `sound 0|1` and
+`lives N`, and loaded at start-up. A missing or out-of-range value keeps its default.
+
+## Name entry
+
+After a game that beats the high score. The eight slots start from the last name used
+(`A` for a first-time player). Up and down change the letter in the current slot through
+A to Z, 0 to 9 and a space; left and right move between slots; Enter records the score under
+the name and goes on to GAME OVER. A blank name is saved as `PLAYER`.
+
+Saved as `highScore N` and `highScoreName NAME`. The title screen shows both under the menu.
+Closing the window during a game saves a score that beats the record under the last name used.
+
+## Level transition
+
+Clearing the last pellet shows WELL DONE!, `LEVEL n` and the score for 2.5 seconds over the
+cleared maze, then the next level starts with its pellets back and the score carried on.
+
+## save.txt
+
+```
+highScore 1895
+highScoreName ADA
+lives 3
+sound 1
+```
+
+Other lines are left alone when the game saves.

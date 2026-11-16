@@ -22,10 +22,13 @@ namespace game
 	inline constexpr engine::graphics::Color kHudMessageColor{255, 220, 90};
 	inline constexpr engine::graphics::Color kHudLivesColor{80, 230, 210};
 
-	// Resource: the best score so far this session.
+	// Resource: the best score. points is what the HUD shows, and follows the score up while a game
+	// is played; record is the best of finished games, set by whoever name is, and what is saved.
 	struct HighScore
 	{
 		int points = 0;
+		int record = 0;
+		std::string name{}; // who set the record; empty if nobody has
 	};
 
 	// What a piece of the HUD shows.
@@ -54,11 +57,12 @@ namespace game
 		int highScore = 0;
 		int level = 1;
 		int lives = 0;
-		Stage stage = Stage::Ready;
+		Screen screen = Screen::Playing;
+		Round round = Round::Active; // only meaningful while the screen is Playing
 	};
 
 	// The text for one field, in capitals (the font has no small letters). Lives are one '@'
-	// icon per try left; the message is empty in stages that have none. Pure.
+	// icon per try left; the message is empty when the game has none. Pure.
 	[[nodiscard]] std::string HudLine(HudField field, const HudView& view);
 
 	// Setup: creates the HUD's labels and fields, the message centred across the middle row of

@@ -21,6 +21,7 @@
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
+#include "stage.hpp"
 #include "targeting.hpp"
 #include "tilemap.hpp"
 
@@ -31,8 +32,8 @@ namespace
 	using game::EnemyBrain;
 	using game::EnemyState;
 	using game::Personality;
-	using game::Stage;
 	using game::TilePosition;
+	using gametest::Stage;
 
 	constexpr double kStep = 1.0 / 60.0;
 	constexpr int kStepsPerSecond = 60;
@@ -92,11 +93,12 @@ namespace
 
 		explicit Harness(const game::TileMap& map) : maze(map, TestAssets())
 		{
-			maze.world.resources.Get<game::GameFlow>() = game::GameFlow{}; // past the title screen
+			gametest::RequestPlaying(maze); // past the title screen
 			UpdateUntilStage(Stage::Playing);
 		}
 
 		[[nodiscard]] game::GameFlow& Flow() { return maze.world.resources.Get<game::GameFlow>(); }
+		[[nodiscard]] Stage Now() const { return gametest::StageOf(maze); }
 		[[nodiscard]] game::ModeClock& Clock() { return maze.world.resources.Get<game::ModeClock>(); }
 		[[nodiscard]] int Points() { return maze.world.resources.Get<game::Score>().points; }
 
@@ -111,11 +113,11 @@ namespace
 
 		void UpdateUntilStage(Stage stage)
 		{
-			for (int i = 0; i < 60 * kStepsPerSecond && Flow().stage != stage; ++i)
+			for (int i = 0; i < 60 * kStepsPerSecond && Now() != stage; ++i)
 			{
 				Update();
 			}
-			REQUIRE(Flow().stage == stage);
+			REQUIRE(Now() == stage);
 		}
 
 		void Tap(Key key)
@@ -176,7 +178,7 @@ TEST_CASE("Enemies leave the house one after another and come out of the door", 
 	std::array<float, game::kPersonalityCount> outAt{};
 	std::array<bool, game::kPersonalityCount> out{};
 	float seconds = 0.0f;
-	for (int step = 0; step < 12 * kStepsPerSecond && h.Flow().stage == Stage::Playing; ++step)
+	for (int step = 0; step < 12 * kStepsPerSecond && h.Now() == Stage::Playing; ++step)
 	{
 		h.Update();
 		seconds += static_cast<float>(kStep);
@@ -241,7 +243,7 @@ TEST_CASE("A power pellet frightens the enemies, and the player can eat one for 
 	CHECK(h.Brain(grit).state == EnemyState::Returning);
 	CHECK(h.Points() == beforeEating + game::EnemyPoints(0));
 	CHECK(h.Clock().eatenInFright == 1);
-	CHECK(h.Flow().stage == Stage::Playing); // eaten, not caught
+	CHECK(h.Now() == Stage::Playing); // eaten, not caught
 	CHECK(h.Flow().lives == game::kStartingLives);
 	h.Update(); // it changes its look on the next update
 	CHECK(h.Look(grit) == h.Clips().returning);
@@ -284,10 +286,9 @@ TEST_CASE("Enemies wait while the round isn't being played", "[game][enemies]")
 {
 	Harness h(Level1());
 	h.Update(kStepsPerSecond);
+	h.Tap(Key::P); // the pause takes effect at the start of the next update
 	const Entity grit = h.EnemyOf(Personality::Grit);
 	const game::GridMover moving = h.Mover(grit);
-
-	h.Tap(Key::P);
 	h.Update(kStepsPerSecond);
 	CHECK(h.Mover(grit).tile == moving.tile);
 	CHECK(h.Mover(grit).offset == moving.offset);

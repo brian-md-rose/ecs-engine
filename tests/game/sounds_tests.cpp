@@ -10,7 +10,10 @@
 #include "gameflow.hpp"
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
+#include "options.hpp"
+#include "scoring.hpp"
 #include "sounds.hpp"
+#include "stage.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -56,6 +59,7 @@ TEST_CASE("Queued sounds play once each update, without a device, and the queue 
 	World world;
 	world.resources.Emplace<game::SoundBank>();
 	world.resources.Emplace<game::SoundQueue>();
+	world.resources.Emplace<game::Settings>();
 	world.events.Subscribe<game::PelletEaten>(game::QueueSound<game::PelletEaten>);
 	world.events.Subscribe<game::PlayerCaught>(game::QueueSound<game::PlayerCaught>);
 
@@ -94,9 +98,9 @@ TEST_CASE("Playing the game makes the eating, power-up and level-clear sounds", 
 	};
 	const game::SoundQueue& sounds = game.world.resources.Get<game::SoundQueue>();
 
-	game.world.resources.Get<game::GameFlow>() = game::GameFlow{};
+	gametest::RequestPlaying(game);
 	update(3 * 60); // past Ready
-	REQUIRE(game.world.resources.Get<game::GameFlow>().stage == game::Stage::Playing);
+	REQUIRE(gametest::StageOf(game) == gametest::Stage::Playing);
 	keyboard.OnKeyDown(Key::Right);
 	update(2 * 60);
 
@@ -104,4 +108,37 @@ TEST_CASE("Playing the game makes the eating, power-up and level-clear sounds", 
 	CHECK(sounds.Played(Sfx::PowerUp) == 1);
 	CHECK(sounds.Played(Sfx::LevelClear) == 1);
 	CHECK(sounds.Played(Sfx::Death) == 0);
+}
+
+TEST_CASE("With sound off in the options nothing is played, and the queue is still emptied", "[game][sounds]")
+{
+	game::TileMapResult maze = game::ParseTileMap("#######\n"
+	                                              "#P..o #\n"
+	                                              "#######\n"
+	                                              "#E#####\n"
+	                                              "#######\n");
+	REQUIRE(maze.map.has_value());
+	game::MazeGame game{*maze.map};
+	game.world.resources.Get<game::Settings>().sound = false;
+	engine::input::Keyboard keyboard;
+	const auto update = [&](int steps)
+	{
+		for (int i = 0; i < steps; ++i)
+		{
+			game.Update(kStep, keyboard);
+			keyboard.EndUpdate();
+		}
+	};
+
+	gametest::RequestPlaying(game);
+	update(3 * 60);
+	keyboard.OnKeyDown(Key::Right);
+	update(2 * 60);
+
+	const game::SoundQueue& sounds = game.world.resources.Get<game::SoundQueue>();
+	CHECK(game.world.resources.Get<game::Score>().points > 0); // the player did eat
+	CHECK(sounds.Played(Sfx::Eat) == 0);
+	CHECK(sounds.Played(Sfx::PowerUp) == 0);
+	CHECK(sounds.Played(Sfx::LevelClear) == 0);
+	CHECK(sounds.pending.empty());
 }

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "core/assert.hpp"
+#include "ecs/states.hpp"
 
 namespace engine::ecs
 {
@@ -33,6 +34,36 @@ namespace engine::ecs
 		};
 	} // namespace
 
+	Scheduler::Scheduler() = default;
+	Scheduler::~Scheduler() = default;
+
+	double Scheduler::NextAverage(double averageMs, bool timed, double tookMs) noexcept
+	{
+		return timed ? averageMs + (tookMs - averageMs) * kTimingSmoothing : tookMs;
+	}
+
+	void Scheduler::RunTransitions(World& world, const FrameContext& context)
+	{
+		ENGINE_ASSERT(!running, "Scheduler::RunTransitions is not re-entrant");
+		FrameContext systemContext = context;
+		systemContext.scheduler = this;
+		{
+			const FlagScope schedulerRunning(running);
+			const Resources::LockScope resourcesLocked(world.resources);
+			for (const auto& machine : machines)
+			{
+				machine->BeginPass();
+			}
+			for (detail::IStateMachine* root : roots)
+			{
+				root->Process(world, systemContext);
+			}
+			world.commands.Apply(world.registry);
+			world.events.Deliver(world);
+		}
+		world.commands.Apply(world.registry);
+	}
+
 	void Scheduler::Add(Phase phase, System system, RunCondition runIf)
 	{
 		const std::size_t index = phases[Index(phase)].size();
@@ -42,6 +73,7 @@ namespace engine::ecs
 	void Scheduler::Add(Phase phase, std::string_view name, System system, RunCondition runIf)
 	{
 		ENGINE_VERIFY(system != nullptr, "cannot add a null system");
+		ENGINE_ASSERT(phase != Phase::Transition, "transition systems are added with AddOnEnter and AddOnExit");
 		ENGINE_ASSERT(!running, "cannot add systems while a phase is running");
 		phases[Index(phase)].push_back({.system = system, .runIf = runIf, .name = std::string(name)});
 	}
@@ -62,8 +94,7 @@ namespace engine::ecs
 				const auto start = std::chrono::steady_clock::now();
 				entry.system(world, systemContext);
 				const std::chrono::duration<double, std::milli> took = std::chrono::steady_clock::now() - start;
-				entry.averageMs =
-				    entry.timed ? entry.averageMs + (took.count() - entry.averageMs) * kTimingSmoothing : took.count();
+				entry.averageMs = NextAverage(entry.averageMs, entry.timed, took.count());
 				entry.timed = true;
 			}
 
@@ -83,6 +114,10 @@ namespace engine::ecs
 	std::vector<Scheduler::SystemTiming> Scheduler::Timings() const
 	{
 		std::vector<SystemTiming> timings;
+		for (const auto& machine : machines)
+		{
+			machine->AppendTimings(timings);
+		}
 		for (std::size_t p = 0; p < kPhaseCount; ++p)
 		{
 			for (const Entry& entry : phases[p])
@@ -100,6 +135,8 @@ namespace engine::ecs
 	{
 		switch (phase)
 		{
+		case Phase::Transition:
+			return "Transition";
 		case Phase::Input:
 			return "Input";
 		case Phase::Update:
