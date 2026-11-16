@@ -63,7 +63,7 @@ namespace game
 
 	struct ScreenStep
 	{
-		MenuCursor cursor;
+		MenuCursor cursor{};
 		ScreenAction action = ScreenAction::None;
 	};
 
@@ -94,7 +94,7 @@ namespace game
 	struct ScreenText
 	{
 		Screen screen = Screen::Title;
-		std::string label;
+		std::string label{};
 		std::size_t item = static_cast<std::size_t>(-1);
 	};
 

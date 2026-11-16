@@ -54,7 +54,7 @@ namespace engine::graphics
 	{
 		struct Entry
 		{
-			Position screen; // top-left, camera applied
+			Position screen{}; // top-left, camera applied
 			std::uint8_t layer = 0;
 			Color color{};
 			bool textured = false; // a quad cut from the atlas; otherwise a shape

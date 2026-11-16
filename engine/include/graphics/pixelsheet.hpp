@@ -23,11 +23,11 @@ namespace engine::graphics
 {
 	struct SheetSprite
 	{
-		std::string name;
+		std::string name{};
 		int frameWidth = 0;
 		int frameHeight = 0;
 		int frames = 1;
-		Image image; // frames * frameWidth by frameHeight pixels, frame 0 on the left
+		Image image{}; // frames * frameWidth by frameHeight pixels, frame 0 on the left
 	};
 
 	// The sprites of one file, in the order they were written.

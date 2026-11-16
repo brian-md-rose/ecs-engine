@@ -33,8 +33,8 @@ namespace engine::graphics
 	// One character to draw: where its top-left goes and which part of the atlas it shows.
 	struct GlyphQuad
 	{
-		Position screen;
-		PixelRect source;
+		Position screen{};
+		PixelRect source{};
 	};
 
 	// Lays text out from origin, its top-left, one quad per character with a glyph, each scale
@@ -51,7 +51,7 @@ namespace engine::graphics
 	// The glyphs are white in the atlas and take on color.
 	struct Text
 	{
-		std::string value;
+		std::string value{};
 		Color color{};
 		std::uint8_t layer = 0; // as Shape::layer
 		int scale = 1;          // whole numbers only, so the pixels stay square and sharp

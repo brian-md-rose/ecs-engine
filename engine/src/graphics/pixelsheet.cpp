@@ -34,7 +34,7 @@ namespace engine::graphics
 			std::vector<std::string_view> lines;
 			std::size_t next = 0; // index of the next line to read
 			std::array<std::optional<Rgba>, 256> palette{};
-			PixelSheet sheet;
+			PixelSheet sheet{};
 
 			[[nodiscard]] std::size_t LineNumber() const noexcept { return next; } // of the line just read
 

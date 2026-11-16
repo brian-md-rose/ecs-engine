@@ -31,7 +31,7 @@ namespace engine::core
 	// A word of a line and where it starts, counting columns from 1.
 	struct Word
 	{
-		std::string_view text;
+		std::string_view text{};
 		std::size_t column = 0;
 	};
 

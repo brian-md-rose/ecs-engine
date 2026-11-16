@@ -18,7 +18,7 @@ namespace game
 
 	struct PlayerPose
 	{
-		engine::graphics::Clip clip;
+		engine::graphics::Clip clip{};
 		bool flipX = false;
 	};
 
