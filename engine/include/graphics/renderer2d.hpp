@@ -69,8 +69,9 @@ namespace engine::graphics
 		}
 		[[nodiscard]] Color Tint() const noexcept { return tint; }
 
-		// Only reads the registry; see DrawBatch::Build.
-		void Draw(Renderer& renderer, ecs::Registry& registry);
+		// Only reads the registry; see DrawBatch::Build. alpha is the Render phase's
+		// FrameContext::alpha, for entities with an Interpolation (see BatchSettings::alpha).
+		void Draw(Renderer& renderer, ecs::Registry& registry, float alpha = 1.0f);
 
 		// Shapes, sprites and characters drawn by the last Draw, after culling.
 		[[nodiscard]] std::size_t ItemCount() const noexcept { return batch.ItemCount(); }

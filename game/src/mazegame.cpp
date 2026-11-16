@@ -130,6 +130,7 @@ namespace game
 		const GridMover mover{.tile = spawns.front(), .speed = difficulty.ForLevel(1).playerSpeed};
 		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
 		registry.Add<GridMover>(player, mover);
+		registry.Add<engine::graphics::Interpolation>(player, kMoverInterpolation);
 		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
 		registry.Add<PlayerControlled>(player);
 		registry.Add<Facing>(player);

@@ -2,9 +2,11 @@
 #include <optional>
 
 #include "components.hpp"
+#include "graphics/interpolation.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "grid/direction.hpp"
+#include "maze.hpp"
 #include "tilemap.hpp"
 
 // Grid movement as pure functions over a TileMap and a GridMover: no registry, no SDL.
@@ -15,6 +17,11 @@ namespace game
 	// a turn pressed a moment too late is still taken, so corners feel smooth. A turn asked for
 	// early is remembered (GridMover::buffered) and taken on reaching the centre.
 	inline constexpr float kTurnTolerance = 0.25f;
+
+	// How the player and the enemies are drawn between updates: slid smoothly, except for a
+	// jump of more than a tile in one update (through a wrap tunnel, or back to a spawn), which
+	// is drawn at once. Movement covers well under a tile per update at every speed.
+	inline constexpr engine::graphics::Interpolation kMoverInterpolation{.snapDistance = kTileSize};
 
 	// Floor the player can walk on: everything but walls and the enemy house's door.
 	[[nodiscard]] bool IsWalkable(Tile tile) noexcept;

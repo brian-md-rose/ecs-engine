@@ -7,6 +7,7 @@
 
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "graphics/interpolation.hpp"
 #include "graphics/sprite.hpp"
 
 namespace engine::graphics
@@ -53,9 +54,18 @@ namespace engine::graphics
 		const Camera& camera = settings.camera;
 		const bool hasAtlas = settings.atlasWidth > 0 && settings.atlasHeight > 0;
 
-		const auto collectShape = [this, &camera](ecs::Entity, const Transform& transform, const Shape& shape)
+		// Where an entity is drawn: blended between updates if it has an Interpolation.
+		const auto worldPosition = [&registry, alpha = settings.alpha](ecs::Entity entity, const Transform& transform)
 		{
-			const Position screen = ToScreen(transform.position, camera);
+			const Interpolation* interpolation = registry.TryGetComponent<Interpolation>(entity);
+			return interpolation == nullptr ? transform.position
+			                                : InterpolatedPosition(transform, *interpolation, alpha);
+		};
+
+		const auto collectShape =
+		    [this, &camera, &worldPosition](ecs::Entity entity, const Transform& transform, const Shape& shape)
+		{
+			const Position screen = ToScreen(worldPosition(entity, transform), camera);
 			if (!Overlaps(screen, shape.BoundsWidth(), shape.BoundsHeight(), camera)) return;
 			entries.push_back({.screen = screen, .layer = shape.layer, .color = shape.color, .shape = shape});
 		};
@@ -63,9 +73,10 @@ namespace engine::graphics
 
 		if (hasAtlas)
 		{
-			const auto collectSprite = [this, &camera](ecs::Entity, const Transform& transform, const Sprite& sprite)
+			const auto collectSprite =
+			    [this, &camera, &worldPosition](ecs::Entity entity, const Transform& transform, const Sprite& sprite)
 			{
-				const Position screen = Snap(ToScreen(transform.position, camera));
+				const Position screen = Snap(ToScreen(worldPosition(entity, transform), camera));
 				const auto width = static_cast<float>(sprite.source.width);
 				const auto height = static_cast<float>(sprite.source.height);
 				if (!Overlaps(screen, width, height, camera)) return;
@@ -82,11 +93,12 @@ namespace engine::graphics
 		if (hasAtlas && settings.font != nullptr)
 		{
 			const BitmapFont& font = *settings.font;
-			const auto collectText = [this, &camera, &font](ecs::Entity, const Transform& transform, const Text& text)
+			const auto collectText =
+			    [this, &camera, &font, &worldPosition](ecs::Entity entity, const Transform& transform, const Text& text)
 			{
 				const int scale = std::max(text.scale, 1);
 				glyphs.clear();
-				LayoutText(font, text.value, Snap(ToScreen(transform.position, camera)), scale, glyphs);
+				LayoutText(font, text.value, Snap(ToScreen(worldPosition(entity, transform), camera)), scale, glyphs);
 				for (const GlyphQuad& glyph : glyphs)
 				{
 					const auto width = static_cast<float>(glyph.source.width * scale);
