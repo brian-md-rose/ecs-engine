@@ -1,8 +1,8 @@
 #include "tilemap.hpp"
 
 #include <algorithm>
-#include <fstream>
-#include <iterator>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include "core/assert.hpp"
@@ -46,31 +46,6 @@ namespace game
 			}
 			constexpr char kHexDigits[] = "0123456789ABCDEF";
 			return std::string{"character 0x"} + kHexDigits[code >> 4] + kHexDigits[code & 0x0F];
-		}
-
-		// One entry per line, without the line ending (LF or CRLF). Blank lines at the end are
-		// dropped, including the empty "line" after a final newline.
-		[[nodiscard]] std::vector<std::string_view> SplitLines(std::string_view text)
-		{
-			std::vector<std::string_view> lines;
-			std::size_t start = 0;
-			while (true)
-			{
-				const std::size_t end = text.find('\n', start);
-				std::string_view line = text.substr(start, end == std::string_view::npos ? end : end - start);
-				if (!line.empty() && line.back() == '\r')
-				{
-					line.remove_suffix(1);
-				}
-				lines.push_back(line);
-				if (end == std::string_view::npos) break;
-				start = end + 1;
-			}
-			while (!lines.empty() && lines.back().empty())
-			{
-				lines.pop_back();
-			}
-			return lines;
 		}
 
 		[[nodiscard]] TileMapResult Fail(std::size_t line, std::size_t column, std::string message)
@@ -138,7 +113,7 @@ namespace game
 
 	TileMapResult ParseTileMap(std::string_view text)
 	{
-		const std::vector<std::string_view> lines = SplitLines(text);
+		const std::vector<std::string_view> lines = engine::core::SplitLines(text);
 		if (lines.empty())
 		{
 			return Fail(0, 0, "maze is empty");
@@ -207,27 +182,8 @@ namespace game
 
 	TileMapResult LoadTileMap(const std::filesystem::path& file)
 	{
-		// Binary, so CRLF reaches the parser unchanged on every platform; it handles both.
-		std::ifstream stream(file, std::ios::binary);
-		if (!stream)
-		{
-			return Fail(0, 0, "cannot open the file");
-		}
-		const std::string text{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-		if (stream.bad())
-		{
-			return Fail(0, 0, "cannot read the file");
-		}
-		return ParseTileMap(text);
-	}
-
-	std::string FormatError(std::string_view source, const TileMapError& error)
-	{
-		std::string result{source};
-		if (error.line != 0)
-		{
-			result += ':' + std::to_string(error.line) + ':' + std::to_string(error.column);
-		}
-		return result + ": " + error.message;
+		const std::optional<std::string> text = engine::core::ReadTextFile(file);
+		if (!text) return Fail(0, 0, "can't read the file");
+		return ParseTileMap(*text);
 	}
 } // namespace game

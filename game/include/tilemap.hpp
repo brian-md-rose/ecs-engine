@@ -3,9 +3,10 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <vector>
+
+#include "core/text.hpp"
 
 // The maze as a grid of tiles, read from the text format in docs/maze-format.md.
 namespace game
@@ -58,20 +59,13 @@ namespace game
 		[[nodiscard]] std::vector<TilePosition> Find(Tile tile) const;
 	};
 
-	// Why a maze was rejected. line and column count from 1 and point at the offending
-	// character; both are 0 for errors about the maze as a whole (a missing spawn).
-	struct TileMapError
-	{
-		std::size_t line = 0;
-		std::size_t column = 0;
-		std::string message;
-	};
-
-	// Either a map, or the first error found and no map.
+	// Either a map, or the first error found and no map. An error's line and column point at
+	// the offending character; both are 0 for errors about the maze as a whole (a missing
+	// spawn). engine::core::FormatError writes it out.
 	struct TileMapResult
 	{
 		std::optional<TileMap> map;
-		TileMapError error;
+		engine::core::ParseError error;
 	};
 
 	// Parses a maze and checks the rules in docs/maze-format.md. Pure: no files, no SDL.
@@ -80,8 +74,4 @@ namespace game
 	// Reads a maze file and parses it. A file that can't be read is an error about the whole
 	// maze (line 0).
 	[[nodiscard]] TileMapResult LoadTileMap(const std::filesystem::path& file);
-
-	// "source:line:column: message", or "source: message" for errors without a line, the way
-	// compilers write them, so editors can jump to the spot.
-	[[nodiscard]] std::string FormatError(std::string_view source, const TileMapError& error);
 } // namespace game
