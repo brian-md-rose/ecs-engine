@@ -30,6 +30,7 @@
 #include "hud.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
+#include "sounds.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
 
@@ -103,6 +104,8 @@ namespace game
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
+		world.resources.Emplace<SoundBank>();
+		world.resources.Emplace<SoundQueue>();
 		const DifficultyTable& difficulty = world.resources.Emplace<DifficultyTable>(assets.difficulty);
 		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
@@ -142,18 +145,24 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
 		scheduler.Add(Phase::LateUpdate, HudSystem);
 		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
+		scheduler.Add(Phase::LateUpdate, AudioSystem);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.
 		world.events.Subscribe<PelletEaten>(AddPelletScore);
 		world.events.Subscribe<PelletEaten>(CheckLevelCleared<PelletEaten>);
+		world.events.Subscribe<PelletEaten>(QueueSound<PelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
 		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(FrightenEnemies);
+		world.events.Subscribe<PowerPelletEaten>(QueueSound<PowerPelletEaten>);
 		world.events.Subscribe<EnemyEaten>(AddEnemyScore);
 		world.events.Subscribe<EnemyEaten>(SendEnemyHome);
+		world.events.Subscribe<EnemyEaten>(QueueSound<EnemyEaten>);
 		world.events.Subscribe<PlayerCaught>(LoseLife);
+		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
+		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
 		world.events.Subscribe<StageChanged>(ResetRound);
 		world.events.Subscribe<StageChanged>(ResetEnemies);
 	}

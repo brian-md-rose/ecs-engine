@@ -40,7 +40,7 @@ namespace game
 	{
 		bool valid = true;
 
-		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, FrameStats,
+		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, SoundBank, FrameStats,
 		// ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets, and a copy of the maze),
 		// spawns the maze, the player and the enemies at their spawns and the HUD, registers the
 		// systems in run order and subscribes the event handlers.

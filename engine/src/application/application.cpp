@@ -42,7 +42,7 @@ namespace engine::application
 
 	Application::SdlScope::SdlScope()
 	{
-		// Subsystems (video, later input/audio) are started by the classes that use them;
+		// Subsystems (video, audio) are started by the classes that use them;
 		// this only initialises SDL's core so SDL_Quit below has something to pair with.
 		if (!SDL_Init(0))
 		{
@@ -85,7 +85,7 @@ namespace engine::application
 
 			for (int i = 0; i < updates; ++i)
 			{
-				game.Update(timestep.Step(), keyboard);
+				game.Update(timestep.Step(), keyboard, &audio);
 				keyboard.EndUpdate();
 			}
 

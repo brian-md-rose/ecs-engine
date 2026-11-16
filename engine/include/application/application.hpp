@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio/audiodevice.hpp"
 #include "core/clock.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
@@ -26,8 +27,9 @@ namespace engine::application
 		// Called at a fixed rate (1 / ApplicationConfig::updateRate seconds, passed as dt),
 		// zero or more times per frame. Run ECS systems here. The keyboard's pressed/released
 		// edges are cleared after each call, so each press is seen by exactly one update.
-		// Mapping keys to game actions is the game's job.
-		virtual void Update(double dt, const input::Keyboard& keyboard) = 0;
+		// Mapping keys to game actions is the game's job. audio plays sound effects; it is null
+		// when there is nothing to play them on (tests), and silent when there is no device.
+		virtual void Update(double dt, const input::Keyboard& keyboard, audio::AudioDevice* audio) = 0;
 
 		// Called once per frame: clear and draw. Application presents the frame afterwards.
 		// alpha in [0, 1) is how far the game is into the next update, for optional
@@ -39,7 +41,7 @@ namespace engine::application
 		[[nodiscard]] virtual bool WantsToQuit() const { return false; }
 	};
 
-	// Owns the platform (SDL, window, renderer) and runs the main loop.
+	// Owns the platform (SDL, window, renderer, audio) and runs the main loop.
 	class Application
 	{
 		// Starts SDL before the window exists and shuts it down after the window is gone.
@@ -54,11 +56,12 @@ namespace engine::application
 			SdlScope& operator=(SdlScope&&) = delete;
 		};
 
-		// Declaration order is construction order; destruction runs in reverse, so the
-		// renderer goes first, then the window, and SDL shuts down last.
+		// Declaration order is construction order; destruction runs in reverse, so the audio
+		// device and renderer go first, then the window, and SDL shuts down last.
 		SdlScope sdl;
 		graphics::Window window;
 		graphics::Renderer renderer;
+		audio::AudioDevice audio;
 		input::Keyboard keyboard;
 		double updateStep;
 

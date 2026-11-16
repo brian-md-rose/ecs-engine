@@ -6,6 +6,11 @@
 
 #include "ecs/world.hpp"
 
+namespace engine::audio
+{
+	class AudioDevice;
+}
+
 namespace engine::input
 {
 	class Keyboard;
@@ -39,6 +44,7 @@ namespace engine::ecs
 		double alpha = 0;                          // Render: how far into the next update, [0, 1)
 		const input::Keyboard* keyboard = nullptr; // fixed phases
 		graphics::Renderer* renderer = nullptr;    // Render
+		audio::AudioDevice* audio = nullptr;       // fixed phases; null when there is no sound
 	};
 
 	// Systems are plain functions: state they keep between runs belongs in a resource.

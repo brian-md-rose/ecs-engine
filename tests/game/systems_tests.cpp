@@ -151,7 +151,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 3);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 4);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 5);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();
