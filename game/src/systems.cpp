@@ -296,7 +296,7 @@ namespace game
 		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
 		const auto drawStart = std::chrono::steady_clock::now();
-		renderer2D.Draw(renderer, world.registry);
+		renderer2D.Draw(renderer, world.registry, static_cast<float>(context.alpha));
 		if (state.stressTest)
 		{
 			world.resources.Get<engine::core::FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,

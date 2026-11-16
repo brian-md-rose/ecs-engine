@@ -15,7 +15,8 @@ namespace engine::application
 	//         scheduler.Add(ecs::Phase::Update, MovementSystem);
 	//     }
 	//
-	// Each fixed update runs Input, Update and LateUpdate in that order; each frame runs Render.
+	// Each fixed update records where Interpolation entities are (RecordPreviousPositions), then
+	// runs Input, Update and LateUpdate in that order; each frame runs Render.
 	class ScheduledGame : public Game
 	{
 	public:

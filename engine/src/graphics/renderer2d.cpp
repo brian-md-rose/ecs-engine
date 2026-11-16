@@ -34,7 +34,7 @@ namespace engine::graphics
 		hasFont = true;
 	}
 
-	void Renderer2D::Draw(Renderer& renderer, ecs::Registry& registry)
+	void Renderer2D::Draw(Renderer& renderer, ecs::Registry& registry, float alpha)
 	{
 		if (uploadPending)
 		{
@@ -45,7 +45,7 @@ namespace engine::graphics
 		SDL_Texture* handle = renderer.GetTextureHandle(texture);
 
 		// Without a texture, sprites and text can't be drawn: build the batch with no atlas.
-		BatchSettings settings{.camera = camera, .tint = tint, .untintedFromLayer = untintedFromLayer};
+		BatchSettings settings{.camera = camera, .tint = tint, .untintedFromLayer = untintedFromLayer, .alpha = alpha};
 		if (handle != nullptr)
 		{
 			settings.atlasWidth = atlas.image.Width();

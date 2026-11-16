@@ -71,6 +71,7 @@ namespace game
 			registry.Add<Sprite>(enemy, Sprite{.layer = kEnemyLayer});
 			registry.Add<Animation>(enemy, Animation{.clip = EnemyClip(clips, personality, EnemyAppearance::Normal)});
 			registry.Add<GridMover>(enemy, mover);
+			registry.Add<engine::graphics::Interpolation>(enemy, kMoverInterpolation);
 			registry.Add<Spawn>(enemy, Spawn{.tile = mover.tile});
 			registry.Add<Enemy>(enemy);
 			registry.Add<EnemyPersonality>(enemy, EnemyPersonality{.kind = personality});

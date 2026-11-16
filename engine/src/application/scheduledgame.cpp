@@ -1,10 +1,13 @@
 #include "application/scheduledgame.hpp"
 
+#include "graphics/interpolation.hpp"
+
 namespace engine::application
 {
 	void ScheduledGame::Update(double dt, const input::Keyboard& keyboard, audio::AudioDevice* audio)
 	{
 		const ecs::FrameContext context{.dt = dt, .keyboard = &keyboard, .audio = audio};
+		graphics::RecordPreviousPositions(world.registry);
 		scheduler.Run(ecs::Phase::Input, world, context);
 		scheduler.Run(ecs::Phase::Update, world, context);
 		scheduler.Run(ecs::Phase::LateUpdate, world, context);

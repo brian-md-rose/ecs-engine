@@ -40,6 +40,10 @@ namespace engine::graphics
 		// dim the scene behind a pause screen. White (the default) leaves colours unchanged.
 		Color tint{};
 		int untintedFromLayer = 256;
+		// How far this frame is between the last two updates, 0-1: entities with an Interpolation
+		// are drawn that far from their previous position to their current one. 1 draws every
+		// entity where it is now.
+		float alpha = 1.0f;
 	};
 
 	// Turns every Transform + Shape, Transform + Sprite and Transform + Text entity into one
