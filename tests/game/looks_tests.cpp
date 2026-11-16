@@ -5,12 +5,12 @@
 
 #include "assets.hpp"
 #include "components.hpp"
-#include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/animation.hpp"
 #include "graphics/sprite.hpp"
+#include "grid/direction.hpp"
 #include "input/keyboard.hpp"
 #include "looks.hpp"
 #include "mazegame.hpp"
@@ -21,8 +21,8 @@ namespace
 	using engine::ecs::Entity;
 	using engine::graphics::Animation;
 	using engine::graphics::Sprite;
+	using engine::grid::Direction;
 	using engine::input::Key;
-	using game::Direction;
 
 	constexpr double kStep = 1.0 / 60.0;
 

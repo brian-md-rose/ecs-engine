@@ -4,8 +4,8 @@
 #include <cstddef>
 
 #include "components.hpp"
-#include "direction.hpp"
 #include "graphics/transform.hpp"
+#include "grid/direction.hpp"
 #include "gridmovement.hpp"
 #include "maze.hpp"
 #include "tilemap.hpp"
@@ -14,7 +14,7 @@ namespace
 {
 	using Catch::Matchers::WithinAbs;
 	using engine::graphics::Position;
-	using game::Direction;
+	using engine::grid::Direction;
 	using game::GridMover;
 	using game::TileMap;
 	using game::TilePosition;
@@ -71,33 +71,6 @@ namespace
 		CHECK_THAT(mover.offset, WithinAbs(offset, kMargin));
 	}
 } // namespace
-
-TEST_CASE("Opposite swaps up with down and left with right", "[game][direction]")
-{
-	CHECK(game::Opposite(Direction::Up) == Direction::Down);
-	CHECK(game::Opposite(Direction::Down) == Direction::Up);
-	CHECK(game::Opposite(Direction::Left) == Direction::Right);
-	CHECK(game::Opposite(Direction::Right) == Direction::Left);
-	CHECK(game::Opposite(Direction::None) == Direction::None);
-}
-
-TEST_CASE("Directions know their axis and sign", "[game][direction]")
-{
-	CHECK(game::IsHorizontal(Direction::Left));
-	CHECK(game::IsHorizontal(Direction::Right));
-	CHECK_FALSE(game::IsHorizontal(Direction::Up));
-	CHECK_FALSE(game::IsHorizontal(Direction::None));
-	CHECK(game::IsVertical(Direction::Up));
-	CHECK(game::IsVertical(Direction::Down));
-	CHECK_FALSE(game::IsVertical(Direction::Right));
-	CHECK_FALSE(game::IsVertical(Direction::None));
-
-	CHECK(game::Sign(Direction::Right) == 1.0f);
-	CHECK(game::Sign(Direction::Down) == 1.0f);
-	CHECK(game::Sign(Direction::Left) == -1.0f);
-	CHECK(game::Sign(Direction::Up) == -1.0f);
-	CHECK(game::Sign(Direction::None) == 0.0f);
-}
 
 TEST_CASE("A new GridMover stands still on the centre of the top-left tile", "[game][gridmovement]")
 {

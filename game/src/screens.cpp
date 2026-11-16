@@ -22,6 +22,8 @@ namespace game
 		using engine::ecs::Entity;
 		using engine::ecs::Registry;
 		using engine::ecs::World;
+		using engine::graphics::Align;
+		using engine::graphics::AlignedX;
 		using engine::graphics::Color;
 		using engine::graphics::Position;
 		using engine::graphics::Text;

@@ -7,6 +7,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		// How many sides of tile the player could leave by.

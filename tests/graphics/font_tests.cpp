@@ -70,3 +70,13 @@ TEST_CASE("Text size counts the widest line and every line", "[graphics][font]")
 	CHECK(engine::graphics::TextHeight(font, "A\nB") == 16);
 	CHECK(engine::graphics::TextHeight(font, "A", 3) == 24);
 }
+
+TEST_CASE("AlignedX places text against its anchor on whole pixels", "[graphics][font]")
+{
+	using engine::graphics::Align;
+	CHECK(engine::graphics::AlignedX(16.0f, Align::Left, 30) == 16.0f);
+	CHECK(engine::graphics::AlignedX(16.5f, Align::Left, 30) == 16.0f);
+	CHECK(engine::graphics::AlignedX(112.0f, Align::Centre, 30) == 97.0f);
+	CHECK(engine::graphics::AlignedX(112.0f, Align::Centre, 31) == 96.0f);
+	CHECK(engine::graphics::AlignedX(208.0f, Align::Right, 30) == 178.0f);
+}

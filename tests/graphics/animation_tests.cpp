@@ -1,7 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "ecs/component.hpp"
+#include "ecs/entity.hpp"
+#include "ecs/world.hpp"
 #include "graphics/animation.hpp"
+#include "graphics/animationsystem.hpp"
+#include "graphics/sprite.hpp"
 
 namespace
 {
@@ -71,4 +75,20 @@ TEST_CASE("Single frames and bad timings show the first frame, and time never ru
 	CHECK(engine::graphics::AnimationFrame(zero) == 0);
 	const Animation back = engine::graphics::Advance(Animation{.clip = kWalk}, -3.0f);
 	CHECK(back.elapsed == 0.0f);
+}
+
+TEST_CASE("AnimationSystem steps each animation and shows its frame in the sprite", "[graphics][animation]")
+{
+	engine::ecs::World world;
+	const engine::ecs::Entity walker = world.registry.Create();
+	world.registry.Add<Animation>(walker, Animation{.clip = kWalk});
+	world.registry.Add<engine::graphics::Sprite>(walker);
+	const engine::ecs::Entity still = world.registry.Create(); // no Sprite: left alone
+	world.registry.Add<Animation>(still, Animation{.clip = kWalk});
+
+	engine::graphics::AnimationSystem(world, engine::ecs::FrameContext{.dt = 0.3});
+
+	CHECK(engine::graphics::AnimationFrame(world.registry.GetComponent<Animation>(walker)) == 1);
+	CHECK(world.registry.GetComponent<engine::graphics::Sprite>(walker).source.x == 18);
+	CHECK(world.registry.GetComponent<Animation>(still).elapsed == 0.0f);
 }

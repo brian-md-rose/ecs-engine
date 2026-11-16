@@ -7,6 +7,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		[[nodiscard]] bool IsPerpendicular(Direction a, Direction b) noexcept

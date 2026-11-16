@@ -14,7 +14,6 @@
 namespace
 {
 	using engine::ecs::Entity;
-	using game::Align;
 	using game::HudField;
 	using game::HudView;
 	using game::Stage;
@@ -71,14 +70,6 @@ TEST_CASE("HudLine's message follows the stage", "[game][hud]")
 	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::Dying}).empty());
 	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::LevelComplete}) == "WELL DONE!");
 	CHECK(game::HudLine(HudField::Message, HudView{.stage = Stage::GameOver}) == "GAME OVER");
-}
-
-TEST_CASE("AlignedX places text against its anchor on whole pixels", "[game][hud]")
-{
-	CHECK(game::AlignedX(16.0f, Align::Left, 30) == 16.0f);
-	CHECK(game::AlignedX(112.0f, Align::Centre, 30) == 97.0f);
-	CHECK(game::AlignedX(112.0f, Align::Centre, 31) == 96.0f);
-	CHECK(game::AlignedX(208.0f, Align::Right, 30) == 178.0f);
 }
 
 TEST_CASE("The HUD follows the score, the high score, the lives and the level", "[game][hud]")

@@ -2,9 +2,9 @@
 #include <optional>
 
 #include "components.hpp"
-#include "direction.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
+#include "grid/direction.hpp"
 #include "tilemap.hpp"
 
 // Grid movement as pure functions over a TileMap and a GridMover: no registry, no SDL.
@@ -22,10 +22,12 @@ namespace game
 	// The tile one step from tile in direction. Stepping off the map from a tunnel tile wraps
 	// to the opposite edge (where its pair is); stepping off anywhere else, or with
 	// Direction::None, gives nothing.
-	[[nodiscard]] std::optional<TilePosition> Neighbour(const TileMap& map, TilePosition tile, Direction direction);
+	[[nodiscard]] std::optional<TilePosition> Neighbour(const TileMap& map, TilePosition tile,
+	                                                    engine::grid::Direction direction);
 
 	// The neighbour in direction exists and is walkable, or is the door and throughDoor is set.
-	[[nodiscard]] bool CanEnter(const TileMap& map, TilePosition tile, Direction direction, bool throughDoor = false);
+	[[nodiscard]] bool CanEnter(const TileMap& map, TilePosition tile, engine::grid::Direction direction,
+	                            bool throughDoor = false);
 
 	// Moves mover for seconds at its speed and returns where it ends up. Along the way:
 	// - Asked for the opposite way, it turns back at once, wherever it is.

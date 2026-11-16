@@ -1,6 +1,7 @@
 #include "graphics/font.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 namespace engine::graphics
@@ -65,5 +66,20 @@ namespace engine::graphics
 		if (text.empty()) return 0;
 		const auto lines = static_cast<int>(std::ranges::count(text, '\n')) + 1;
 		return lines * font.lineHeight * scale;
+	}
+
+	float AlignedX(float anchorX, Align align, int width) noexcept
+	{
+		const auto pixels = static_cast<float>(width);
+		switch (align)
+		{
+		case Align::Left:
+			break;
+		case Align::Centre:
+			return std::floor(anchorX - pixels / 2.0f);
+		case Align::Right:
+			return std::floor(anchorX - pixels);
+		}
+		return std::floor(anchorX);
 	}
 } // namespace engine::graphics

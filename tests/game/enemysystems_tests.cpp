@@ -9,7 +9,6 @@
 #include "assets.hpp"
 #include "components.hpp"
 #include "difficulty.hpp"
-#include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "enemymodes.hpp"
@@ -18,6 +17,7 @@
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/animation.hpp"
+#include "grid/direction.hpp"
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
@@ -211,7 +211,7 @@ TEST_CASE("An enemy that isn't frightened catches the player, and the round rest
 
 	h.UpdateUntilStage(Stage::Ready);
 	CHECK(h.Mover(grit).tile == TilePosition{.column = 8, .row = 1});
-	CHECK(h.Mover(grit).direction == game::Direction::None);
+	CHECK(h.Mover(grit).direction == engine::grid::Direction::None);
 	CHECK(h.Brain(grit).state == EnemyState::InHouse);
 	CHECK(h.Clock().phaseSeconds == 0.0f);
 }
@@ -229,7 +229,7 @@ TEST_CASE("A power pellet frightens the enemies, and the player can eat one for 
 	REQUIRE(game::IsFrightActive(h.Clock()));
 	h.Update(); // the enemies react on the next update
 	CHECK(h.Brain(grit).frightened);
-	CHECK(h.Mover(grit).direction == game::Direction::Right); // it was coming left: it turned back
+	CHECK(h.Mover(grit).direction == engine::grid::Direction::Right); // it was coming left: it turned back
 	CHECK(h.Mover(grit).speed == game::FallbackDifficulty().ForLevel(1).frightenedSpeed);
 	CHECK(h.Look(grit) == h.Clips().frightened);
 

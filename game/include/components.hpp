@@ -1,6 +1,6 @@
 #pragma once
 
-#include "direction.hpp"
+#include "grid/direction.hpp"
 #include "tilemap.hpp"
 
 namespace game
@@ -16,10 +16,10 @@ namespace game
 	{
 		TilePosition tile;
 		float offset = 0.0f;
-		Direction direction = Direction::None; // the way it is moving; None when stopped
-		Direction buffered = Direction::None;  // the way it has been asked to go next
-		float speed = 0.0f;                    // tiles per second
-		bool throughDoor = false;              // may pass the enemy-house door (enemies going in or out)
+		engine::grid::Direction direction = engine::grid::Direction::None; // the way it is moving; None when stopped
+		engine::grid::Direction buffered = engine::grid::Direction::None;  // the way it has been asked to go next
+		float speed = 0.0f;                                                // tiles per second
+		bool throughDoor = false; // may pass the enemy-house door (enemies going in or out)
 	};
 
 	// Tag: moved by the player's controls.

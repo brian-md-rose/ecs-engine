@@ -1,11 +1,13 @@
 #include "walltiles.hpp"
 
 #include "core/assert.hpp"
-#include "direction.hpp"
+#include "grid/direction.hpp"
 #include "gridmovement.hpp"
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		constexpr std::array<Direction, 4> kSides = {

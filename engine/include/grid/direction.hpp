@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace game
+namespace engine::grid
 {
 	// One of the four ways along the grid, or none (standing still, nothing asked for).
 	enum class Direction : std::uint8_t
@@ -58,4 +58,4 @@ namespace game
 		}
 		return 0.0f;
 	}
-} // namespace game
+} // namespace engine::grid

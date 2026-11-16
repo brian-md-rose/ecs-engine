@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "direction.hpp"
+#include "grid/direction.hpp"
 #include "tilemap.hpp"
 
 // How an enemy picks its way through the maze, as pure functions over a TileMap: no registry,
@@ -34,22 +34,25 @@ namespace game
 	// The ways an enemy may leave a tile, in kTieBreakOrder.
 	struct Exits
 	{
-		std::array<Direction, 4> directions{};
+		std::array<engine::grid::Direction, 4> directions{};
 		std::size_t count = 0;
 	};
 
 	// Every direction from tile into a walkable neighbour (the door counts when throughDoor)
 	// except the way back, Opposite(heading). At a dead end the way back is the only exit. An
 	// enemy standing still (heading None) may leave any open way.
-	[[nodiscard]] Exits OpenExits(const TileMap& map, TilePosition tile, Direction heading, bool throughDoor);
+	[[nodiscard]] Exits OpenExits(const TileMap& map, TilePosition tile, engine::grid::Direction heading,
+	                              bool throughDoor);
 
 	// Of the OpenExits, the one whose next tile is closest to target in a straight line; on a
 	// tie, the one earlier in kTieBreakOrder. None if the tile has no open neighbour at all.
-	[[nodiscard]] Direction SteerTowards(const TileMap& map, TilePosition tile, Direction heading, Target target,
-	                                     bool throughDoor);
+	[[nodiscard]] engine::grid::Direction SteerTowards(const TileMap& map, TilePosition tile,
+	                                                   engine::grid::Direction heading, Target target,
+	                                                   bool throughDoor);
 
 	// Of the OpenExits, the one roll picks (roll modulo their number), for a frightened enemy's
 	// random turns. None if the tile has no open neighbour at all.
-	[[nodiscard]] Direction SteerRandomly(const TileMap& map, TilePosition tile, Direction heading, bool throughDoor,
-	                                      std::uint32_t roll);
+	[[nodiscard]] engine::grid::Direction SteerRandomly(const TileMap& map, TilePosition tile,
+	                                                    engine::grid::Direction heading, bool throughDoor,
+	                                                    std::uint32_t roll);
 } // namespace game
