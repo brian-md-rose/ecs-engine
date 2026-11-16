@@ -13,6 +13,7 @@
 #include "controls.hpp"
 #include "core/assert.hpp"
 #include "core/paths.hpp"
+#include "core/text.hpp"
 #include "difficulty.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -52,10 +53,9 @@ namespace game
 			TileMapResult result = LoadTileMap(file);
 			if (!result.map)
 			{
-				// The full path, so a missing asset shows where the game looked. UTF-8 like the rest.
-				const std::u8string path = file.u8string();
-				const std::string source(reinterpret_cast<const char*>(path.c_str()), path.size());
-				std::fprintf(stderr, "%s\n", FormatError(source, result.error).c_str());
+				// The full path, so a missing asset shows where the game looked.
+				const std::string message = engine::core::FormatError(engine::core::PathText(file), result.error);
+				std::fprintf(stderr, "%s\n", message.c_str());
 			}
 			return std::move(result.map);
 		}

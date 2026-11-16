@@ -27,7 +27,7 @@ namespace
 	{
 		const std::filesystem::path file = kAssets / "mazes" / name;
 		const game::TileMapResult result = game::LoadTileMap(file);
-		INFO(game::FormatError(name, result.error));
+		INFO(engine::core::FormatError(name, result.error));
 		REQUIRE(result.map.has_value());
 		return *result.map;
 	}
