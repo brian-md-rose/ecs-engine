@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <vector>
 
 #include "assert_guard.hpp"
@@ -406,4 +408,190 @@ TEST_CASE("The registry counts live entities and each component's entities", "[e
 	counts = registry.ComponentCounts();
 	CHECK(counts[0].count == 1);
 	CHECK(counts[1].count == 0); // still listed once none are left
+}
+
+namespace
+{
+	struct Frozen
+	{
+	};
+
+	struct Hidden
+	{
+	};
+} // namespace
+
+TEST_CASE("Registry::Each with Without leaves out entities that have the excluded components", "[ecs][registry]")
+{
+	using engine::ecs::Without;
+
+	Registry registry;
+	const Entity moving = registry.Create();
+	const Entity frozen = registry.Create();
+	const Entity hidden = registry.Create();
+	for (const Entity e : {moving, frozen, hidden})
+	{
+		registry.Add<Position>(e);
+		registry.Add<Velocity>(e, 1.0f, 0.0f);
+	}
+	registry.Add<Frozen>(frozen);
+	registry.Add<Hidden>(hidden);
+
+	std::vector<Entity> visited;
+	const auto record = [&](Entity e, Position&, Velocity&)
+	{
+		visited.push_back(e);
+	};
+
+	SECTION("one excluded component")
+	{
+		registry.Each<Position, Velocity>(Without<Frozen>, record);
+		CHECK(visited.size() == 2);
+		CHECK(std::ranges::find(visited, frozen) == visited.end());
+	}
+
+	SECTION("several excluded components")
+	{
+		registry.Each<Position, Velocity>(Without<Frozen, Hidden>, record);
+		CHECK(visited == std::vector<Entity>{moving});
+	}
+
+	SECTION("with a smaller pool driving the loop")
+	{
+		const Entity still = registry.Create();
+		registry.Add<Position>(still);
+		registry.Each<Velocity, Position>(Without<Hidden>, [&](Entity e, Velocity&, Position&)
+		{
+			visited.push_back(e);
+		});
+		CHECK(visited.size() == 2);
+		CHECK(std::ranges::find(visited, hidden) == visited.end());
+	}
+
+	SECTION("an excluded component nobody has excludes nothing, and doesn't create its pool")
+	{
+		struct NeverAdded
+		{
+		};
+		const std::size_t pools = registry.PoolCount();
+		registry.Each<Position>(Without<NeverAdded>, [&](Entity e, Position&)
+		{
+			visited.push_back(e);
+		});
+		CHECK(visited.size() == 3);
+		CHECK(registry.PoolCount() == pools);
+	}
+}
+
+TEST_CASE("Registry hooks run when components are added and removed", "[ecs][registry]")
+{
+	Registry registry;
+	std::vector<Entity> added;
+	std::vector<Entity> removed;
+	registry.OnAdd<Position>([&](Entity e, Position& p)
+	{
+		added.push_back(e);
+		p.y = 5.0f; // a hook can set the component up
+	});
+	registry.OnRemove<Position>([&](Entity e, const Position&)
+	{
+		removed.push_back(e);
+	});
+
+	const Entity e = registry.Create();
+	registry.Add<Position>(e, 1.0f, 2.0f);
+
+	CHECK(added == std::vector<Entity>{e});
+	CHECK(registry.GetComponent<Position>(e).x == 1.0f);
+	CHECK(registry.GetComponent<Position>(e).y == 5.0f);
+	CHECK(removed.empty());
+
+	SECTION("Remove calls OnRemove while the component is still there")
+	{
+		registry.OnRemove<Position>([&](Entity entity, const Position& p)
+		{
+			CHECK(registry.HasComponent<Position>(entity));
+			CHECK(p.x == 1.0f);
+		});
+		registry.Remove<Position>(e);
+		CHECK(removed == std::vector<Entity>{e});
+	}
+
+	SECTION("removing a component the entity doesn't have calls nothing")
+	{
+		const Entity other = registry.Create();
+		registry.Remove<Position>(other);
+		CHECK(removed.empty());
+	}
+
+	SECTION("Destroy calls OnRemove for each component, before any is removed")
+	{
+		registry.Add<Velocity>(e, 3.0f, 0.0f);
+		float seenVelocity = 0.0f;
+		registry.OnRemove<Position>([&](Entity entity, const Position&)
+		{
+			seenVelocity = registry.GetComponent<Velocity>(entity).x;
+		});
+		registry.Destroy(e);
+		CHECK(removed == std::vector<Entity>{e});
+		CHECK(seenVelocity == 3.0f);
+	}
+
+	SECTION("a CommandBuffer's changes call the hooks too")
+	{
+		engine::ecs::CommandBuffer commands;
+		const Entity later = registry.Create();
+		commands.Add<Position>(later);
+		commands.Destroy(e);
+		commands.Apply(registry);
+		CHECK(added == std::vector<Entity>{e, later});
+		CHECK(removed == std::vector<Entity>{e});
+	}
+
+	SECTION("other component types don't call them")
+	{
+		registry.Add<Velocity>(e);
+		registry.Remove<Velocity>(e);
+		CHECK(added.size() == 1);
+		CHECK(removed.empty());
+	}
+}
+
+TEST_CASE("Registry asserts on structural changes inside a hook", "[ecs][registry]")
+{
+	if constexpr (!engine::kAssertsEnabled)
+	{
+		SKIP("ENGINE_ASSERT is compiled out in this configuration");
+	}
+
+	using engine::test::AssertFailure;
+	const engine::test::AssertsThrow assertsThrow;
+
+	Registry registry;
+	const Entity e = registry.Create();
+
+	SECTION("adding inside OnAdd")
+	{
+		registry.OnAdd<Position>([&](Entity entity, Position&)
+		{
+			registry.Add<Velocity>(entity);
+		});
+		CHECK_THROWS_AS(registry.Add<Position>(e), AssertFailure);
+		CHECK_FALSE(registry.HasComponent<Velocity>(e));
+	}
+
+	SECTION("destroying inside OnRemove")
+	{
+		const Entity other = registry.Create();
+		registry.Add<Position>(e);
+		registry.OnRemove<Position>([&](Entity, const Position&)
+		{
+			registry.Destroy(other);
+		});
+		CHECK_THROWS_AS(registry.Remove<Position>(e), AssertFailure);
+		CHECK(registry.IsAlive(other));
+	}
+
+	// Once the hook has unwound, structural changes are allowed again.
+	CHECK_NOTHROW(registry.Add<Hidden>(e));
 }

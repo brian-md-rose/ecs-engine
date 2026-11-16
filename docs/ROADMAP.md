@@ -107,6 +107,14 @@ See [screens.md](screens.md).
 
 ---
 
+## Phase 9 – ECS queries, hooks and hierarchy
+
+- [x] Exclusion filters: `Each<Enemy>(Without<Frightened>, ...)` skips entities with the listed components.
+- [x] Component hooks: `OnAdd<T>` and `OnRemove<T>` run when a component is added or removed, including by `Destroy` and a `CommandBuffer`.
+- [x] Parent and child entities: `ecs::Parent` and `graphics::LocalTransform`, with world positions worked out after every update; the debug panel's text is a child of its background.
+
+---
+
 ## Open questions
 
 - Game name and character designs.

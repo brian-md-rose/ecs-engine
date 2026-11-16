@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -19,6 +20,10 @@ namespace engine::ecs
 		virtual ~IComponentPool() = default;
 		virtual void Remove(Entity entity) = 0;
 
+		// Calls the OnRemove hooks for entity, if it has this component and there are any. The
+		// registry calls it just before the component is removed (see Registry::OnRemove).
+		virtual void RunRemoveHooks(Entity entity) = 0;
+
 		// How many entities have this component, and its name (core::TypeName), for diagnostics.
 		[[nodiscard]] virtual std::size_t Size() const noexcept = 0;
 		[[nodiscard]] virtual std::string_view Name() const noexcept = 0;
@@ -33,6 +38,37 @@ namespace engine::ecs
 		std::vector<T> components;         // all components of type T, tightly packed
 
 	public:
+		// Called with the entity and its component: just after it is added, or just before it is
+		// removed. Registry::OnAdd and Registry::OnRemove register them.
+		using Hook = std::function<void(Entity, T&)>;
+
+	private:
+		std::vector<Hook> addHooks;
+		std::vector<Hook> removeHooks;
+
+	public:
+		void AddAddHook(Hook hook) { addHooks.push_back(std::move(hook)); }
+		void AddRemoveHook(Hook hook) { removeHooks.push_back(std::move(hook)); }
+		[[nodiscard]] bool HasAddHooks() const noexcept { return !addHooks.empty(); }
+
+		// Calls the OnAdd hooks, in the order they were registered. The entity must have the component.
+		void RunAddHooks(Entity entity)
+		{
+			for (const Hook& hook : addHooks)
+			{
+				hook(entity, GetComponent(entity));
+			}
+		}
+
+		void RunRemoveHooks(Entity entity) override
+		{
+			if (removeHooks.empty() || !HasComponent(entity)) return;
+			for (const Hook& hook : removeHooks)
+			{
+				hook(entity, GetComponent(entity));
+			}
+		}
+
 		template <typename... Args> T& Add(Entity entity, Args&&... args)
 		{
 			// Always on: a null id would overflow the resize below and write out of bounds.

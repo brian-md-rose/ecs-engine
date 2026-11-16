@@ -5,6 +5,7 @@
 #include <string_view>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "core/assert.hpp"
@@ -13,6 +14,14 @@
 
 namespace engine::ecs
 {
+	// A filter for Registry::Each: leave out the entities that have any of Ts. Written with the
+	// Without variable below, as Each<Enemy>(Without<Frightened>, ...).
+	template <Component... Ts> struct Exclude
+	{
+	};
+
+	template <Component... Ts> inline constexpr Exclude<Ts...> Without{};
+
 	class Registry
 	{
 		std::vector<std::uint32_t> generations;
@@ -40,7 +49,8 @@ namespace engine::ecs
 		void AssertNotIterating() const
 		{
 			ENGINE_ASSERT(iterationDepth == 0,
-			              "structural change during Registry::Each; record it in a CommandBuffer instead");
+			              "structural change during Registry::Each or a component hook; record it in a CommandBuffer "
+			              "instead");
 		}
 
 		template <Component T> ComponentPool<T>& Pool()
@@ -82,7 +92,15 @@ namespace engine::ecs
 			// Always on: a dead or null entity would leave an orphaned entry in the pool
 			// (or, for Entity::Null, write out of bounds).
 			ENGINE_VERIFY(IsAlive(entity), "cannot add a component to a dead or null entity");
-			return Pool<T>().Add(entity, std::forward<Args>(args)...);
+			ComponentPool<T>& pool = Pool<T>();
+			const bool added = !pool.HasComponent(entity);
+			T& component = pool.Add(entity, std::forward<Args>(args)...);
+			if (added && pool.HasAddHooks())
+			{
+				const IterationScope scope(iterationDepth);
+				pool.RunAddHooks(entity);
+			}
+			return component;
 		}
 
 		// Removing from a dead or null entity, or one without the component, is a deliberate no-op
@@ -92,10 +110,36 @@ namespace engine::ecs
 		{
 			AssertNotIterating();
 			ComponentPool<T>* pool = FindPool<T>();
-			if (pool != nullptr)
+			if (pool == nullptr || !pool->HasComponent(entity)) return;
 			{
-				pool->Remove(entity);
+				const IterationScope scope(iterationDepth);
+				pool->RunRemoveHooks(entity);
 			}
+			pool->Remove(entity);
+		}
+
+		// Component hooks: hook(entity, component) is called just after a T is added to an entity
+		// (OnAdd), or just before one is removed (OnRemove), whether by Remove, by Destroy or by a
+		// CommandBuffer. They let a system set something up once, when it is needed, instead of
+		// checking every update:
+		//
+		//     registry.OnAdd<Sprite>([&world](Entity entity, Sprite& sprite) { ... });
+		//
+		// A hook may read and write components and call Create(), as inside Each; structural
+		// changes (Add, Remove, Destroy) assert in Debug, so record them in a CommandBuffer. When an
+		// entity is destroyed, every OnRemove hook runs before any of its components go, so a hook
+		// can still read the entity's other components. Hooks of one type run in the order they
+		// were registered, and stay for the registry's lifetime.
+		template <Component T, typename Hook> void OnAdd(Hook&& hook)
+		{
+			AssertNotIterating();
+			Pool<T>().AddAddHook(std::forward<Hook>(hook));
+		}
+
+		template <Component T, typename Hook> void OnRemove(Hook&& hook)
+		{
+			AssertNotIterating();
+			Pool<T>().AddRemoveHook(std::forward<Hook>(hook));
 		}
 
 		template <Component T> T& GetComponent(Entity entity)
@@ -139,6 +183,35 @@ namespace engine::ecs
 		// pool's packed order. The callback's arguments are always in the order written.
 		template <Component First, typename... Rest, typename Func> void Each(Func&& f)
 		{
+			EachWhere<First, Rest...>(f, [](Entity)
+			{
+				return false;
+			});
+		}
+
+		// As above, but skips every entity that has any of the Without components:
+		//
+		//     registry.Each<Enemy, GridMover>(Without<Frightened>, [](Entity, Enemy&, GridMover&) { ... });
+		//
+		// The callback gets no argument for the excluded components.
+		template <Component First, typename... Rest, Component... Excluded, typename Func>
+		void Each(Exclude<Excluded...>, Func&& f)
+		{
+			// The excluded pools are looked up once; one that doesn't exist excludes nothing.
+			[&](const auto*... excluded)
+			{
+				EachWhere<First, Rest...>(f, [&]([[maybe_unused]] Entity entity)
+				{
+					return ((excluded != nullptr && excluded->HasComponent(entity)) || ...);
+				});
+			}(std::as_const(*this).template FindPool<Excluded>()...);
+		}
+
+	private:
+		// Each, skipping the entities for which skip(entity) is true.
+		template <Component First, typename... Rest, typename Func, typename Skip>
+		void EachWhere(Func& f, const Skip& skip)
+		{
 			const IterationScope scope(iterationDepth);
 
 			ComponentPool<First>* pool = FindPool<First>();
@@ -165,7 +238,7 @@ namespace engine::ecs
 					const std::span<First> data = first.Data();
 					for (std::size_t i = 0; i < ents.size(); ++i)
 					{
-						if ((rest->HasComponent(ents[i]) && ...))
+						if ((rest->HasComponent(ents[i]) && ...) && !skip(ents[i]))
 						{
 							f(ents[i], data[i], rest->GetComponent(ents[i])...);
 						}
@@ -175,7 +248,7 @@ namespace engine::ecs
 
 				for (const Entity entity : driver)
 				{
-					if (first.HasComponent(entity) && (rest->HasComponent(entity) && ...))
+					if (first.HasComponent(entity) && (rest->HasComponent(entity) && ...) && !skip(entity))
 					{
 						f(entity, first.GetComponent(entity), rest->GetComponent(entity)...);
 					}
@@ -183,6 +256,7 @@ namespace engine::ecs
 			}(FindPool<Rest>()...);
 		}
 
+	public:
 		// Number of component pools that exist. Diagnostic; tests use it to prove that
 		// read-only queries don't create pools.
 		[[nodiscard]] std::size_t PoolCount() const noexcept { return pools.size(); }

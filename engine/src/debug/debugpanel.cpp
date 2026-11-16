@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "ecs/hierarchy.hpp"
 #include "graphics/font.hpp"
 #include "graphics/renderer2d.hpp"
 #include "graphics/shape.hpp"
@@ -115,15 +116,18 @@ namespace engine::debug
 			world.commands.Add<graphics::Transform>(panel.background);
 			world.commands.Add<graphics::Shape>(
 			    panel.background, graphics::Shape{.color = kDebugPanelBackground, .layer = kDebugPanelLayer});
+			// The text is the background's child, so it moves with it.
 			panel.text = world.registry.Create();
 			world.commands.Add<graphics::Transform>(panel.text);
+			world.commands.Add<ecs::Parent>(panel.text, ecs::Parent{panel.background});
+			world.commands.Add<graphics::LocalTransform>(panel.text,
+			                                             graphics::Position{kDebugPanelMargin, kDebugPanelMargin});
 			world.commands.Add<graphics::Text>(
 			    panel.text, graphics::Text{.color = kDebugPanelTextColor, .layer = kDebugPanelLayer});
 		}
 		else
 		{
-			world.commands.Destroy(panel.background);
-			world.commands.Destroy(panel.text);
+			ecs::DestroyWithChildren(world.registry, world.commands, panel.background);
 			panel.background = ecs::Entity::Null;
 			panel.text = ecs::Entity::Null;
 		}
@@ -161,8 +165,6 @@ namespace engine::debug
 
 		graphics::Text& text = registry.GetComponent<graphics::Text>(panel.text);
 		text.value = DebugPanelText(view, panel.maxSystems, columns);
-		registry.GetComponent<graphics::Transform>(panel.text).position = {camera.position.x + kDebugPanelMargin,
-		                                                                   camera.position.y + kDebugPanelMargin};
 
 		if (registry.IsAlive(panel.background) && registry.HasComponent<graphics::Shape>(panel.background))
 		{

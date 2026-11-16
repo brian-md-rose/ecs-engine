@@ -25,6 +25,14 @@ namespace engine::ecs
 		AssertNotIterating();
 		if (!IsAlive(entity)) return;
 
+		// Every OnRemove hook first, while the entity still has all its components.
+		{
+			const IterationScope scope(iterationDepth);
+			for (auto& [type, pool] : pools)
+			{
+				pool->RunRemoveHooks(entity);
+			}
+		}
 		for (auto& [type, pool] : pools)
 		{
 			pool->Remove(entity);
