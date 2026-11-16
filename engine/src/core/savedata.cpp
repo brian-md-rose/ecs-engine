@@ -55,7 +55,7 @@ namespace engine::core
 
 	void SaveData::Set(std::string_view key, std::string_view value)
 	{
-		ENGINE_ASSERT(IsValidKey(key), "a save key must be one word, not starting with '#'");
+		ENGINE_VERIFY(IsValidKey(key), "a save key must be one word, not starting with '#'");
 		ENGINE_ASSERT(value.find_first_of("\r\n") == std::string_view::npos, "a saved value must fit on one line");
 		values.insert_or_assign(std::string(key), std::string(Trim(value)));
 	}
