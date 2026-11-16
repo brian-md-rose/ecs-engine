@@ -56,9 +56,6 @@ namespace game
 	void AddPelletScore(engine::ecs::World& world, const PelletEaten& event);
 	void AddPowerPelletScore(engine::ecs::World& world, const PowerPelletEaten& event);
 
-	// HUD: prints the score, if the ConsoleHud is enabled.
-	template <typename Eaten> void PrintScore(engine::ecs::World& world, const Eaten& event);
-
 	// Publishes LevelCleared once no pellet or power pellet is left. Events are delivered after
 	// the phase's commands are applied, so the one just eaten is already gone.
 	template <typename Eaten> void CheckLevelCleared(engine::ecs::World& world, const Eaten& event);
@@ -71,9 +68,6 @@ namespace game
 	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, the pellets,
 	// the score.
 	void ResetRound(engine::ecs::World& world, const StageChanged& event);
-
-	// HUD: prints the new stage, if the ConsoleHud is enabled.
-	void PrintStage(engine::ecs::World& world, const StageChanged& event);
 
 	// Render
 

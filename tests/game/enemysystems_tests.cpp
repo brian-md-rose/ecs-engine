@@ -86,11 +86,7 @@ namespace
 		game::MazeGame maze;
 		engine::input::Keyboard keyboard;
 
-		explicit Harness(const game::TileMap& map) : maze(map)
-		{
-			maze.world.resources.Get<game::ConsoleHud>().enabled = false;
-			UpdateUntilStage(Stage::Playing);
-		}
+		explicit Harness(const game::TileMap& map) : maze(map) { UpdateUntilStage(Stage::Playing); }
 
 		[[nodiscard]] game::GameFlow& Flow() { return maze.world.resources.Get<game::GameFlow>(); }
 		[[nodiscard]] game::ModeClock& Clock() { return maze.world.resources.Get<game::ModeClock>(); }

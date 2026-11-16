@@ -51,7 +51,6 @@ namespace
 		// Starts with the round under way, past the Ready pause, unless told not to.
 		explicit Harness(bool startPlaying = true)
 		{
-			maze.world.resources.Get<game::ConsoleHud>().enabled = false;
 			if (startPlaying) UpdateUntil(game::Stage::Playing);
 		}
 
@@ -147,7 +146,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	using engine::ecs::Phase;
 	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 2);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 5);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 2);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 3);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 1);
 
 	const Transform start = h.PlayerTransform();

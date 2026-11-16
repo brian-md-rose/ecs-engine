@@ -59,7 +59,6 @@ namespace
 		Fixture()
 		{
 			world.resources.Emplace<game::Score>();
-			world.resources.Emplace<game::ConsoleHud>().enabled = false;
 			world.resources.Emplace<Seen>();
 			scheduler.Add(Phase::LateUpdate, game::CollisionSystem);
 

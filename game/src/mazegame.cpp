@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "assets.hpp"
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
@@ -25,6 +26,7 @@
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
+#include "hud.hpp"
 #include "scoring.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
@@ -38,9 +40,10 @@ namespace game
 		// Loads assets/mazes/<fileName> from next to the executable (see game/assets/README.md).
 		// On failure, prints the error with the file, line and column to stderr and returns
 		// nothing.
-		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(std::string_view fileName)
+		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(const std::filesystem::path& folder,
+		                                                   std::string_view fileName)
 		{
-			const std::filesystem::path file = engine::core::ExecutableDirectory() / "assets" / "mazes" / fileName;
+			const std::filesystem::path file = folder / "mazes" / fileName;
 			TileMapResult result = LoadTileMap(file);
 			if (!result.map)
 			{
@@ -61,21 +64,23 @@ namespace game
 
 	MazeGame::MazeGame()
 	{
-		const std::optional<TileMap> maze = LoadMazeAsset(kFirstMaze);
-		if (!maze)
+		const std::filesystem::path folder = engine::core::ExecutableDirectory() / "assets";
+		const std::optional<TileMap> maze = LoadMazeAsset(folder, kFirstMaze);
+		const std::optional<GameAssets> assets = LoadGameAssets(folder);
+		if (!maze || !assets)
 		{
 			valid = false;
 			return;
 		}
-		Build(*maze);
+		Build(*maze, *assets);
 	}
 
-	MazeGame::MazeGame(const TileMap& maze)
+	MazeGame::MazeGame(const TileMap& maze, const GameAssets& assets)
 	{
-		Build(maze);
+		Build(maze, assets);
 	}
 
-	void MazeGame::Build(const TileMap& maze)
+	void MazeGame::Build(const TileMap& maze, const GameAssets& assets)
 	{
 		using engine::ecs::Phase;
 		using engine::graphics::Shape;
@@ -85,12 +90,14 @@ namespace game
 		world.resources.Emplace<GameState>();
 		world.resources.Emplace<GameFlow>();
 		world.resources.Emplace<Score>();
-		world.resources.Emplace<ConsoleHud>();
 		world.resources.Emplace<FrameStats>();
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
-		world.resources.Emplace<engine::graphics::Renderer2D>(
+		world.resources.Emplace<HighScore>();
+		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
+		renderer2D.SetAtlas(assets.atlas);
+		renderer2D.SetFont(assets.font);
 		const TileMap& map = world.resources.Emplace<TileMap>(maze);
 		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
@@ -109,6 +116,7 @@ namespace game
 		registry.Add<Shape>(
 		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
 		SpawnEnemies(registry, map, origin);
+		SpawnHud(registry, map, origin);
 
 		// The whole frame, in run order.
 		scheduler.Add(Phase::Input, ControlsSystem);
@@ -120,23 +128,20 @@ namespace game
 		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
+		scheduler.Add(Phase::LateUpdate, HudSystem);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.
 		world.events.Subscribe<PelletEaten>(AddPelletScore);
-		world.events.Subscribe<PelletEaten>(PrintScore<PelletEaten>);
 		world.events.Subscribe<PelletEaten>(CheckLevelCleared<PelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
-		world.events.Subscribe<PowerPelletEaten>(PrintScore<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(FrightenEnemies);
 		world.events.Subscribe<EnemyEaten>(AddEnemyScore);
-		world.events.Subscribe<EnemyEaten>(PrintScore<EnemyEaten>);
 		world.events.Subscribe<EnemyEaten>(SendEnemyHome);
 		world.events.Subscribe<PlayerCaught>(LoseLife);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<StageChanged>(ResetRound);
 		world.events.Subscribe<StageChanged>(ResetEnemies);
-		world.events.Subscribe<StageChanged>(PrintStage);
 	}
 } // namespace game

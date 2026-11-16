@@ -2,7 +2,6 @@
 
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
 #include <random>
 
 #include "components.hpp"
@@ -218,13 +217,6 @@ namespace game
 		world.resources.Get<Score>().points += kPowerPelletPoints;
 	}
 
-	template <typename Eaten> void PrintScore(World& world, const Eaten&)
-	{
-		if (!world.resources.Get<ConsoleHud>().enabled) return;
-		std::printf("score %d\n", world.resources.Get<Score>().points);
-		std::fflush(stdout);
-	}
-
 	template <typename Eaten> void CheckLevelCleared(World& world, const Eaten&)
 	{
 		bool anyLeft = false;
@@ -277,35 +269,6 @@ namespace game
 		}
 	}
 
-	void PrintStage(World& world, const StageChanged& event)
-	{
-		if (!world.resources.Get<ConsoleHud>().enabled) return;
-		const GameFlow& flow = world.resources.Get<GameFlow>();
-		const int points = world.resources.Get<Score>().points;
-		switch (event.to)
-		{
-		case Stage::Ready:
-			std::printf("level %d, %d %s: get ready\n", flow.level, flow.lives, flow.lives == 1 ? "life" : "lives");
-			break;
-		case Stage::Playing:
-			std::printf("go\n");
-			break;
-		case Stage::Dying:
-			std::printf("caught\n");
-			break;
-		case Stage::LevelComplete:
-			std::printf("level %d complete, score %d\n", flow.level, points);
-			break;
-		case Stage::GameOver:
-			std::printf("game over, score %d: press Enter or Space to play again\n", points);
-			break;
-		}
-		std::fflush(stdout);
-	}
-
-	template void PrintScore<PelletEaten>(World&, const PelletEaten&);
-	template void PrintScore<PowerPelletEaten>(World&, const PowerPelletEaten&);
-	template void PrintScore<EnemyEaten>(World&, const EnemyEaten&);
 	template void CheckLevelCleared<PelletEaten>(World&, const PelletEaten&);
 	template void CheckLevelCleared<PowerPelletEaten>(World&, const PowerPelletEaten&);
 

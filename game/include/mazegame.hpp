@@ -4,6 +4,7 @@
 
 #include "application/application.hpp"
 #include "application/scheduledgame.hpp"
+#include "assets.hpp"
 #include "graphics/color.hpp"
 #include "graphics/transform.hpp"
 #include "maze.hpp"
@@ -28,22 +29,23 @@ namespace game
 	// Where the maze's top-left tile is drawn: centred across the screen, below the HUD rows.
 	[[nodiscard]] engine::graphics::Position MazeOrigin(const TileMap& maze);
 
-	// The maze game: its resources, entities and systems. The player, a square steered along
-	// the maze grid with the arrow keys or WASD, eats pellets for points; the score is printed
-	// to stdout. Four enemies leave the house one by one and hunt the player, each in its own
-	// way (see docs/enemies.md); being caught costs a life. A power pellet frightens them for a
-	// while, and a frightened enemy can be eaten for points. Each round starts after a short
-	// Ready pause; clearing every pellet completes the level, which restarts with its pellets
-	// back (see gameflow.hpp). P or Escape pauses; F1 toggles the rendering stress test.
+	// The maze game: its resources, entities and systems. The player, steered along the maze grid
+	// with the arrow keys or WASD, eats pellets for points; the HUD shows the score, the high
+	// score, the lives left and the level. Four enemies leave the house one by one and hunt the
+	// player, each in its own way (see docs/enemies.md); being caught costs a life. A power
+	// pellet frightens them for a while, and a frightened enemy can be eaten for points. Each
+	// round starts after a short Ready pause; clearing every pellet completes the level, which
+	// restarts with its pellets back (see gameflow.hpp). P or Escape pauses; F1 toggles the
+	// rendering stress test.
 	class MazeGame final : public engine::application::ScheduledGame
 	{
 		bool valid = true;
 
-		// Adds the resources (Controls, GameState, GameFlow, Score, ConsoleHud, FrameStats,
-		// ModeClock, EnemyDice, EnemyHouse, Renderer2D and a copy of the maze), spawns the maze,
-		// the player and the enemies at their spawns, registers the systems in run order and
-		// subscribes the event handlers.
-		void Build(const TileMap& maze);
+		// Adds the resources (Controls, GameState, GameFlow, Score, HighScore, FrameStats,
+		// ModeClock, EnemyDice, EnemyHouse, Renderer2D with the assets, and a copy of the maze),
+		// spawns the maze, the player and the enemies at their spawns and the HUD, registers the
+		// systems in run order and subscribes the event handlers.
+		void Build(const TileMap& maze, const GameAssets& assets);
 
 	public:
 		// The window and logical resolution the game wants.
@@ -55,14 +57,16 @@ namespace game
 		    .logicalHeight = kLogicalHeight,
 		};
 
-		// Starts on the first maze, assets/mazes/level1.txt next to the executable. If it can't
-		// be loaded, the error is printed to stderr and the game is not valid: don't run it.
+		// Starts on the first maze, assets/mazes/level1.txt next to the executable, with the rest
+		// of assets/ (see LoadGameAssets). If something can't be loaded, the error is printed to
+		// stderr and the game is not valid: don't run it.
 		MazeGame();
 
 		// Starts on the given maze, which ParseTileMap has accepted (tests build one in code).
-		explicit MazeGame(const TileMap& maze);
+		// Without assets nothing but shapes is drawn, which is all the tests need.
+		explicit MazeGame(const TileMap& maze, const GameAssets& assets = {});
 
-		// False if the first maze couldn't be loaded.
+		// False if the assets couldn't be loaded.
 		[[nodiscard]] bool IsValid() const noexcept { return valid; }
 	};
 } // namespace game
