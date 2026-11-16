@@ -65,6 +65,14 @@ namespace game
 		// Without assets nothing but shapes is drawn, which is all the tests need.
 		explicit MazeGame(const TileMap& maze, const GameAssets& assets = {});
 
+		// Saves the high score, if the game has a save file (see save.hpp).
+		~MazeGame() override;
+
+		MazeGame(const MazeGame&) = delete;
+		MazeGame& operator=(const MazeGame&) = delete;
+		MazeGame(MazeGame&&) = delete;
+		MazeGame& operator=(MazeGame&&) = delete;
+
 		// False if the assets couldn't be loaded.
 		[[nodiscard]] bool IsValid() const noexcept { return valid; }
 
