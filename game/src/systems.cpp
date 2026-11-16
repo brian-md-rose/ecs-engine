@@ -101,6 +101,11 @@ namespace game
 		if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
 	}
 
+	const LevelTuning& LevelTuningOf(const World& world)
+	{
+		return world.resources.Get<DifficultyTable>().ForLevel(world.resources.Get<GameFlow>().level);
+	}
+
 	bool NotPaused(const World& world)
 	{
 		return !world.resources.Get<GameState>().paused;
@@ -255,6 +260,12 @@ namespace game
 			{
 				mover = GridMover{.tile = spawn.tile, .speed = mover.speed};
 				transform.position = MoverTopLeft(origin, mover);
+			});
+			const float playerSpeed = LevelTuningOf(world).playerSpeed;
+			world.registry.Each<PlayerControlled, GridMover>(
+			    [playerSpeed](Entity, const PlayerControlled&, GridMover& mover)
+			{
+				mover.speed = playerSpeed;
 			});
 			// A direction pressed before the reset would send the player off at once.
 			world.resources.Get<Controls>().ClearBufferedDirection();

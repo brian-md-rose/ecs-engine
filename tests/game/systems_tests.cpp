@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include "components.hpp"
+#include "difficulty.hpp"
 #include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -164,7 +165,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	{
 		CHECK(mover.tile == game::TilePosition{.column = 2, .row = 2});
 		CHECK(mover.direction == game::Direction::None);
-		CHECK(mover.speed == game::kPlayerSpeed);
+		CHECK(mover.speed == game::FallbackDifficulty().ForLevel(1).playerSpeed);
 		++movers;
 	});
 	CHECK(movers == 1);

@@ -4,27 +4,12 @@
 
 namespace game
 {
-	const ModeSchedule& ScheduleFor(int level) noexcept
+	ScheduledMode CurrentMode(const ModeClock& clock, const ModeSchedule& schedule) noexcept
 	{
-		if (level >= kLateScheduleLevel) return kLateSchedule;
-		if (level >= kMiddleScheduleLevel) return kMiddleSchedule;
-		return kEarlySchedule;
-	}
-
-	float FrightSecondsFor(int level) noexcept
-	{
-		const int last = static_cast<int>(kFrightSeconds.size()) - 1;
-		const int index = std::clamp(level - 1, 0, last);
-		return kFrightSeconds[static_cast<std::size_t>(index)];
-	}
-
-	ScheduledMode CurrentMode(const ModeClock& clock, int level) noexcept
-	{
-		const ModeSchedule& schedule = ScheduleFor(level);
 		return schedule[std::min(clock.phase, schedule.size() - 1)].mode;
 	}
 
-	ModeClock TickModeClock(ModeClock clock, int level, float seconds) noexcept
+	ModeClock TickModeClock(ModeClock clock, const ModeSchedule& schedule, float seconds) noexcept
 	{
 		if (IsFrightActive(clock))
 		{
@@ -37,7 +22,6 @@ namespace game
 			clock.frightSeconds = 0.0f;
 		}
 
-		const ModeSchedule& schedule = ScheduleFor(level);
 		clock.phaseSeconds += seconds;
 		// The last stretch never ends, whatever its length says.
 		while (clock.phase + 1 < schedule.size() && clock.phaseSeconds >= schedule[clock.phase].seconds)
@@ -48,9 +32,9 @@ namespace game
 		return clock;
 	}
 
-	ModeClock StartFright(ModeClock clock, int level) noexcept
+	ModeClock StartFright(ModeClock clock, float frightSeconds) noexcept
 	{
-		clock.frightSeconds = FrightSecondsFor(level);
+		clock.frightSeconds = frightSeconds;
 		clock.eatenInFright = 0;
 		return clock;
 	}
@@ -120,7 +104,7 @@ namespace game
 		return brain.frightened && brain.state != EnemyState::Returning;
 	}
 
-	float EnemySpeedFor(const EnemyBrain& brain) noexcept
+	float EnemySpeedFor(const EnemyBrain& brain, const LevelTuning& level) noexcept
 	{
 		switch (brain.state)
 		{
@@ -129,11 +113,11 @@ namespace game
 		case EnemyState::Returning:
 			return kReturningSpeed;
 		case EnemyState::Leaving:
-			return brain.frightened ? kFrightenedSpeed : kHouseSpeed;
+			return brain.frightened ? level.frightenedSpeed : kHouseSpeed;
 		case EnemyState::Roaming:
 			break;
 		}
-		return brain.frightened ? kFrightenedSpeed : kEnemySpeed;
+		return brain.frightened ? level.frightenedSpeed : level.enemySpeed;
 	}
 
 	bool UsesDoor(const EnemyBrain& brain) noexcept

@@ -1,8 +1,9 @@
 # Enemies
 
 Four enemies roam the maze. They share how they move and when their mode changes, and differ in
-where they aim. Every number below lives in `game/include/enemytuning.hpp`; change it there.
-Names, looks, rules and numbers are all our own.
+where they aim. The numbers that are the same on every level live in
+`game/include/enemytuning.hpp`; those that change per level are in `game/assets/levels.txt`
+(see [difficulty.md](difficulty.md)). Names, looks, rules and numbers are all our own.
 
 ## Moving: target-tile steering
 
@@ -57,27 +58,12 @@ to Dying). When the next round starts, the enemies go back into the house and th
 over. A maze without a door has no house: its enemies start out in the maze, and an eaten one
 goes back to its spawn.
 
-### Schedule (seconds)
+### Per-level numbers
 
-The last stretch lasts until the round ends.
-
-| Levels | Patrol | Chase | Patrol | Chase | Patrol | Chase |
-|--------|-------:|------:|-------:|------:|-------:|------:|
-| 1      | 6      | 18    | 6      | 24    | 4      | for good |
-| 2–3    | 5      | 22    | 4      | 30    | 3      | for good |
-| 4+     | 4      | 26    | 3      | 40    | 2      | for good |
-
-### Fright length
-
-| Level   | 1 | 2 | 3 | 4 | 5+ |
-|---------|---|---|---|---|----|
-| Seconds | 7 | 6 | 5 | 4 | 3  |
-
-### Speeds (tiles per second)
-
-| Player | Roaming | Frightened | Leaving the house | Returning |
-|-------:|--------:|-----------:|------------------:|----------:|
-| 7.5    | 6.75    | 4.25       | 4.0               | 13.0      |
+The schedule's stretch lengths, how long a fright lasts, and the roaming and frightened speeds
+change from level to level. They live in `game/assets/levels.txt`; see
+[difficulty.md](difficulty.md) for the table and the format. Leaving the house (4.0 tiles per
+second) and returning home (13.0) are the same on every level.
 
 ### Points
 
@@ -88,7 +74,8 @@ Another power pellet restarts the count.
 
 | File                 | What                                                              |
 |----------------------|-------------------------------------------------------------------|
-| `enemytuning.hpp`    | Every tuning value above, and the personality table.              |
+| `enemytuning.hpp`    | The fixed tuning values, and the personality table.               |
+| `difficulty.hpp`     | The per-level table read from `assets/levels.txt`.                |
 | `steering.hpp`       | Exits, steering towards a target, random turns.                   |
 | `enemymodes.hpp`     | The mode clock, the per-enemy state machine, speeds and goals.    |
 | `targeting.hpp`      | Corners, the four chase rules, finding the house from its door.   |

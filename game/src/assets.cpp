@@ -53,6 +53,18 @@ namespace game
 	{
 		const std::optional<PixelSheet> font = LoadSheet(folder / "sprites" / "font.txt");
 		if (!font) return std::nullopt;
-		return BuildGameAssets(*font);
+
+		const std::filesystem::path levels = folder / "levels.txt";
+		DifficultyResult difficulty = LoadDifficulty(levels);
+		if (!difficulty.table)
+		{
+			const std::string message = engine::core::FormatError(engine::core::PathText(levels), difficulty.error);
+			std::fprintf(stderr, "%s\n", message.c_str());
+			return std::nullopt;
+		}
+
+		GameAssets assets = BuildGameAssets(*font);
+		assets.difficulty = std::move(*difficulty.table);
+		return assets;
 	}
 } // namespace game

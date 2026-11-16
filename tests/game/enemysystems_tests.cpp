@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "components.hpp"
+#include "difficulty.hpp"
 #include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -223,7 +224,7 @@ TEST_CASE("A power pellet frightens the enemies, and the player can eat one for 
 	h.Update(); // the enemies react on the next update
 	CHECK(h.Brain(grit).frightened);
 	CHECK(h.Mover(grit).direction == game::Direction::Right); // it was coming left: it turned back
-	CHECK(h.Mover(grit).speed == game::kFrightenedSpeed);
+	CHECK(h.Mover(grit).speed == game::FallbackDifficulty().ForLevel(1).frightenedSpeed);
 	CHECK(SameColour(h.Look(grit).color, game::kFrightenedColor));
 
 	const int beforeEating = h.Points();
@@ -252,7 +253,7 @@ TEST_CASE("The fright flashes before it ends, then the enemies are dangerous aga
 	REQUIRE(h.Brain(grit).frightened);
 
 	// Steps until only the warning is left, and a little into it.
-	const float fright = game::FrightSecondsFor(1);
+	const float fright = game::FallbackDifficulty().ForLevel(1).frightSeconds;
 	h.Update(static_cast<int>((fright - game::kFrightWarningSeconds) * kStepsPerSecond) + 2);
 	REQUIRE(h.Clock().frightSeconds < game::kFrightWarningSeconds);
 	bool flashed = false;

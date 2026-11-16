@@ -21,7 +21,6 @@ namespace game
 	inline constexpr std::size_t kHudRows = 2;
 
 	inline constexpr float kPlayerSize = kTileSize;
-	inline constexpr float kPlayerSpeed = 7.5f;     // tiles per second
 	inline constexpr std::uint8_t kPlayerLayer = 3; // above the maze and every stress-test shape
 	inline constexpr int kStressShapeCount = 1000;
 	inline constexpr engine::graphics::Color kPausedTint{128, 128, 128};

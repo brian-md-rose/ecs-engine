@@ -1,5 +1,6 @@
 #pragma once
 
+#include "difficulty.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
 #include "events.hpp"
@@ -10,6 +11,9 @@ namespace game
 	// Moves the state machine (the GameFlow resource) on to next, publishing StageChanged if the
 	// stage changes.
 	void SetFlow(engine::ecs::World& world, const GameFlow& next);
+
+	// The current level's tuning, from the DifficultyTable and GameFlow resources.
+	[[nodiscard]] const LevelTuning& LevelTuningOf(const engine::ecs::World& world);
 
 	// Run conditions.
 
@@ -69,8 +73,8 @@ namespace game
 	void LoseLife(engine::ecs::World& world, const PlayerCaught& event);
 	void CompleteLevel(engine::ecs::World& world, const LevelCleared& event);
 
-	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, the pellets,
-	// the score.
+	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, running at the
+	// level's player speed if it is the player, the pellets, the score.
 	void ResetRound(engine::ecs::World& world, const StageChanged& event);
 
 	// Render

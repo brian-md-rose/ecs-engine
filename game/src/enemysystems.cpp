@@ -13,6 +13,7 @@
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "steering.hpp"
+#include "systems.hpp"
 
 namespace game
 {
@@ -93,12 +94,12 @@ namespace game
 	void EnemyModeSystem(World& world, const FrameContext& context)
 	{
 		const auto dt = static_cast<float>(context.dt);
-		const int level = world.resources.Get<GameFlow>().level;
+		const ModeSchedule& schedule = LevelTuningOf(world).schedule;
 		ModeClock& clock = world.resources.Get<ModeClock>();
 
 		const ModeClock before = clock;
-		clock = TickModeClock(clock, level, dt);
-		const bool switched = CurrentMode(before, level) != CurrentMode(clock, level);
+		clock = TickModeClock(clock, schedule, dt);
+		const bool switched = CurrentMode(before, schedule) != CurrentMode(clock, schedule);
 		const bool calmed = IsFrightActive(before) && !IsFrightActive(clock);
 
 		world.registry.Each<EnemyBrain>([&](Entity, EnemyBrain& brain)
@@ -114,7 +115,8 @@ namespace game
 		engine::ecs::Registry& registry = world.registry;
 		const auto& maze = world.resources.Get<TileMap>();
 		const std::optional<House>& house = world.resources.Get<EnemyHouse>().house;
-		const ScheduledMode mode = CurrentMode(world.resources.Get<ModeClock>(), world.resources.Get<GameFlow>().level);
+		const LevelTuning& tuning = LevelTuningOf(world);
+		const ScheduledMode mode = CurrentMode(world.resources.Get<ModeClock>(), tuning.schedule);
 		std::mt19937& dice = world.resources.Get<EnemyDice>().engine;
 		const std::optional<GridMover> player = FindPlayer(registry);
 		const Whereabouts where = FindPersonalities(registry);
@@ -132,7 +134,7 @@ namespace game
 			{
 				brain = ArriveHome(brain);
 			}
-			mover.speed = EnemySpeedFor(brain);
+			mover.speed = EnemySpeedFor(brain, tuning);
 			mover.throughDoor = UsesDoor(brain);
 
 			if (brain.reversePending)
@@ -216,7 +218,7 @@ namespace game
 	void FrightenEnemies(World& world, const PowerPelletEaten&)
 	{
 		ModeClock& clock = world.resources.Get<ModeClock>();
-		clock = StartFright(clock, world.resources.Get<GameFlow>().level);
+		clock = StartFright(clock, LevelTuningOf(world).frightSeconds);
 		world.registry.Each<EnemyBrain>([](Entity, EnemyBrain& brain)
 		{
 			brain = Frighten(brain);

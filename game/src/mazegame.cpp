@@ -13,6 +13,7 @@
 #include "controls.hpp"
 #include "core/assert.hpp"
 #include "core/paths.hpp"
+#include "difficulty.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
@@ -102,6 +103,7 @@ namespace game
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
+		const DifficultyTable& difficulty = world.resources.Emplace<DifficultyTable>(assets.difficulty);
 		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
 		renderer2D.SetAtlas(assets.atlas);
@@ -116,7 +118,7 @@ namespace game
 		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
 		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
 		const engine::ecs::Entity player = registry.Create();
-		const GridMover mover{.tile = spawns.front(), .speed = kPlayerSpeed};
+		const GridMover mover{.tile = spawns.front(), .speed = difficulty.ForLevel(1).playerSpeed};
 		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
 		registry.Add<GridMover>(player, mover);
 		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});

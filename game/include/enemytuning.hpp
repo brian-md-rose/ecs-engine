@@ -19,12 +19,11 @@ namespace game
 	inline constexpr std::array<Direction, 4> kTieBreakOrder = {
 	    {Direction::Right, Direction::Down, Direction::Left, Direction::Up}};
 
-	// Speeds, in tiles per second (the player runs at kPlayerSpeed, 7.5).
+	// Speeds, in tiles per second. The player's, the roaming enemies' and the frightened ones'
+	// change from level to level (difficulty.hpp, assets/levels.txt); these don't.
 
-	inline constexpr float kEnemySpeed = 6.75f;      // patrolling or chasing: a little slower than the player
-	inline constexpr float kFrightenedSpeed = 4.25f; // frightened: easy to run down
-	inline constexpr float kReturningSpeed = 13.0f;  // eaten, hurrying back to the house
-	inline constexpr float kHouseSpeed = 4.0f;       // finding its way out of the house
+	inline constexpr float kReturningSpeed = 13.0f; // eaten, hurrying back to the house
+	inline constexpr float kHouseSpeed = 4.0f;      // finding its way out of the house
 
 	// The patrol/chase schedule (enemymodes.hpp)
 
@@ -43,38 +42,13 @@ namespace game
 	};
 
 	inline constexpr std::size_t kSchedulePhases = 6;
+	// The stretches of a level's schedule: patrol, chase, patrol, chase, patrol, then chase for
+	// good. Their lengths are set per level (difficulty.hpp).
 	using ModeSchedule = std::array<ModePhase, kSchedulePhases>;
-
-	// Level 1: long patrols give the player room to learn the maze.
-	inline constexpr ModeSchedule kEarlySchedule = {{{ScheduledMode::Patrol, 6.0f},
-	                                                 {ScheduledMode::Chase, 18.0f},
-	                                                 {ScheduledMode::Patrol, 6.0f},
-	                                                 {ScheduledMode::Chase, 24.0f},
-	                                                 {ScheduledMode::Patrol, 4.0f},
-	                                                 {ScheduledMode::Chase, 0.0f}}};
-
-	// From kMiddleScheduleLevel: shorter breathers, longer hunts.
-	inline constexpr int kMiddleScheduleLevel = 2;
-	inline constexpr ModeSchedule kMiddleSchedule = {{{ScheduledMode::Patrol, 5.0f},
-	                                                  {ScheduledMode::Chase, 22.0f},
-	                                                  {ScheduledMode::Patrol, 4.0f},
-	                                                  {ScheduledMode::Chase, 30.0f},
-	                                                  {ScheduledMode::Patrol, 3.0f},
-	                                                  {ScheduledMode::Chase, 0.0f}}};
-
-	// From kLateScheduleLevel on.
-	inline constexpr int kLateScheduleLevel = 4;
-	inline constexpr ModeSchedule kLateSchedule = {{{ScheduledMode::Patrol, 4.0f},
-	                                                {ScheduledMode::Chase, 26.0f},
-	                                                {ScheduledMode::Patrol, 3.0f},
-	                                                {ScheduledMode::Chase, 40.0f},
-	                                                {ScheduledMode::Patrol, 2.0f},
-	                                                {ScheduledMode::Chase, 0.0f}}};
 
 	// Fright (after a power pellet)
 
-	// How long a fright lasts on levels 1, 2, ...; every later level uses the last value.
-	inline constexpr std::array<float, 5> kFrightSeconds = {{7.0f, 6.0f, 5.0f, 4.0f, 3.0f}};
+	// How long a fright lasts is set per level (difficulty.hpp).
 	// Frightened enemies flash for this long before the fright ends, as a warning.
 	inline constexpr float kFrightWarningSeconds = 2.0f;
 	inline constexpr float kFrightFlashesPerSecond = 4.0f;
