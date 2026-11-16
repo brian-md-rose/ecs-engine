@@ -17,6 +17,17 @@ Inside `Playing`, `Round` goes Ready (2 s) → Active → Dying (1.5 s) → Read
 Running ⇄ Paused. Quitting from the pause menu goes to the title, by way of the name entry
 when the score beats the record.
 
+## The world
+
+The title and options screens show only their own menus on black. The maze, pellets, player,
+enemies and HUD are created by `SpawnGameWorld` when `Playing` is entered (not by the START
+button, so anything that goes straight to `Playing` gets a world too). The `GameWorld` resource
+records that they exist, so coming back to `Playing` from a `LevelTransition` does not spawn a
+second copy; the pellets are reset when the level screen ends. Every one of those entities
+carries `DespawnOnEnter<Screen>{Title}`, so entering the title removes them, and `EnterTitle`
+clears the flag. NameEntry and GameOver keep the world, dimmed, behind them. The maze file and
+assets are still loaded and checked at launch, so a broken maze is reported before the title.
+
 ## Options
 
 Up and down choose, left and right (or Enter) change, Esc or BACK goes back.

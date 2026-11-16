@@ -116,7 +116,6 @@ namespace game
 	{
 		world.resources.Get<GameFlow>() = GameFlow{.lives = world.resources.Get<Settings>().lives};
 		world.resources.Get<Score>().points = 0;
-		ResetPellets(world);
 	}
 
 	void EndGame(World& world)
@@ -137,6 +136,21 @@ namespace game
 		const auto& maze = world.resources.Get<TileMap>();
 		DestroyPellets(world);
 		SpawnPellets(world.registry, world.commands, maze, MazeOrigin(maze), world.resources.Get<SpriteClips>());
+	}
+
+	void SpawnGameWorld(World& world)
+	{
+		GameWorld& flag = world.resources.Get<GameWorld>();
+		if (flag.spawned) return;
+		flag.spawned = true;
+
+		const auto& map = world.resources.Get<TileMap>();
+		const Position origin = MazeOrigin(map);
+		const auto& clips = world.resources.Get<SpriteClips>();
+		SpawnMaze(world.registry, map, origin, clips);
+		SpawnPlayer(world.registry, map, origin, clips, LevelTuningOf(world).playerSpeed);
+		SpawnEnemies(world.registry, map, origin, clips);
+		SpawnHud(world.registry, map, origin);
 	}
 
 	void ResetActors(World& world)
@@ -329,8 +343,7 @@ namespace game
 		// Behind the screens that sit on top of the game the game is dimmed; their text, above it,
 		// is not.
 		const bool behindScreen =
-		    InState<Pause::Paused>(world) ||
-		    InState<Screen::Title, Screen::Options, Screen::NameEntry, Screen::LevelTransition>(world);
+		    InState<Pause::Paused>(world) || InState<Screen::NameEntry, Screen::LevelTransition>(world);
 		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
 		renderer2D.Draw(renderer, world.registry, static_cast<float>(context.alpha));

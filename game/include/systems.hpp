@@ -22,8 +22,8 @@ namespace game
 	// What the screens do to the game in progress. They request the next screen through
 	// NextState<Screen> and leave the rest to the enter systems.
 
-	// Starts a game: the score back to 0, every life (Settings), level 1, and the pellets
-	// respawned.
+	// Starts a game: the score back to 0, every life (Settings) and level 1. The pellets are new
+	// because entering Playing creates the world (SpawnGameWorld).
 	void StartNewGame(engine::ecs::World& world);
 
 	// The last life is gone: asks for the screen after a game (ScreenAfterGame).
@@ -39,6 +39,11 @@ namespace game
 
 	// Respawns every pellet and power pellet.
 	void ResetPellets(engine::ecs::World& world);
+
+	// Creates the game's entities from the TileMap: the maze with its pellets, the player, the enemies
+	// and the HUD, all scoped to leave when the Title is entered. Does nothing if GameWorld says they
+	// already exist (coming back from a LevelTransition).
+	void SpawnGameWorld(engine::ecs::World& world);
 
 	// Input
 

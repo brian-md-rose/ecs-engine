@@ -98,6 +98,16 @@ namespace
 			Update();
 		}
 
+		[[nodiscard]] int PlayerCount()
+		{
+			int players = 0;
+			maze.world.registry.Each<game::PlayerControlled>([&players](Entity, const game::PlayerControlled&)
+			{
+				++players;
+			});
+			return players;
+		}
+
 		[[nodiscard]] Transform PlayerTransform()
 		{
 			Transform result{};
@@ -503,7 +513,7 @@ TEST_CASE("Leaving a game from the pause menu without a new best score goes back
 	h.Tap(Key::Down);
 	h.Tap(Key::Enter);
 	CHECK(h.Now() == Stage::Title);
-	CHECK(h.PlayerTransform().position.x == Start().x);
+	CHECK(h.PlayerCount() == 0); // the world goes with the game
 }
 
 TEST_CASE("The pause menu exists only while paused", "[game][systems][gameflow]")

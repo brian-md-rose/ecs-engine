@@ -39,6 +39,7 @@ namespace game
 			const Entity entity = registry.Create();
 			registry.Add<Transform>(entity, Position{AlignedX(anchorX, align, Width(label)), y});
 			registry.Add<Text>(entity, Text{.value = std::string(label), .color = kHudLabelColor, .layer = kHudLayer});
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 		}
 
 		void SpawnField(Registry& registry, HudField field, float anchorX, Align align, float y, Color color)
@@ -47,6 +48,7 @@ namespace game
 			registry.Add<Transform>(entity, Position{anchorX, y});
 			registry.Add<Text>(entity, Text{.color = color, .layer = kHudLayer});
 			registry.Add<HudText>(entity, HudText{.field = field, .anchorX = anchorX, .align = align});
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 		}
 	} // namespace
 

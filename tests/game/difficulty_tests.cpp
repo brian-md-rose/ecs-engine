@@ -179,11 +179,15 @@ TEST_CASE("A new level sets the player to that level's speed", "[game][difficult
 		});
 		return speed;
 	};
+	engine::input::Keyboard keyboard;
+	game.Update(1.0 / 60.0, keyboard); // enters the title
+	gametest::RequestPlaying(game);
+	game.Update(1.0 / 60.0, keyboard);
 	CHECK(playerSpeed() == 7.5f);
 
 	// Straight to the end of level 1.
 	game.world.resources.Get<engine::ecs::NextState<game::Screen>>().Set(game::Screen::LevelTransition);
-	engine::input::Keyboard keyboard;
+	game.Update(1.0 / 60.0, keyboard); // enters the level screen
 	for (int i = 0; i < 10 * 60 && gametest::StageOf(game) != gametest::Stage::Ready; ++i)
 	{
 		game.Update(1.0 / 60.0, keyboard);

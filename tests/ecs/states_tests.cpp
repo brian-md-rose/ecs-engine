@@ -13,6 +13,7 @@
 namespace
 {
 	using engine::application::ScheduledGame;
+	using engine::ecs::DespawnOnEnter;
 	using engine::ecs::DespawnOnExit;
 	using engine::ecs::FrameContext;
 	using engine::ecs::InState;
@@ -529,4 +530,71 @@ TEST_CASE("Events published by an enter system are delivered in the same update"
 	f.Next().Set(Screen::Menu);
 	f.Update();
 	CHECK(f.Calls() == std::vector<int>{99});
+}
+
+TEST_CASE("Entities scoped to entering a value go when the state enters it", "[ecs][states]")
+{
+	Fixture f;
+	f.game.scheduler.AddState(f.game.world, Screen::Menu);
+	for (const Screen scope : {Screen::Title, Screen::Playing})
+	{
+		const auto e = f.game.world.registry.Create();
+		f.game.world.registry.Add<DespawnOnEnter<Screen>>(e, DespawnOnEnter<Screen>{scope});
+	}
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 2);
+
+	f.Next().Set(Screen::Title); // only the entity scoped to Title goes
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 1);
+
+	f.Next().Set(Screen::Menu); // entering another value leaves the rest alone
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 1);
+}
+
+TEST_CASE("Entities scoped to entering a value are destroyed before its enter systems run", "[ecs][states]")
+{
+	Fixture f;
+	f.game.scheduler.AddState(f.game.world, Screen::Menu);
+	f.game.scheduler.AddOnEnter(Screen::Title, "SpawnScoped", [](World& world, const FrameContext&)
+	{
+		const auto e = world.registry.Create();
+		world.registry.Add<DespawnOnEnter<Screen>>(e, DespawnOnEnter<Screen>{Screen::Title});
+	});
+	f.Update();
+	f.Next().Set(Screen::Title);
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 1); // spawned by the entry, so it stays...
+	f.Next().Set(Screen::Menu);
+	f.Update();
+	f.Next().Set(Screen::Title);
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 1); // ...and the next entry replaces it
+}
+
+TEST_CASE("Entities scoped to a sub-state value go when the sub-state enters it", "[ecs][states]")
+{
+	Fixture f;
+	f.game.scheduler.AddState(f.game.world, Screen::Title);
+	f.game.scheduler.AddSubState(f.game.world, Screen::Playing, Pause::Running);
+	f.Update();
+	const auto e = f.game.world.registry.Create();
+	f.game.world.registry.Add<DespawnOnEnter<Pause>>(e, DespawnOnEnter<Pause>{Pause::Paused});
+	f.Next().Set(Screen::Playing);
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 1);
+	f.game.world.resources.Get<NextState<Pause>>().Set(Pause::Paused);
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 0);
+}
+
+TEST_CASE("Entities scoped to the initial value go on the first update", "[ecs][states]")
+{
+	Fixture f;
+	f.game.scheduler.AddState(f.game.world, Screen::Title);
+	const auto e = f.game.world.registry.Create();
+	f.game.world.registry.Add<DespawnOnEnter<Screen>>(e, DespawnOnEnter<Screen>{Screen::Title});
+	f.Update();
+	CHECK(f.game.world.registry.EntityCount() == 0);
 }

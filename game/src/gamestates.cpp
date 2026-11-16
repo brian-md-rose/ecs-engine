@@ -15,7 +15,13 @@ namespace game
 
 		void EnterTitle(World& world, const FrameContext&)
 		{
-			ResetActors(world); // the title shows the maze at rest
+			// Entering the Title has already removed the world; the next START makes a new one.
+			world.resources.Get<GameWorld>().spawned = false;
+		}
+
+		void EnterPlaying(World& world, const FrameContext&)
+		{
+			SpawnGameWorld(world);
 		}
 
 		void BeginLevelTransition(World& world, const FrameContext&)
@@ -55,6 +61,7 @@ namespace game
 
 		scheduler.AddOnEnter(Screen::Title, "EnterTitle", EnterTitle);
 		scheduler.AddOnEnter(Screen::Title, "SpawnTitleScreen", SpawnTitleScreen);
+		scheduler.AddOnEnter(Screen::Playing, "SpawnGameWorld", EnterPlaying);
 		scheduler.AddOnEnter(Screen::Options, "SpawnOptionsScreen", SpawnOptionsScreen);
 		scheduler.AddOnExit(Screen::Options, "SaveSettings", ExitOptions);
 		scheduler.AddOnEnter(Screen::NameEntry, "SpawnNameEntryScreen", SpawnNameEntryScreen);
