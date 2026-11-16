@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <optional>
 
-#include "direction.hpp"
+#include "grid/direction.hpp"
 #include "input/keyboard.hpp"
 
 namespace game
@@ -33,7 +33,7 @@ namespace game
 		std::array<bool, kActionCount> held{};
 		std::array<bool, kActionCount> pressed{};
 		std::array<bool, kActionCount> released{};
-		Direction bufferedDirection = Direction::None;
+		engine::grid::Direction bufferedDirection = engine::grid::Direction::None;
 
 	public:
 		// Starts with the default bindings: arrows and WASD to move, P or Escape to pause,
@@ -60,7 +60,7 @@ namespace game
 		// uses it to take a turn the player asked for a little before reaching the junction.
 		// If two directions are first pressed within the same update, the later one in Action
 		// order wins.
-		[[nodiscard]] Direction BufferedDirection() const noexcept { return bufferedDirection; }
-		void ClearBufferedDirection() noexcept { bufferedDirection = Direction::None; }
+		[[nodiscard]] engine::grid::Direction BufferedDirection() const noexcept { return bufferedDirection; }
+		void ClearBufferedDirection() noexcept { bufferedDirection = engine::grid::Direction::None; }
 	};
 } // namespace game

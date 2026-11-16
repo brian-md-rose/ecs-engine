@@ -5,11 +5,11 @@
 
 namespace
 {
+	using engine::grid::Direction;
 	using engine::input::Key;
 	using engine::input::Keyboard;
 	using game::Action;
 	using game::Controls;
-	using game::Direction;
 
 	// Key events go to the keyboard, then Update() runs one game update the way Application
 	// and ControlsSystem do: Controls reads the keyboard, then the keyboard's edges are cleared.

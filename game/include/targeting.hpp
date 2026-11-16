@@ -2,8 +2,8 @@
 #include <cstddef>
 #include <optional>
 
-#include "direction.hpp"
 #include "enemytuning.hpp"
+#include "grid/direction.hpp"
 #include "steering.hpp"
 #include "tilemap.hpp"
 
@@ -35,14 +35,15 @@ namespace game
 	{
 		TilePosition self;
 		TilePosition player;
-		Direction playerHeading = Direction::None;
+		engine::grid::Direction playerHeading = engine::grid::Direction::None;
 		TilePosition ally; // where kClaspAlly is; Clasp's own tile if there is none
 	};
 
 	// The first junction (a tile with three or more sides the player can enter) on the way
 	// from tile along heading, at most lookahead tiles on. Stops short of a wall, so it is
 	// always a tile the player can reach; tile itself if heading is None or a wall is next.
-	[[nodiscard]] TilePosition JunctionAhead(const TileMap& map, TilePosition tile, Direction heading, int lookahead);
+	[[nodiscard]] TilePosition JunctionAhead(const TileMap& map, TilePosition tile, engine::grid::Direction heading,
+	                                         int lookahead);
 
 	// The four chase rules, one per personality.
 

@@ -47,6 +47,18 @@ namespace engine::graphics
 	[[nodiscard]] int TextWidth(const BitmapFont& font, std::string_view text, int scale = 1);
 	[[nodiscard]] int TextHeight(const BitmapFont& font, std::string_view text, int scale = 1);
 
+	// How a line of text sits against an x position.
+	enum class Align : std::uint8_t
+	{
+		Left,   // anchorX is where the text starts
+		Centre, // anchorX is the middle of the text
+		Right   // anchorX is where the text ends
+	};
+
+	// Where text of width pixels (TextWidth) starts so it sits against anchorX the way align
+	// says. Whole pixels, so the text stays sharp.
+	[[nodiscard]] float AlignedX(float anchorX, Align align, int width) noexcept;
+
 	// Component: text drawn with the Renderer2D's font, its top-left at the entity's Transform.
 	// The glyphs are white in the atlas and take on color.
 	struct Text

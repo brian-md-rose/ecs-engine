@@ -12,6 +12,7 @@
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
+#include "core/framestats.hpp"
 #include "core/paths.hpp"
 #include "core/text.hpp"
 #include "difficulty.hpp"
@@ -24,6 +25,7 @@
 #include "gameflow.hpp"
 #include "gamestate.hpp"
 #include "graphics/animation.hpp"
+#include "graphics/animationsystem.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/renderer2d.hpp"
 #include "graphics/sprite.hpp"
@@ -103,7 +105,7 @@ namespace game
 		world.resources.Emplace<GameFlow>(GameFlow{.stage = Stage::Title});
 		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<Score>();
-		world.resources.Emplace<FrameStats>();
+		world.resources.Emplace<engine::core::FrameStats>("stress test");
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
@@ -149,7 +151,7 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
 		scheduler.Add(Phase::LateUpdate, PlayerLookSystem);
-		scheduler.Add(Phase::LateUpdate, AnimationSystem, NotPaused);
+		scheduler.Add(Phase::LateUpdate, engine::graphics::AnimationSystem, NotPaused);
 		scheduler.Add(Phase::LateUpdate, HudSystem);
 		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
 		scheduler.Add(Phase::LateUpdate, AudioSystem);

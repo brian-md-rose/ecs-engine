@@ -3,8 +3,8 @@
 #include <cstddef>
 
 #include "components.hpp"
+#include "core/framestats.hpp"
 #include "difficulty.hpp"
-#include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
@@ -12,6 +12,7 @@
 #include "gamestate.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
+#include "grid/direction.hpp"
 #include "input/keyboard.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
@@ -145,7 +146,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 {
 	Harness h;
 	CHECK(h.maze.world.resources.Has<game::GameState>());
-	CHECK(h.maze.world.resources.Has<game::FrameStats>());
+	CHECK(h.maze.world.resources.Has<engine::core::FrameStats>());
 	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
@@ -164,7 +165,7 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	    [&movers](Entity, const game::PlayerControlled&, const game::GridMover& mover)
 	{
 		CHECK(mover.tile == game::TilePosition{.column = 2, .row = 2});
-		CHECK(mover.direction == game::Direction::None);
+		CHECK(mover.direction == engine::grid::Direction::None);
 		CHECK(mover.speed == game::FallbackDifficulty().ForLevel(1).playerSpeed);
 		++movers;
 	});

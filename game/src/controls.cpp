@@ -4,6 +4,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		using engine::input::Key;

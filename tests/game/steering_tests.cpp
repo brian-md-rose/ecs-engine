@@ -3,14 +3,14 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "direction.hpp"
 #include "enemytuning.hpp"
+#include "grid/direction.hpp"
 #include "steering.hpp"
 #include "tilemap.hpp"
 
 namespace
 {
-	using game::Direction;
+	using engine::grid::Direction;
 	using game::Target;
 	using game::TileMap;
 	using game::TilePosition;

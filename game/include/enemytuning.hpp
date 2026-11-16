@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string_view>
 
-#include "direction.hpp"
+#include "grid/direction.hpp"
 
 // Every number that decides how the enemies move and think, in one place, so the game can be
 // tuned here without hunting through the code. All of them are our own (see docs/enemies.md).
@@ -14,8 +14,9 @@ namespace game
 
 	// When two exits are equally close to an enemy's target, the one earlier in this list wins:
 	// clockwise, starting from Right.
-	inline constexpr std::array<Direction, 4> kTieBreakOrder = {
-	    {Direction::Right, Direction::Down, Direction::Left, Direction::Up}};
+	inline constexpr std::array<engine::grid::Direction, 4> kTieBreakOrder = {
+	    {engine::grid::Direction::Right, engine::grid::Direction::Down, engine::grid::Direction::Left,
+	     engine::grid::Direction::Up}};
 
 	// Speeds, in tiles per second. The player's, the roaming enemies' and the frightened ones'
 	// change from level to level (difficulty.hpp, assets/levels.txt); these don't.

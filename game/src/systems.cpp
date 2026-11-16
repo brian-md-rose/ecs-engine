@@ -8,6 +8,7 @@
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
+#include "core/framestats.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "enemymodes.hpp"
@@ -27,6 +28,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		using engine::ecs::Entity;
@@ -134,7 +137,7 @@ namespace game
 			if (state.stressTest)
 			{
 				SpawnStressShapes(world);
-				world.resources.Get<FrameStats>().Reset();
+				world.resources.Get<engine::core::FrameStats>().Reset();
 			}
 			else
 			{
@@ -296,8 +299,8 @@ namespace game
 		renderer2D.Draw(renderer, world.registry);
 		if (state.stressTest)
 		{
-			world.resources.Get<FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,
-			                                           renderer2D.ItemCount());
+			world.resources.Get<engine::core::FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,
+			                                                         renderer2D.ItemCount());
 		}
 	}
 } // namespace game

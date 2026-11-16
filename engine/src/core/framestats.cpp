@@ -1,8 +1,8 @@
-#include "gamestate.hpp"
+#include "core/framestats.hpp"
 
 #include <cstdio>
 
-namespace game
+namespace engine::core
 {
 	void FrameStats::Reset()
 	{
@@ -11,7 +11,7 @@ namespace game
 		frames = 0;
 	}
 
-	void FrameStats::AddFrame(Clock::duration draw, std::size_t shapes)
+	void FrameStats::AddFrame(Clock::duration draw, std::size_t items)
 	{
 		drawTime += draw;
 		++frames;
@@ -23,9 +23,9 @@ namespace game
 		}
 
 		const std::chrono::duration<double, std::milli> averageDraw = drawTime / frames;
-		std::printf("stress test: %zu shapes, %.1f fps, draw %.3f ms/frame\n", shapes,
+		std::printf("%s: %zu items, %.1f fps, draw %.3f ms/frame\n", label.c_str(), items,
 		            static_cast<double>(frames) / elapsed.count(), averageDraw.count());
 		std::fflush(stdout);
 		Reset();
 	}
-} // namespace game
+} // namespace engine::core

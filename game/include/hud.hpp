@@ -7,6 +7,7 @@
 #include "ecs/world.hpp"
 #include "gameflow.hpp"
 #include "graphics/color.hpp"
+#include "graphics/font.hpp"
 #include "graphics/transform.hpp"
 #include "tilemap.hpp"
 
@@ -37,19 +38,13 @@ namespace game
 		Message
 	};
 
-	enum class Align : std::uint8_t
-	{
-		Left,   // anchorX is where the text starts
-		Centre, // anchorX is the middle of the text
-		Right   // anchorX is where the text ends
-	};
-
-	// Component: a Text the HUD keeps up to date, placed against anchorX each time it changes.
+	// Component: a Text the HUD keeps up to date, placed against anchorX each time it changes
+	// (engine::graphics::AlignedX).
 	struct HudText
 	{
 		HudField field = HudField::Score;
 		float anchorX = 0.0f;
-		Align align = Align::Left;
+		engine::graphics::Align align = engine::graphics::Align::Left;
 	};
 
 	// Everything the HUD reads, gathered from the resources.
@@ -65,10 +60,6 @@ namespace game
 	// The text for one field, in capitals (the font has no small letters). Lives are one '@'
 	// icon per try left; the message is empty in stages that have none. Pure.
 	[[nodiscard]] std::string HudLine(HudField field, const HudView& view);
-
-	// Where text of width pixels starts so it sits against anchorX the way align says. Whole
-	// pixels, so the text stays sharp.
-	[[nodiscard]] float AlignedX(float anchorX, Align align, int width) noexcept;
 
 	// Setup: creates the HUD's labels and fields, the message centred across the middle row of
 	// a maze drawn at origin. Creates entities directly, so call it during setup.

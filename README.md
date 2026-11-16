@@ -63,7 +63,7 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 
 ```
 engine/   static library (engine::engine)
-  include/  application/ audio/ core/ ecs/ graphics/ input/
+  include/  application/ audio/ core/ ecs/ graphics/ grid/ input/
   src/
 game/     Tangle Run, the game executable
   assets/   mazes, levels, sprites and font, copied next to the executable on every build

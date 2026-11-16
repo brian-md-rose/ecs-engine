@@ -7,6 +7,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		using engine::ecs::Entity;
@@ -46,16 +48,6 @@ namespace game
 			const PlayerPose pose = PlayerPoseFor(clips, facing.direction, dying);
 			animation = Play(animation, pose.clip);
 			sprite.flipX = pose.flipX;
-		});
-	}
-
-	void AnimationSystem(World& world, const FrameContext& context)
-	{
-		const auto dt = static_cast<float>(context.dt);
-		world.registry.Each<Animation, Sprite>([dt](Entity, Animation& animation, Sprite& sprite)
-		{
-			animation = Advance(animation, dt);
-			sprite.source = AnimationSource(animation);
 		});
 	}
 } // namespace game

@@ -1,7 +1,6 @@
 #include "hud.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <string_view>
 
 #include "assets.hpp"
@@ -17,6 +16,8 @@ namespace game
 	{
 		using engine::ecs::Entity;
 		using engine::ecs::Registry;
+		using engine::graphics::Align;
+		using engine::graphics::AlignedX;
 		using engine::graphics::Color;
 		using engine::graphics::Position;
 		using engine::graphics::Text;
@@ -77,21 +78,6 @@ namespace game
 			break;
 		}
 		return {};
-	}
-
-	float AlignedX(float anchorX, Align align, int width) noexcept
-	{
-		const auto pixels = static_cast<float>(width);
-		switch (align)
-		{
-		case Align::Left:
-			break;
-		case Align::Centre:
-			return std::floor(anchorX - pixels / 2.0f);
-		case Align::Right:
-			return std::floor(anchorX - pixels);
-		}
-		return std::floor(anchorX);
 	}
 
 	void SpawnHud(Registry& registry, const TileMap& map, Position origin)

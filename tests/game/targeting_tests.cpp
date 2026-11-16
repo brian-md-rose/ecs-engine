@@ -4,16 +4,16 @@
 #include <optional>
 #include <string_view>
 
-#include "direction.hpp"
 #include "enemytuning.hpp"
+#include "grid/direction.hpp"
 #include "steering.hpp"
 #include "targeting.hpp"
 #include "tilemap.hpp"
 
 namespace
 {
+	using engine::grid::Direction;
 	using game::ChaseView;
-	using game::Direction;
 	using game::Personality;
 	using game::Target;
 	using game::TileMap;

@@ -7,6 +7,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	int DistanceSquared(TilePosition from, Target to) noexcept
 	{
 		const int columns = static_cast<int>(from.column) - to.column;

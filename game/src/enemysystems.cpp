@@ -6,10 +6,10 @@
 #include <vector>
 
 #include "components.hpp"
-#include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "gameflow.hpp"
 #include "graphics/sprite.hpp"
+#include "grid/direction.hpp"
 #include "gridmovement.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
@@ -18,6 +18,8 @@
 
 namespace game
 {
+	using engine::grid::Direction;
+
 	namespace
 	{
 		using engine::ecs::Entity;
