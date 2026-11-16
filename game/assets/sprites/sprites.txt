@@ -1,0 +1,233 @@
+# The game's sprites, drawn by hand for this game: the player, the four enemies, their
+# frightened and returning looks, the pellets, the door and the pieces the maze walls are built
+# from. Every sprite is 8 x 8 pixels, one maze tile; animated ones have their frames side by
+# side. The format is described in docs/pixel-sheets.md.
+
+# The player: a teal sprout with a leaf on its head.
+color T 80 230 210
+color t 30 140 130
+color g 130 225 80
+color W 255 255 255
+color k 20 20 40
+
+# Grit, the bloodhound: a squat green block that is all jaw.
+color G 90 210 70
+color j 40 120 40
+
+# Snare, the trapper: a violet spider.
+color V 165 90 235
+color r 255 90 110
+
+# Clasp, the flanker: a pale crab with big claws.
+color C 235 235 235
+color c 150 150 165
+
+# Wisp, the stalker: a flickering sand-coloured flame.
+color S 215 195 120
+color s 255 240 180
+
+# Frightened enemies drain to grey, and flash orange as the fright runs out.
+color F 110 110 125
+color O 255 170 90
+
+# An eaten enemy is a little glowing core on its way home.
+color e 170 170 170
+
+# Pellets, power pellets, the door and the walls.
+color p 240 220 190
+color P 255 250 235
+color d 230 140 190
+color b 18 36 84
+color B 70 150 235
+
+sprite player_right 8 8 2
+....g.......g...
+...gg......gg...
+..TTTT....TTTT..
+.TTTTWk..TTTTWk.
+.TTTTWk..TTTTWk.
+.TTTTTT..TTTTTT.
+..tTTt...tTTTTt.
+..t..t.....tt...
+
+sprite player_down 8 8 2
+....g.......g...
+...gg......gg...
+..TTTT....TTTT..
+.TWTTWT..TWTTWT.
+.TkTTkT..TkTTkT.
+.TTTTTT..TTTTTT.
+..tTTt...tTTTTt.
+..t..t.....tt...
+
+sprite player_up 8 8 2
+....g...........
+...gg.......g...
+..TTTT.....gg...
+.TTTTTT...TTTT..
+.TTTTTT..TTTTTT.
+.tTTTTt..TTTTTT.
+..tTTt...tTTTTt.
+..t..t....t..t..
+
+sprite player_death 8 8 4
+....g...........................
+...gg........g..................
+..TTTT......gg...........g......
+.TkTTkT...TTTTT.....g.......g...
+.TTTTTT..TkTTTkT......TT........
+.TTTTTT..TTTTTTT.....TttT....T..
+..tTTt....tTTTt.......TT........
+..t..t..............g.......g...
+
+sprite grit 8 8 2
+.GGGGGG..GGGGGG.
+GGGGGGGGGGGGGGGG
+GkGGGGkGGkGGGGkG
+GGGGGGGGGGGGGGGG
+GWjWjWjGGjWjWjWG
+GGGGGGGGGGGGGGGG
+GG.GG.GG.GG.GG.G
+G..G..G...G..G..
+
+sprite snare 8 8 2
+V......V........
+.V.VV.V.V..VV..V
+..VVVV...VVVVVV.
+VVVrrVVV..VrrV..
+..VVVV...VVVVVV.
+.V.VV.V.V..VV..V
+V......V........
+................
+
+sprite clasp 8 8 2
+CC....CC.C....C.
+CC....CCCC....CC
+.C.CC.C..C.CC.C.
+..kCCk....kCCk..
+.CCCCCC..CCCCCC.
+CcCCCCcCCcCCCCcC
+.C....C...C..C..
+C......C.C....C.
+
+sprite wisp 8 8 2
+....S..........S
+...SS.........SS
+..SsSS......SsSS
+.SSssSS....SSssS
+.SkSSkS...SkSSkS
+.SSSSSS...SSSSSS
+..SSSS.....SSSS.
+...SS.....S..S..
+
+sprite frightened 8 8 2
+.........FFFFFF.
+..FFFF..FFFFFFFF
+.FFFFFF.FFWFFWFF
+.FWFFWF.FFFFFFFF
+.FFFFFF.FFFFFFFF
+.FFFFFF..FFFFFF.
+..FFFF....FFFF..
+.F.FF.F..F.FF.F.
+
+sprite frightened_flash 8 8 2
+.........OOOOOO.
+..OOOO..OOOOOOOO
+.OOOOOO.OOWOOWOO
+.OWOOWO.OOOOOOOO
+.OOOOOO.OOOOOOOO
+.OOOOOO..OOOOOO.
+..OOOO....OOOO..
+.O.OO.O..O.OO.O.
+
+sprite returning 8 8 2
+................
+...........ee...
+...ee.....eeee..
+..eWWe...eeWWee.
+..eWWe...eeWWee.
+...ee.....eeee..
+...........ee...
+................
+
+sprite pellet 8 8
+........
+........
+........
+...pp...
+...pp...
+........
+........
+........
+
+sprite power_pellet 8 8 2
+................
+...pp...........
+..pPPp.....pp...
+.pPPPPp...pPPp..
+.pPPPPp...pPPp..
+..pPPp.....pp...
+...pp...........
+................
+
+sprite door 8 8
+........
+........
+........
+dddddddd
+dddddddd
+........
+........
+........
+
+# The walls are built from these when the game starts: the core fills the tile, and an edge
+# is drawn on each side whose neighbour isn't a wall (see walltiles.hpp).
+sprite wall_core 8 8
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+
+sprite wall_edge_up 8 8
+BBBBBBBB
+........
+........
+........
+........
+........
+........
+........
+
+sprite wall_edge_right 8 8
+.......B
+.......B
+.......B
+.......B
+.......B
+.......B
+.......B
+.......B
+
+sprite wall_edge_down 8 8
+........
+........
+........
+........
+........
+........
+........
+BBBBBBBB
+
+sprite wall_edge_left 8 8
+B.......
+B.......
+B.......
+B.......
+B.......
+B.......
+B.......
+B.......

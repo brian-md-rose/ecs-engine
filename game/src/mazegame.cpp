@@ -8,10 +8,12 @@
 #include <utility>
 #include <vector>
 
+#include "assets.hpp"
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
 #include "core/paths.hpp"
+#include "difficulty.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
@@ -20,12 +22,17 @@
 #include "events.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
+#include "graphics/animation.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/renderer2d.hpp"
-#include "graphics/shape.hpp"
+#include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
 #include "gridmovement.hpp"
+#include "hud.hpp"
+#include "looks.hpp"
 #include "scoring.hpp"
+#include "screens.hpp"
+#include "sounds.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
 
@@ -38,9 +45,10 @@ namespace game
 		// Loads assets/mazes/<fileName> from next to the executable (see game/assets/README.md).
 		// On failure, prints the error with the file, line and column to stderr and returns
 		// nothing.
-		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(std::string_view fileName)
+		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(const std::filesystem::path& folder,
+		                                                   std::string_view fileName)
 		{
-			const std::filesystem::path file = engine::core::ExecutableDirectory() / "assets" / "mazes" / fileName;
+			const std::filesystem::path file = folder / "mazes" / fileName;
 			TileMapResult result = LoadTileMap(file);
 			if (!result.map)
 			{
@@ -61,57 +69,77 @@ namespace game
 
 	MazeGame::MazeGame()
 	{
-		const std::optional<TileMap> maze = LoadMazeAsset(kFirstMaze);
-		if (!maze)
+		const std::filesystem::path folder = engine::core::ExecutableDirectory() / "assets";
+		const std::optional<TileMap> maze = LoadMazeAsset(folder, kFirstMaze);
+		const std::optional<GameAssets> assets = LoadGameAssets(folder);
+		if (!maze || !assets)
 		{
 			valid = false;
 			return;
 		}
-		Build(*maze);
+		Build(*maze, *assets);
 	}
 
-	MazeGame::MazeGame(const TileMap& maze)
+	MazeGame::MazeGame(const TileMap& maze, const GameAssets& assets)
 	{
-		Build(maze);
+		Build(maze, assets);
 	}
 
-	void MazeGame::Build(const TileMap& maze)
+	bool MazeGame::WantsToQuit() const
+	{
+		const GameState* state = world.resources.TryGet<GameState>();
+		return state != nullptr && state->quitRequested;
+	}
+
+	void MazeGame::Build(const TileMap& maze, const GameAssets& assets)
 	{
 		using engine::ecs::Phase;
-		using engine::graphics::Shape;
+		using engine::graphics::Animation;
+		using engine::graphics::Sprite;
 		using engine::graphics::Transform;
 
 		world.resources.Emplace<Controls>();
 		world.resources.Emplace<GameState>();
-		world.resources.Emplace<GameFlow>();
+		world.resources.Emplace<GameFlow>(GameFlow{.stage = Stage::Title});
+		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<Score>();
-		world.resources.Emplace<ConsoleHud>();
 		world.resources.Emplace<FrameStats>();
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
-		world.resources.Emplace<engine::graphics::Renderer2D>(
+		world.resources.Emplace<HighScore>();
+		world.resources.Emplace<SoundBank>();
+		world.resources.Emplace<SoundQueue>();
+		const DifficultyTable& difficulty = world.resources.Emplace<DifficultyTable>(assets.difficulty);
+		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
 		    engine::graphics::Camera{.logicalWidth = kLogicalWidth, .logicalHeight = kLogicalHeight});
+		renderer2D.SetAtlas(assets.atlas);
+		renderer2D.SetFont(assets.font);
 		const TileMap& map = world.resources.Emplace<TileMap>(maze);
 		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
 		engine::ecs::Registry& registry = world.registry;
 		const engine::graphics::Position origin = MazeOrigin(map);
-		SpawnMaze(registry, map, origin);
+		const SpriteClips& clips = world.resources.Emplace<SpriteClips>(assets.clips);
+		SpawnMaze(registry, map, origin, clips);
 
 		const std::vector<TilePosition> spawns = map.Find(Tile::PlayerSpawn);
 		ENGINE_VERIFY(spawns.size() == 1, "the maze needs exactly one player spawn; ParseTileMap checks this");
 		const engine::ecs::Entity player = registry.Create();
-		const GridMover mover{.tile = spawns.front(), .speed = kPlayerSpeed};
+		const GridMover mover{.tile = spawns.front(), .speed = difficulty.ForLevel(1).playerSpeed};
 		registry.Add<Transform>(player, MoverTopLeft(origin, mover));
 		registry.Add<GridMover>(player, mover);
 		registry.Add<Spawn>(player, Spawn{.tile = mover.tile});
 		registry.Add<PlayerControlled>(player);
-		registry.Add<Shape>(
-		    player, Shape{.width = kPlayerSize, .height = kPlayerSize, .color = {255, 210, 0}, .layer = kPlayerLayer});
-		SpawnEnemies(registry, map, origin);
+		registry.Add<Facing>(player);
+		registry.Add<Sprite>(player, Sprite{.layer = kPlayerLayer});
+		registry.Add<Animation>(player, Animation{.clip = clips.playerDown});
+		SpawnEnemies(registry, map, origin, clips);
+		SpawnHud(registry, map, origin);
+		SpawnScreens(registry);
 
 		// The whole frame, in run order.
 		scheduler.Add(Phase::Input, ControlsSystem);
+		scheduler.Add(Phase::Input, ScreenSystem);
 		scheduler.Add(Phase::Input, GameStateSystem);
 		scheduler.Add(Phase::Update, GameFlowSystem, NotPaused);
 		scheduler.Add(Phase::Update, PlayerInputSystem, IsPlaying);
@@ -120,23 +148,29 @@ namespace game
 		scheduler.Add(Phase::Update, GridMovementSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, CollisionSystem, IsPlaying);
 		scheduler.Add(Phase::LateUpdate, EnemyLookSystem);
+		scheduler.Add(Phase::LateUpdate, PlayerLookSystem);
+		scheduler.Add(Phase::LateUpdate, AnimationSystem, NotPaused);
+		scheduler.Add(Phase::LateUpdate, HudSystem);
+		scheduler.Add(Phase::LateUpdate, ScreenTextSystem);
+		scheduler.Add(Phase::LateUpdate, AudioSystem);
 		scheduler.Add(Phase::Render, RenderSystem);
 
 		// Who reacts to what, in delivery order.
 		world.events.Subscribe<PelletEaten>(AddPelletScore);
-		world.events.Subscribe<PelletEaten>(PrintScore<PelletEaten>);
 		world.events.Subscribe<PelletEaten>(CheckLevelCleared<PelletEaten>);
+		world.events.Subscribe<PelletEaten>(QueueSound<PelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(AddPowerPelletScore);
-		world.events.Subscribe<PowerPelletEaten>(PrintScore<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(CheckLevelCleared<PowerPelletEaten>);
 		world.events.Subscribe<PowerPelletEaten>(FrightenEnemies);
+		world.events.Subscribe<PowerPelletEaten>(QueueSound<PowerPelletEaten>);
 		world.events.Subscribe<EnemyEaten>(AddEnemyScore);
-		world.events.Subscribe<EnemyEaten>(PrintScore<EnemyEaten>);
 		world.events.Subscribe<EnemyEaten>(SendEnemyHome);
+		world.events.Subscribe<EnemyEaten>(QueueSound<EnemyEaten>);
 		world.events.Subscribe<PlayerCaught>(LoseLife);
+		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
+		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
 		world.events.Subscribe<StageChanged>(ResetRound);
 		world.events.Subscribe<StageChanged>(ResetEnemies);
-		world.events.Subscribe<StageChanged>(PrintStage);
 	}
 } // namespace game

@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "difficulty.hpp"
 #include "enemymodes.hpp"
 #include "enemytuning.hpp"
 
@@ -16,6 +17,13 @@ namespace
 	using game::ScheduledMode;
 
 	constexpr double kMargin = 1e-4;
+
+	// A level's tuning from the fallback table: the Phase 6 numbers.
+	[[nodiscard]] const game::LevelTuning& Level(int level)
+	{
+		static const game::DifficultyTable table = game::FallbackDifficulty();
+		return table.ForLevel(level);
+	}
 
 	[[nodiscard]] EnemyBrain InState(EnemyState state, bool frightened = false)
 	{
@@ -39,7 +47,7 @@ TEST_CASE("Every schedule starts on patrol, alternates, and ends chasing for goo
 	for (const int level : {1, 2, 3, 4, 9})
 	{
 		CAPTURE(level);
-		const game::ModeSchedule& schedule = game::ScheduleFor(level);
+		const game::ModeSchedule& schedule = Level(level).schedule;
 		for (std::size_t i = 0; i < schedule.size(); ++i)
 		{
 			CHECK(schedule[i].mode == (i % 2 == 0 ? ScheduledMode::Patrol : ScheduledMode::Chase));
@@ -49,62 +57,53 @@ TEST_CASE("Every schedule starts on patrol, alternates, and ends chasing for goo
 	}
 }
 
-TEST_CASE("Later levels have their own schedules", "[game][enemymodes]")
-{
-	CHECK(&game::ScheduleFor(1) == &game::kEarlySchedule);
-	CHECK(&game::ScheduleFor(game::kMiddleScheduleLevel) == &game::kMiddleSchedule);
-	CHECK(&game::ScheduleFor(game::kLateScheduleLevel - 1) == &game::kMiddleSchedule);
-	CHECK(&game::ScheduleFor(game::kLateScheduleLevel) == &game::kLateSchedule);
-	CHECK(&game::ScheduleFor(50) == &game::kLateSchedule);
-	CHECK(&game::ScheduleFor(0) == &game::kEarlySchedule); // out of range: the gentlest
-}
-
 TEST_CASE("The mode clock follows the level's schedule", "[game][enemymodes]")
 {
-	const game::ModeSchedule& schedule = game::ScheduleFor(1);
+	const game::ModeSchedule& schedule = Level(1).schedule;
 	ModeClock clock;
-	CHECK(game::CurrentMode(clock, 1) == ScheduledMode::Patrol);
+	CHECK(game::CurrentMode(clock, Level(1).schedule) == ScheduledMode::Patrol);
 
-	clock = game::TickModeClock(clock, 1, schedule[0].seconds - 0.1f);
-	CHECK(game::CurrentMode(clock, 1) == ScheduledMode::Patrol);
-	clock = game::TickModeClock(clock, 1, 0.2f);
-	CHECK(game::CurrentMode(clock, 1) == ScheduledMode::Chase);
+	clock = game::TickModeClock(clock, Level(1).schedule, schedule[0].seconds - 0.1f);
+	CHECK(game::CurrentMode(clock, Level(1).schedule) == ScheduledMode::Patrol);
+	clock = game::TickModeClock(clock, Level(1).schedule, 0.2f);
+	CHECK(game::CurrentMode(clock, Level(1).schedule) == ScheduledMode::Chase);
 	CHECK(clock.phase == 1);
 	CHECK_THAT(clock.phaseSeconds, WithinAbs(0.1, kMargin));
 
 	// One long step can cross several stretches.
-	ModeClock jump = game::TickModeClock(ModeClock{}, 1, EndOf(schedule, 2) + 0.5f);
+	ModeClock jump = game::TickModeClock(ModeClock{}, Level(1).schedule, EndOf(schedule, 2) + 0.5f);
 	CHECK(jump.phase == 3);
-	CHECK(game::CurrentMode(jump, 1) == ScheduledMode::Chase);
+	CHECK(game::CurrentMode(jump, Level(1).schedule) == ScheduledMode::Chase);
 	CHECK_THAT(jump.phaseSeconds, WithinAbs(0.5, kMargin));
 
 	// The last stretch lasts for good.
-	jump = game::TickModeClock(jump, 1, 10000.0f);
+	jump = game::TickModeClock(jump, Level(1).schedule, 10000.0f);
 	CHECK(jump.phase == schedule.size() - 1);
-	CHECK(game::CurrentMode(jump, 1) == ScheduledMode::Chase);
+	CHECK(game::CurrentMode(jump, Level(1).schedule) == ScheduledMode::Chase);
 }
 
 TEST_CASE("The same moment can be patrol on one level and chase on another", "[game][enemymodes]")
 {
 	// 5.5 s in: level 1 still patrols (6 s), the middle schedule already chases (5 s).
-	const ModeClock clock = game::TickModeClock(ModeClock{}, 2, 5.5f);
-	CHECK(game::CurrentMode(clock, 2) == ScheduledMode::Chase);
-	CHECK(game::CurrentMode(game::TickModeClock(ModeClock{}, 1, 5.5f), 1) == ScheduledMode::Patrol);
+	const ModeClock clock = game::TickModeClock(ModeClock{}, Level(2).schedule, 5.5f);
+	CHECK(game::CurrentMode(clock, Level(2).schedule) == ScheduledMode::Chase);
+	CHECK(game::CurrentMode(game::TickModeClock(ModeClock{}, Level(1).schedule, 5.5f), Level(1).schedule) ==
+	      ScheduledMode::Patrol);
 }
 
 TEST_CASE("A fright holds the schedule until it is over", "[game][enemymodes]")
 {
-	const float fright = game::FrightSecondsFor(1);
-	ModeClock clock = game::TickModeClock(ModeClock{}, 1, 1.0f);
-	clock = game::StartFright(clock, 1);
+	const float fright = Level(1).frightSeconds;
+	ModeClock clock = game::TickModeClock(ModeClock{}, Level(1).schedule, 1.0f);
+	clock = game::StartFright(clock, Level(1).frightSeconds);
 	CHECK(game::IsFrightActive(clock));
 	CHECK(clock.frightSeconds == fright);
 
-	clock = game::TickModeClock(clock, 1, fright - 0.5f);
+	clock = game::TickModeClock(clock, Level(1).schedule, fright - 0.5f);
 	CHECK(game::IsFrightActive(clock));
 	CHECK_THAT(clock.phaseSeconds, WithinAbs(1.0, kMargin)); // held
 
-	clock = game::TickModeClock(clock, 1, 1.0f); // 0.5 s of fright, then 0.5 s of schedule
+	clock = game::TickModeClock(clock, Level(1).schedule, 1.0f); // 0.5 s of fright, then 0.5 s of schedule
 	CHECK_FALSE(game::IsFrightActive(clock));
 	CHECK(clock.frightSeconds == 0.0f);
 	CHECK_THAT(clock.phaseSeconds, WithinAbs(1.5, kMargin));
@@ -112,11 +111,11 @@ TEST_CASE("A fright holds the schedule until it is over", "[game][enemymodes]")
 
 TEST_CASE("Another power pellet restarts the fright and its points", "[game][enemymodes]")
 {
-	ModeClock clock = game::StartFright(ModeClock{}, 1);
+	ModeClock clock = game::StartFright(ModeClock{}, Level(1).frightSeconds);
 	clock.eatenInFright = 2;
-	clock = game::TickModeClock(clock, 1, 3.0f);
-	clock = game::StartFright(clock, 1);
-	CHECK(clock.frightSeconds == game::FrightSecondsFor(1));
+	clock = game::TickModeClock(clock, Level(1).schedule, 3.0f);
+	clock = game::StartFright(clock, Level(1).frightSeconds);
+	CHECK(clock.frightSeconds == Level(1).frightSeconds);
 	CHECK(clock.eatenInFright == 0);
 }
 
@@ -125,11 +124,11 @@ TEST_CASE("Frights get shorter on later levels, down to a floor", "[game][enemym
 	for (int level = 1; level < 8; ++level)
 	{
 		CAPTURE(level);
-		CHECK(game::FrightSecondsFor(level + 1) <= game::FrightSecondsFor(level));
-		CHECK(game::FrightSecondsFor(level) > game::kFrightWarningSeconds);
+		CHECK(Level(level + 1).frightSeconds <= Level(level).frightSeconds);
+		CHECK(Level(level).frightSeconds > game::kFrightWarningSeconds);
 	}
-	CHECK(game::FrightSecondsFor(1) == game::kFrightSeconds.front());
-	CHECK(game::FrightSecondsFor(99) == game::kFrightSeconds.back());
+	CHECK(Level(1).frightSeconds == 7.0f);
+	CHECK(Level(99).frightSeconds == Level(5).frightSeconds); // past the table: the last level
 }
 
 TEST_CASE("Each enemy eaten in one fright is worth more than the last", "[game][enemymodes]")
@@ -145,20 +144,20 @@ TEST_CASE("An enemy waits in the house until its release time, then leaves", "[g
 	brain = game::TickHouse(brain, 1.5f);
 	CHECK(brain.state == EnemyState::InHouse);
 	CHECK(game::GoalFor(brain, ScheduledMode::Chase) == Goal::Stay);
-	CHECK(game::EnemySpeedFor(brain) == 0.0f);
+	CHECK(game::EnemySpeedFor(brain, Level(1)) == 0.0f);
 
 	brain = game::TickHouse(brain, 0.5f);
 	CHECK(brain.state == EnemyState::Leaving);
 	CHECK(game::GoalFor(brain, ScheduledMode::Chase) == Goal::Exit);
 	CHECK(game::UsesDoor(brain));
-	CHECK(game::EnemySpeedFor(brain) == game::kHouseSpeed);
+	CHECK(game::EnemySpeedFor(brain, Level(1)) == game::kHouseSpeed);
 
 	CHECK(game::TickHouse(brain, 1.0f).houseSeconds == brain.houseSeconds); // only counts in the house
 
 	brain = game::ArriveOutside(brain);
 	CHECK(brain.state == EnemyState::Roaming);
 	CHECK_FALSE(game::UsesDoor(brain));
-	CHECK(game::EnemySpeedFor(brain) == game::kEnemySpeed);
+	CHECK(game::EnemySpeedFor(brain, Level(1)) == Level(1).enemySpeed);
 	CHECK_FALSE(brain.reversePending);
 }
 
@@ -186,7 +185,7 @@ TEST_CASE("A power pellet frightens enemies, and roaming ones turn back", "[game
 	CHECK(roaming.frightened);
 	CHECK(roaming.reversePending);
 	CHECK(game::GoalFor(roaming, ScheduledMode::Chase) == Goal::Wander);
-	CHECK(game::EnemySpeedFor(roaming) == game::kFrightenedSpeed);
+	CHECK(game::EnemySpeedFor(roaming, Level(1)) == Level(1).frightenedSpeed);
 	CHECK(game::CanBeEaten(roaming));
 	CHECK_FALSE(game::IsDangerous(roaming));
 
@@ -221,7 +220,7 @@ TEST_CASE("An eaten enemy hurries home, then turns round and leaves again", "[ga
 	CHECK_FALSE(game::IsDangerous(brain));
 	CHECK_FALSE(game::CanBeEaten(brain));
 	CHECK(game::UsesDoor(brain));
-	CHECK(game::EnemySpeedFor(brain) == game::kReturningSpeed);
+	CHECK(game::EnemySpeedFor(brain, Level(1)) == game::kReturningSpeed);
 	CHECK(game::GoalFor(brain, ScheduledMode::Patrol) == Goal::Home);
 
 	brain = game::ArriveHome(brain);

@@ -2,9 +2,9 @@
 
 #include <chrono>
 #include <cstdint>
-#include <cstdio>
 #include <random>
 
+#include "assets.hpp"
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
@@ -22,6 +22,7 @@
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
+#include "screens.hpp"
 #include "tilemap.hpp"
 
 namespace game
@@ -72,15 +73,6 @@ namespace game
 			}
 		}
 
-		// Moves the state machine on to next, announcing a change of stage.
-		void SetFlow(World& world, const GameFlow& next)
-		{
-			GameFlow& flow = world.resources.Get<GameFlow>();
-			const Stage from = flow.stage;
-			flow = next;
-			if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
-		}
-
 		void DestroyPellets(World& world)
 		{
 			world.registry.Each<Pellet>([&world](Entity entity, const Pellet&)
@@ -101,6 +93,19 @@ namespace game
 			});
 		}
 	} // namespace
+
+	void SetFlow(World& world, const GameFlow& next)
+	{
+		GameFlow& flow = world.resources.Get<GameFlow>();
+		const Stage from = flow.stage;
+		flow = next;
+		if (next.stage != from) world.events.Publish(StageChanged{.from = from, .to = next.stage});
+	}
+
+	const LevelTuning& LevelTuningOf(const World& world)
+	{
+		return world.resources.Get<DifficultyTable>().ForLevel(world.resources.Get<GameFlow>().level);
+	}
 
 	bool NotPaused(const World& world)
 	{
@@ -123,10 +128,6 @@ namespace game
 		const auto& controls = world.resources.Get<Controls>();
 		auto& state = world.resources.Get<GameState>();
 
-		if (controls.WasPressed(Action::Pause))
-		{
-			state.paused = !state.paused;
-		}
 		if (controls.WasPressed(Action::ToggleStressTest))
 		{
 			state.stressTest = !state.stressTest;
@@ -218,13 +219,6 @@ namespace game
 		world.resources.Get<Score>().points += kPowerPelletPoints;
 	}
 
-	template <typename Eaten> void PrintScore(World& world, const Eaten&)
-	{
-		if (!world.resources.Get<ConsoleHud>().enabled) return;
-		std::printf("score %d\n", world.resources.Get<Score>().points);
-		std::fflush(stdout);
-	}
-
 	template <typename Eaten> void CheckLevelCleared(World& world, const Eaten&)
 	{
 		bool anyLeft = false;
@@ -258,7 +252,7 @@ namespace game
 		if (reset.pellets)
 		{
 			DestroyPellets(world);
-			SpawnPellets(world.registry, world.commands, maze, origin);
+			SpawnPellets(world.registry, world.commands, maze, origin, world.resources.Get<SpriteClips>());
 		}
 		if (reset.actors)
 		{
@@ -267,6 +261,12 @@ namespace game
 			{
 				mover = GridMover{.tile = spawn.tile, .speed = mover.speed};
 				transform.position = MoverTopLeft(origin, mover);
+			});
+			const float playerSpeed = LevelTuningOf(world).playerSpeed;
+			world.registry.Each<PlayerControlled, GridMover>(
+			    [playerSpeed](Entity, const PlayerControlled&, GridMover& mover)
+			{
+				mover.speed = playerSpeed;
 			});
 			// A direction pressed before the reset would send the player off at once.
 			world.resources.Get<Controls>().ClearBufferedDirection();
@@ -277,35 +277,6 @@ namespace game
 		}
 	}
 
-	void PrintStage(World& world, const StageChanged& event)
-	{
-		if (!world.resources.Get<ConsoleHud>().enabled) return;
-		const GameFlow& flow = world.resources.Get<GameFlow>();
-		const int points = world.resources.Get<Score>().points;
-		switch (event.to)
-		{
-		case Stage::Ready:
-			std::printf("level %d, %d %s: get ready\n", flow.level, flow.lives, flow.lives == 1 ? "life" : "lives");
-			break;
-		case Stage::Playing:
-			std::printf("go\n");
-			break;
-		case Stage::Dying:
-			std::printf("caught\n");
-			break;
-		case Stage::LevelComplete:
-			std::printf("level %d complete, score %d\n", flow.level, points);
-			break;
-		case Stage::GameOver:
-			std::printf("game over, score %d: press Enter or Space to play again\n", points);
-			break;
-		}
-		std::fflush(stdout);
-	}
-
-	template void PrintScore<PelletEaten>(World&, const PelletEaten&);
-	template void PrintScore<PowerPelletEaten>(World&, const PowerPelletEaten&);
-	template void PrintScore<EnemyEaten>(World&, const EnemyEaten&);
 	template void CheckLevelCleared<PelletEaten>(World&, const PelletEaten&);
 	template void CheckLevelCleared<PowerPelletEaten>(World&, const PowerPelletEaten&);
 
@@ -317,14 +288,16 @@ namespace game
 		auto& renderer2D = world.resources.Get<engine::graphics::Renderer2D>();
 
 		renderer.Clear(0, 0, 0);
-		renderer2D.SetTint(state.paused ? kPausedTint : Color{});
+		// Behind the title and pause screens the game is dimmed; their text, above it, is not.
+		const bool behindScreen = state.paused || world.resources.Get<GameFlow>().stage == Stage::Title;
+		renderer2D.SetTint(behindScreen ? kPausedTint : Color{}, kMenuLayer);
 
 		const auto drawStart = std::chrono::steady_clock::now();
 		renderer2D.Draw(renderer, world.registry);
 		if (state.stressTest)
 		{
 			world.resources.Get<FrameStats>().AddFrame(std::chrono::steady_clock::now() - drawStart,
-			                                           renderer2D.ShapeCount());
+			                                           renderer2D.ItemCount());
 		}
 	}
 } // namespace game

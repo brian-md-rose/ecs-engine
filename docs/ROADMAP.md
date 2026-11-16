@@ -12,7 +12,7 @@ Decisions so far:
 | Area      | Choice                                                       |
 |-----------|--------------------------------------------------------------|
 | Platform  | SDL3, fetched with CMake `FetchContent`                      |
-| Art       | Coloured shapes first; original sprites in Phase 7           |
+| Art       | Coloured shapes first; original sprites since Phase 7        |
 | Levels    | Plain-text maze files loaded from `assets/`                  |
 | Testing   | Gameplay logic stays SDL-free so it can be unit-tested on CI |
 
@@ -86,11 +86,14 @@ See [enemies.md](enemies.md) for the personalities, the schedule and the tuning.
 
 ## Phase 7 – Polish
 
-- [ ] Bitmap font for score, lives and level.
-- [ ] SDL3 audio with original sound effects.
-- [ ] Levels get faster as you progress.
-- [ ] Replace the coloured shapes with original sprite sheets.
-- [ ] Pause screen and title screen.
+- [x] Bitmap font for score, lives and level.
+- [x] SDL3 audio with original sound effects.
+- [x] Levels get faster as you progress.
+- [x] Replace the coloured shapes with original sprite sheets.
+- [x] Pause screen and title screen.
+
+See [pixel-sheets.md](pixel-sheets.md) for the font and sprite format, and
+[difficulty.md](difficulty.md) for the per-level table.
 
 ---
 

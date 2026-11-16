@@ -1,0 +1,403 @@
+# The game's bitmap font: 5 x 7 capitals, digits and a little punctuation, drawn by hand for
+# this game. Each glyph is a sprite named after its character; the game draws them 6 pixels
+# apart, on lines 8 pixels apart. Glyphs are white: the game colours them when it draws.
+# '@' is the life icon shown at the bottom of the screen. The format is described in
+# docs/pixel-sheets.md.
+
+color X 255 255 255
+
+sprite A 5 7
+.XXX.
+X...X
+X...X
+XXXXX
+X...X
+X...X
+X...X
+
+sprite B 5 7
+XXXX.
+X...X
+X...X
+XXXX.
+X...X
+X...X
+XXXX.
+
+sprite C 5 7
+.XXX.
+X...X
+X....
+X....
+X....
+X...X
+.XXX.
+
+sprite D 5 7
+XXXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+XXXX.
+
+sprite E 5 7
+XXXXX
+X....
+X....
+XXXX.
+X....
+X....
+XXXXX
+
+sprite F 5 7
+XXXXX
+X....
+X....
+XXXX.
+X....
+X....
+X....
+
+sprite G 5 7
+.XXX.
+X...X
+X....
+X.XXX
+X...X
+X...X
+.XXXX
+
+sprite H 5 7
+X...X
+X...X
+X...X
+XXXXX
+X...X
+X...X
+X...X
+
+sprite I 5 7
+.XXX.
+..X..
+..X..
+..X..
+..X..
+..X..
+.XXX.
+
+sprite J 5 7
+..XXX
+...X.
+...X.
+...X.
+...X.
+X..X.
+.XX..
+
+sprite K 5 7
+X...X
+X..X.
+X.X..
+XX...
+X.X..
+X..X.
+X...X
+
+sprite L 5 7
+X....
+X....
+X....
+X....
+X....
+X....
+XXXXX
+
+sprite M 5 7
+X...X
+XX.XX
+X.X.X
+X.X.X
+X...X
+X...X
+X...X
+
+sprite N 5 7
+X...X
+X...X
+XX..X
+X.X.X
+X..XX
+X...X
+X...X
+
+sprite O 5 7
+.XXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXX.
+
+sprite P 5 7
+XXXX.
+X...X
+X...X
+XXXX.
+X....
+X....
+X....
+
+sprite Q 5 7
+.XXX.
+X...X
+X...X
+X...X
+X.X.X
+X..X.
+.XX.X
+
+sprite R 5 7
+XXXX.
+X...X
+X...X
+XXXX.
+X.X..
+X..X.
+X...X
+
+sprite S 5 7
+.XXXX
+X....
+X....
+.XXX.
+....X
+....X
+XXXX.
+
+sprite T 5 7
+XXXXX
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+
+sprite U 5 7
+X...X
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXX.
+
+sprite V 5 7
+X...X
+X...X
+X...X
+X...X
+X...X
+.X.X.
+..X..
+
+sprite W 5 7
+X...X
+X...X
+X...X
+X.X.X
+X.X.X
+X.X.X
+.X.X.
+
+sprite X 5 7
+X...X
+X...X
+.X.X.
+..X..
+.X.X.
+X...X
+X...X
+
+sprite Y 5 7
+X...X
+X...X
+.X.X.
+..X..
+..X..
+..X..
+..X..
+
+sprite Z 5 7
+XXXXX
+....X
+...X.
+..X..
+.X...
+X....
+XXXXX
+
+sprite 0 5 7
+.XXX.
+X...X
+X..XX
+X.X.X
+XX..X
+X...X
+.XXX.
+
+sprite 1 5 7
+..X..
+.XX..
+..X..
+..X..
+..X..
+..X..
+.XXX.
+
+sprite 2 5 7
+.XXX.
+X...X
+....X
+...X.
+..X..
+.X...
+XXXXX
+
+sprite 3 5 7
+XXXXX
+...X.
+..X..
+...X.
+....X
+X...X
+.XXX.
+
+sprite 4 5 7
+...X.
+..XX.
+.X.X.
+X..X.
+XXXXX
+...X.
+...X.
+
+sprite 5 5 7
+XXXXX
+X....
+XXXX.
+....X
+....X
+X...X
+.XXX.
+
+sprite 6 5 7
+..XX.
+.X...
+X....
+XXXX.
+X...X
+X...X
+.XXX.
+
+sprite 7 5 7
+XXXXX
+....X
+...X.
+..X..
+.X...
+.X...
+.X...
+
+sprite 8 5 7
+.XXX.
+X...X
+X...X
+.XXX.
+X...X
+X...X
+.XXX.
+
+sprite 9 5 7
+.XXX.
+X...X
+X...X
+.XXXX
+....X
+...X.
+.XX..
+
+sprite ! 5 7
+..X..
+..X..
+..X..
+..X..
+..X..
+.....
+..X..
+
+sprite - 5 7
+.....
+.....
+.....
+XXXXX
+.....
+.....
+.....
+
+sprite : 5 7
+.....
+..X..
+..X..
+.....
+..X..
+..X..
+.....
+
+sprite . 5 7
+.....
+.....
+.....
+.....
+.....
+.XX..
+.XX..
+
+sprite / 5 7
+....X
+....X
+...X.
+..X..
+.X...
+X....
+X....
+
+sprite > 5 7
+.X...
+..X..
+...X.
+....X
+...X.
+..X..
+.X...
+
+sprite < 5 7
+...X.
+..X..
+.X...
+X....
+.X...
+..X..
+...X.
+
+sprite @ 5 7
+..X..
+..X..
+.XXX.
+XX.XX
+XXXXX
+.XXX.
+.....

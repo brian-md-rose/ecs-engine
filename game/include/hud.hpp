@@ -1,0 +1,80 @@
+#pragma once
+#include <cstdint>
+#include <string>
+
+#include "ecs/registry.hpp"
+#include "ecs/scheduler.hpp"
+#include "ecs/world.hpp"
+#include "gameflow.hpp"
+#include "graphics/color.hpp"
+#include "graphics/transform.hpp"
+#include "tilemap.hpp"
+
+// The heads-up display, drawn with the bitmap font: score, high score and level across the top,
+// lives at the bottom, and a message (READY!, GAME OVER) across the middle of the maze.
+namespace game
+{
+	inline constexpr std::uint8_t kHudLayer = 10; // above everything in the maze
+
+	inline constexpr engine::graphics::Color kHudLabelColor{120, 200, 255};
+	inline constexpr engine::graphics::Color kHudValueColor{255, 255, 255};
+	inline constexpr engine::graphics::Color kHudMessageColor{255, 220, 90};
+	inline constexpr engine::graphics::Color kHudLivesColor{80, 230, 210};
+
+	// Resource: the best score so far this session.
+	struct HighScore
+	{
+		int points = 0;
+	};
+
+	// What a piece of the HUD shows.
+	enum class HudField : std::uint8_t
+	{
+		Score,
+		HighScore,
+		Level,
+		Lives,
+		Message
+	};
+
+	enum class Align : std::uint8_t
+	{
+		Left,   // anchorX is where the text starts
+		Centre, // anchorX is the middle of the text
+		Right   // anchorX is where the text ends
+	};
+
+	// Component: a Text the HUD keeps up to date, placed against anchorX each time it changes.
+	struct HudText
+	{
+		HudField field = HudField::Score;
+		float anchorX = 0.0f;
+		Align align = Align::Left;
+	};
+
+	// Everything the HUD reads, gathered from the resources.
+	struct HudView
+	{
+		int score = 0;
+		int highScore = 0;
+		int level = 1;
+		int lives = 0;
+		Stage stage = Stage::Ready;
+	};
+
+	// The text for one field, in capitals (the font has no small letters). Lives are one '@'
+	// icon per try left; the message is empty in stages that have none. Pure.
+	[[nodiscard]] std::string HudLine(HudField field, const HudView& view);
+
+	// Where text of width pixels starts so it sits against anchorX the way align says. Whole
+	// pixels, so the text stays sharp.
+	[[nodiscard]] float AlignedX(float anchorX, Align align, int width) noexcept;
+
+	// Setup: creates the HUD's labels and fields, the message centred across the middle row of
+	// a maze drawn at origin. Creates entities directly, so call it during setup.
+	void SpawnHud(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin);
+
+	// LateUpdate (always, so the HUD shows the state after this update): raises the HighScore
+	// to the score, and updates every HudText's Text and Transform.
+	void HudSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+} // namespace game

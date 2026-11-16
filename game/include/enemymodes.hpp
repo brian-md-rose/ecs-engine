@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "difficulty.hpp"
 #include "enemytuning.hpp"
 
 // What the enemies are doing and when that changes, as pure functions: no registry, no SDL.
@@ -20,12 +21,6 @@
 // enemy turns back, apart from at a dead end (see steering.hpp).
 namespace game
 {
-	// The schedule for a level, counting levels from 1.
-	[[nodiscard]] const ModeSchedule& ScheduleFor(int level) noexcept;
-
-	// How long a power pellet frightens the enemies on a level.
-	[[nodiscard]] float FrightSecondsFor(int level) noexcept;
-
 	// Resource: the clock every enemy shares. A new round starts it from scratch.
 	struct ModeClock
 	{
@@ -35,7 +30,7 @@ namespace game
 		int eatenInFright = 0;      // enemies eaten since the last power pellet
 	};
 
-	[[nodiscard]] ScheduledMode CurrentMode(const ModeClock& clock, int level) noexcept;
+	[[nodiscard]] ScheduledMode CurrentMode(const ModeClock& clock, const ModeSchedule& schedule) noexcept;
 
 	[[nodiscard]] constexpr bool IsFrightActive(const ModeClock& clock) noexcept
 	{
@@ -45,10 +40,11 @@ namespace game
 	// Adds seconds. A fright counts down first, and the schedule waits for it; time left over
 	// once the fright ends goes to the schedule. The schedule moves through its stretches (as
 	// many as seconds covers) and stays in the last one.
-	[[nodiscard]] ModeClock TickModeClock(ModeClock clock, int level, float seconds) noexcept;
+	[[nodiscard]] ModeClock TickModeClock(ModeClock clock, const ModeSchedule& schedule, float seconds) noexcept;
 
-	// A power pellet: a full fright for the level, from now, whether or not one was under way.
-	[[nodiscard]] ModeClock StartFright(ModeClock clock, int level) noexcept;
+	// A power pellet: a fright of frightSeconds (the level's), from now, whether or not one was
+	// under way.
+	[[nodiscard]] ModeClock StartFright(ModeClock clock, float frightSeconds) noexcept;
 
 	// Points for eating an enemy after eatenBefore others in the same fright.
 	[[nodiscard]] int EnemyPoints(int eatenBefore) noexcept;
@@ -101,8 +97,9 @@ namespace game
 	// Touching it on the same tile eats it.
 	[[nodiscard]] bool CanBeEaten(const EnemyBrain& brain) noexcept;
 
-	// Tiles per second (enemytuning.hpp); 0 while it waits in the house.
-	[[nodiscard]] float EnemySpeedFor(const EnemyBrain& brain) noexcept;
+	// Tiles per second: the level's speeds while roaming or frightened, the fixed ones of
+	// enemytuning.hpp going in and out of the house; 0 while it waits in the house.
+	[[nodiscard]] float EnemySpeedFor(const EnemyBrain& brain, const LevelTuning& level) noexcept;
 
 	// Going in or out of the house: the door lets it through. Roaming enemies can't go back in.
 	[[nodiscard]] bool UsesDoor(const EnemyBrain& brain) noexcept;

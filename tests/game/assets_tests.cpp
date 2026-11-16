@@ -3,10 +3,13 @@
 #include <cstddef>
 #include <filesystem>
 #include <initializer_list>
+#include <optional>
 #include <queue>
 #include <string>
 #include <vector>
 
+#include "assets.hpp"
+#include "graphics/image.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "tilemap.hpp"
@@ -150,5 +153,22 @@ TEST_CASE("The player can reach every pellet of level 1, so the level can be cle
 			INFO("line " << tile.row + 1 << ", column " << tile.column + 1);
 			CHECK(reachable[tile.row * map.Width() + tile.column]);
 		}
+	}
+}
+
+TEST_CASE("The game's font and sprites load, with a glyph for every character the HUD uses", "[game][assets]")
+{
+	const std::optional<game::GameAssets> assets = game::LoadGameAssets(kAssets);
+	REQUIRE(assets.has_value());
+	CHECK_FALSE(assets->atlas.image.IsEmpty());
+
+	const std::string used = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!-:./<>@";
+	for (const char character : used)
+	{
+		INFO(character);
+		const engine::graphics::PixelRect* glyph = assets->font.Glyph(character);
+		REQUIRE(glyph != nullptr);
+		CHECK(glyph->width <= game::kGlyphAdvance);
+		CHECK(glyph->height <= game::kGlyphLineHeight);
 	}
 }

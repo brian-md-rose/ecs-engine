@@ -60,7 +60,7 @@ Units go in the name when they aren't obvious: `stepSeconds`, `maxFrameSeconds`.
 ## Files and layout
 
 ```
-engine/include/<module>/<name>.hpp   public engine headers (core, ecs, graphics, input, application)
+engine/include/<module>/<name>.hpp   public engine headers (core, ecs, graphics, input, audio, application)
 engine/src/<module>/<name>.cpp       their implementations
 game/include/<name>.hpp              game headers
 game/src/<name>.cpp                  game sources (main.cpp is the entry point)

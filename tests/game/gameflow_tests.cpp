@@ -116,15 +116,34 @@ TEST_CASE("A level can only be cleared while playing", "[game][gameflow]")
 	CHECK(game::ClearLevel(complete).stageSeconds == complete.stageSeconds); // the timer isn't restarted
 }
 
-TEST_CASE("Confirm after GameOver starts a new game", "[game][gameflow]")
+TEST_CASE("Confirm after GameOver goes back to the title screen", "[game][gameflow]")
 {
-	const GameFlow flow = game::Confirm(In(Stage::GameOver, 0, 4));
-	CHECK(flow.stage == Stage::Ready);
-	CHECK(flow.lives == game::kStartingLives);
-	CHECK(flow.level == 1);
+	CHECK(game::Confirm(In(Stage::GameOver, 0, 4)).stage == Stage::Title);
 
 	CHECK(game::Confirm(In(Stage::Playing, 2, 3)).stage == Stage::Playing);
 	CHECK(game::Confirm(In(Stage::Ready, 2, 3)).level == 3);
+}
+
+TEST_CASE("Starting from the title is a new game on level 1 with every life", "[game][gameflow]")
+{
+	const GameFlow flow = game::StartGame(In(Stage::Title, 0, 4));
+	CHECK(flow.stage == Stage::Ready);
+	CHECK(flow.stageSeconds == 0.0f);
+	CHECK(flow.lives == game::kStartingLives);
+	CHECK(flow.level == 1);
+
+	CHECK(game::StartGame(In(Stage::Playing, 2, 3)).stage == Stage::Playing);
+	CHECK(game::Tick(In(Stage::Title), 100.0f).stage == Stage::Title); // waits for a key
+}
+
+TEST_CASE("Any stage can go back to the title, abandoning the game", "[game][gameflow]")
+{
+	for (const Stage stage : {Stage::Ready, Stage::Playing, Stage::Dying, Stage::LevelComplete, Stage::GameOver})
+	{
+		const GameFlow flow = game::ReturnToTitle(In(stage, 1, 5));
+		CHECK(flow.stage == Stage::Title);
+		CHECK(flow.level == 1);
+	}
 }
 
 TEST_CASE("Entering Ready resets what the previous stage calls for", "[game][gameflow]")
@@ -145,6 +164,16 @@ TEST_CASE("Entering Ready resets what the previous stage calls for", "[game][gam
 	CHECK(newGame.actors);
 	CHECK(newGame.pellets);
 	CHECK(newGame.score);
+
+	const game::RoundReset fromTitle = ResetFor(Stage::Title, Stage::Ready);
+	CHECK(fromTitle.actors);
+	CHECK(fromTitle.pellets);
+	CHECK(fromTitle.score);
+
+	const game::RoundReset toTitle = ResetFor(Stage::Playing, Stage::Title);
+	CHECK(toTitle.actors); // the title shows the maze at rest
+	CHECK_FALSE(toTitle.pellets);
+	CHECK_FALSE(toTitle.score);
 
 	for (const Stage to : {Stage::Playing, Stage::Dying, Stage::LevelComplete, Stage::GameOver})
 	{

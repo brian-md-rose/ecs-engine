@@ -1,5 +1,6 @@
 #pragma once
 
+#include "difficulty.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
 #include "events.hpp"
@@ -7,6 +8,13 @@
 // The game's systems, in the phase each belongs to. MazeGame registers them in this order.
 namespace game
 {
+	// Moves the state machine (the GameFlow resource) on to next, publishing StageChanged if the
+	// stage changes.
+	void SetFlow(engine::ecs::World& world, const GameFlow& next);
+
+	// The current level's tuning, from the DifficultyTable and GameFlow resources.
+	[[nodiscard]] const LevelTuning& LevelTuningOf(const engine::ecs::World& world);
+
 	// Run conditions.
 
 	// False while the game is paused.
@@ -22,7 +30,7 @@ namespace game
 	// actions.
 	void ControlsSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
-	// Pause and the stress-test toggle. Runs even while paused, so the game can be unpaused.
+	// The stress-test toggle. Runs even while paused. (Pausing is ScreenSystem's, screens.hpp.)
 	void GameStateSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Update (skipped while paused)
@@ -56,9 +64,6 @@ namespace game
 	void AddPelletScore(engine::ecs::World& world, const PelletEaten& event);
 	void AddPowerPelletScore(engine::ecs::World& world, const PowerPelletEaten& event);
 
-	// HUD: prints the score, if the ConsoleHud is enabled.
-	template <typename Eaten> void PrintScore(engine::ecs::World& world, const Eaten& event);
-
 	// Publishes LevelCleared once no pellet or power pellet is left. Events are delivered after
 	// the phase's commands are applied, so the one just eaten is already gone.
 	template <typename Eaten> void CheckLevelCleared(engine::ecs::World& world, const Eaten& event);
@@ -68,15 +73,12 @@ namespace game
 	void LoseLife(engine::ecs::World& world, const PlayerCaught& event);
 	void CompleteLevel(engine::ecs::World& world, const LevelCleared& event);
 
-	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, the pellets,
-	// the score.
+	// Puts back what the new stage needs (ResetFor): every mover at its Spawn, running at the
+	// level's player speed if it is the player, the pellets, the score.
 	void ResetRound(engine::ecs::World& world, const StageChanged& event);
-
-	// HUD: prints the new stage, if the ConsoleHud is enabled.
-	void PrintStage(engine::ecs::World& world, const StageChanged& event);
 
 	// Render
 
-	// Draws every shape, dimmed while paused, and reports frame times during the stress test.
+	// Draws everything, dimmed behind the title and pause screens, and reports frame times during the stress test.
 	void RenderSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 } // namespace game

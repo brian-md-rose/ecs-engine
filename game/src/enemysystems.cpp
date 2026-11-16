@@ -9,10 +9,12 @@
 #include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "gameflow.hpp"
+#include "graphics/sprite.hpp"
 #include "gridmovement.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "steering.hpp"
+#include "systems.hpp"
 
 namespace game
 {
@@ -21,8 +23,9 @@ namespace game
 		using engine::ecs::Entity;
 		using engine::ecs::FrameContext;
 		using engine::ecs::World;
+		using engine::graphics::Animation;
 		using engine::graphics::Position;
-		using engine::graphics::Shape;
+		using engine::graphics::Sprite;
 		using engine::graphics::Transform;
 
 		// Where every personality is, for Clasp's ally. The first of each if a maze has several.
@@ -53,52 +56,65 @@ namespace game
 		}
 	} // namespace
 
-	void SpawnEnemies(engine::ecs::Registry& registry, const TileMap& map, Position origin)
+	void SpawnEnemies(engine::ecs::Registry& registry, const TileMap& map, Position origin, const SpriteClips& clips)
 	{
 		const std::vector<TilePosition> spawns = map.Find(Tile::EnemySpawn);
 		for (std::size_t i = 0; i < spawns.size(); ++i)
 		{
 			const Personality personality = PersonalityForSpawn(i);
-			const PersonalityTuning& tuning = TuningFor(personality);
 			const GridMover mover{.tile = spawns[i]};
 
 			const Entity enemy = registry.Create();
-			registry.Add<Transform>(enemy, MoverShapeTopLeft(origin, mover, tuning.look));
-			registry.Add<Shape>(enemy, tuning.look);
+			registry.Add<Transform>(enemy, MoverTopLeft(origin, mover));
+			registry.Add<Sprite>(enemy, Sprite{.layer = kEnemyLayer});
+			registry.Add<Animation>(enemy, Animation{.clip = EnemyClip(clips, personality, EnemyAppearance::Normal)});
 			registry.Add<GridMover>(enemy, mover);
 			registry.Add<Spawn>(enemy, Spawn{.tile = mover.tile});
 			registry.Add<Enemy>(enemy);
 			registry.Add<EnemyPersonality>(enemy, EnemyPersonality{.kind = personality});
-			registry.Add<EnemyBrain>(enemy, EnemyBrain{.releaseSeconds = tuning.releaseSeconds});
+			registry.Add<EnemyBrain>(enemy, EnemyBrain{.releaseSeconds = TuningFor(personality).releaseSeconds});
 		}
 	}
 
-	Shape EnemyLook(Personality personality, const EnemyBrain& brain, const ModeClock& clock) noexcept
+	EnemyAppearance EnemyLook(const EnemyBrain& brain, const ModeClock& clock) noexcept
 	{
-		if (brain.state == EnemyState::Returning) return kReturningLook;
-		Shape look = TuningFor(personality).look;
-		if (brain.frightened)
+		if (brain.state == EnemyState::Returning) return EnemyAppearance::Returning;
+		if (!brain.frightened) return EnemyAppearance::Normal;
+		if (clock.frightSeconds <= kFrightWarningSeconds)
 		{
-			look.color = kFrightenedColor;
-			if (clock.frightSeconds <= kFrightWarningSeconds)
-			{
-				// Half a flash in each colour: the flash colour on every other half.
-				const auto halves = static_cast<int>(clock.frightSeconds * kFrightFlashesPerSecond * 2.0f);
-				if (halves % 2 == 1) look.color = kFrightFlashColor;
-			}
+			// Half a flash each way: the flash on every other half.
+			const auto halves = static_cast<int>(clock.frightSeconds * kFrightFlashesPerSecond * 2.0f);
+			if (halves % 2 == 1) return EnemyAppearance::FrightFlash;
 		}
-		return look;
+		return EnemyAppearance::Frightened;
+	}
+
+	const engine::graphics::Clip& EnemyClip(const SpriteClips& clips, Personality personality,
+	                                        EnemyAppearance appearance) noexcept
+	{
+		switch (appearance)
+		{
+		case EnemyAppearance::Frightened:
+			return clips.frightened;
+		case EnemyAppearance::FrightFlash:
+			return clips.frightenedFlash;
+		case EnemyAppearance::Returning:
+			return clips.returning;
+		case EnemyAppearance::Normal:
+			break;
+		}
+		return clips.enemies[static_cast<std::size_t>(personality)];
 	}
 
 	void EnemyModeSystem(World& world, const FrameContext& context)
 	{
 		const auto dt = static_cast<float>(context.dt);
-		const int level = world.resources.Get<GameFlow>().level;
+		const ModeSchedule& schedule = LevelTuningOf(world).schedule;
 		ModeClock& clock = world.resources.Get<ModeClock>();
 
 		const ModeClock before = clock;
-		clock = TickModeClock(clock, level, dt);
-		const bool switched = CurrentMode(before, level) != CurrentMode(clock, level);
+		clock = TickModeClock(clock, schedule, dt);
+		const bool switched = CurrentMode(before, schedule) != CurrentMode(clock, schedule);
 		const bool calmed = IsFrightActive(before) && !IsFrightActive(clock);
 
 		world.registry.Each<EnemyBrain>([&](Entity, EnemyBrain& brain)
@@ -114,7 +130,8 @@ namespace game
 		engine::ecs::Registry& registry = world.registry;
 		const auto& maze = world.resources.Get<TileMap>();
 		const std::optional<House>& house = world.resources.Get<EnemyHouse>().house;
-		const ScheduledMode mode = CurrentMode(world.resources.Get<ModeClock>(), world.resources.Get<GameFlow>().level);
+		const LevelTuning& tuning = LevelTuningOf(world);
+		const ScheduledMode mode = CurrentMode(world.resources.Get<ModeClock>(), tuning.schedule);
 		std::mt19937& dice = world.resources.Get<EnemyDice>().engine;
 		const std::optional<GridMover> player = FindPlayer(registry);
 		const Whereabouts where = FindPersonalities(registry);
@@ -132,7 +149,7 @@ namespace game
 			{
 				brain = ArriveHome(brain);
 			}
-			mover.speed = EnemySpeedFor(brain);
+			mover.speed = EnemySpeedFor(brain, tuning);
 			mover.throughDoor = UsesDoor(brain);
 
 			if (brain.reversePending)
@@ -204,19 +221,20 @@ namespace game
 	{
 		const ModeClock& clock = world.resources.Get<ModeClock>();
 		const Position origin = MazeOrigin(world.resources.Get<TileMap>());
-		world.registry.Each<EnemyPersonality, EnemyBrain, GridMover, Shape, Transform>(
-		    [&](Entity, const EnemyPersonality& who, const EnemyBrain& brain, const GridMover& mover, Shape& shape,
-		        Transform& transform)
+		const SpriteClips& clips = world.resources.Get<SpriteClips>();
+		world.registry.Each<EnemyPersonality, EnemyBrain, GridMover, Animation, Transform>(
+		    [&](Entity, const EnemyPersonality& who, const EnemyBrain& brain, const GridMover& mover,
+		        Animation& animation, Transform& transform)
 		{
-			shape = EnemyLook(who.kind, brain, clock);
-			transform.position = MoverShapeTopLeft(origin, mover, shape);
+			animation = Play(animation, EnemyClip(clips, who.kind, EnemyLook(brain, clock)));
+			transform.position = MoverTopLeft(origin, mover);
 		});
 	}
 
 	void FrightenEnemies(World& world, const PowerPelletEaten&)
 	{
 		ModeClock& clock = world.resources.Get<ModeClock>();
-		clock = StartFright(clock, world.resources.Get<GameFlow>().level);
+		clock = StartFright(clock, LevelTuningOf(world).frightSeconds);
 		world.registry.Each<EnemyBrain>([](Entity, EnemyBrain& brain)
 		{
 			brain = Frighten(brain);

@@ -6,7 +6,9 @@
 #include <optional>
 #include <string_view>
 
+#include "assets.hpp"
 #include "components.hpp"
+#include "difficulty.hpp"
 #include "direction.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -15,8 +17,7 @@
 #include "enemytuning.hpp"
 #include "gameflow.hpp"
 #include "gamestate.hpp"
-#include "graphics/color.hpp"
-#include "graphics/shape.hpp"
+#include "graphics/animation.hpp"
 #include "input/keyboard.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
@@ -26,7 +27,6 @@
 namespace
 {
 	using engine::ecs::Entity;
-	using engine::graphics::Color;
 	using engine::input::Key;
 	using game::EnemyBrain;
 	using game::EnemyState;
@@ -75,9 +75,13 @@ namespace
 		             "#######\n");
 	}
 
-	[[nodiscard]] bool SameColour(Color a, Color b)
+	// The game's real sprites, so each look has its own clip, with the tests' usual difficulty.
+	[[nodiscard]] game::GameAssets TestAssets()
 	{
-		return a.r == b.r && a.g == b.g && a.b == b.b;
+		std::optional<game::GameAssets> assets = game::LoadGameAssets(std::filesystem::path{GAME_ASSETS_DIR});
+		REQUIRE(assets.has_value());
+		assets->difficulty = game::FallbackDifficulty();
+		return std::move(*assets);
 	}
 
 	// The game as main.cpp runs it, minus the window (as in systems_tests.cpp).
@@ -86,9 +90,9 @@ namespace
 		game::MazeGame maze;
 		engine::input::Keyboard keyboard;
 
-		explicit Harness(const game::TileMap& map) : maze(map)
+		explicit Harness(const game::TileMap& map) : maze(map, TestAssets())
 		{
-			maze.world.resources.Get<game::ConsoleHud>().enabled = false;
+			maze.world.resources.Get<game::GameFlow>() = game::GameFlow{}; // past the title screen
 			UpdateUntilStage(Stage::Playing);
 		}
 
@@ -138,10 +142,13 @@ namespace
 		{
 			return maze.world.registry.GetComponent<game::GridMover>(enemy);
 		}
-		[[nodiscard]] engine::graphics::Shape& Look(Entity enemy)
+		// The animation the enemy shows.
+		[[nodiscard]] const engine::graphics::Clip& Look(Entity enemy)
 		{
-			return maze.world.registry.GetComponent<engine::graphics::Shape>(enemy);
+			return maze.world.registry.GetComponent<engine::graphics::Animation>(enemy).clip;
 		}
+
+		[[nodiscard]] const game::SpriteClips& Clips() { return maze.world.resources.Get<game::SpriteClips>(); }
 	};
 } // namespace
 
@@ -223,8 +230,8 @@ TEST_CASE("A power pellet frightens the enemies, and the player can eat one for 
 	h.Update(); // the enemies react on the next update
 	CHECK(h.Brain(grit).frightened);
 	CHECK(h.Mover(grit).direction == game::Direction::Right); // it was coming left: it turned back
-	CHECK(h.Mover(grit).speed == game::kFrightenedSpeed);
-	CHECK(SameColour(h.Look(grit).color, game::kFrightenedColor));
+	CHECK(h.Mover(grit).speed == game::FallbackDifficulty().ForLevel(1).frightenedSpeed);
+	CHECK(h.Look(grit) == h.Clips().frightened);
 
 	const int beforeEating = h.Points();
 	for (int i = 0; i < 3 * kStepsPerSecond && h.Brain(grit).state != EnemyState::Returning; ++i)
@@ -237,7 +244,7 @@ TEST_CASE("A power pellet frightens the enemies, and the player can eat one for 
 	CHECK(h.Flow().stage == Stage::Playing); // eaten, not caught
 	CHECK(h.Flow().lives == game::kStartingLives);
 	h.Update(); // it changes its look on the next update
-	CHECK(h.Look(grit).radius == game::kReturningLook.radius);
+	CHECK(h.Look(grit) == h.Clips().returning);
 }
 
 TEST_CASE("The fright flashes before it ends, then the enemies are dangerous again", "[game][enemies]")
@@ -252,7 +259,7 @@ TEST_CASE("The fright flashes before it ends, then the enemies are dangerous aga
 	REQUIRE(h.Brain(grit).frightened);
 
 	// Steps until only the warning is left, and a little into it.
-	const float fright = game::FrightSecondsFor(1);
+	const float fright = game::FallbackDifficulty().ForLevel(1).frightSeconds;
 	h.Update(static_cast<int>((fright - game::kFrightWarningSeconds) * kStepsPerSecond) + 2);
 	REQUIRE(h.Clock().frightSeconds < game::kFrightWarningSeconds);
 	bool flashed = false;
@@ -260,8 +267,8 @@ TEST_CASE("The fright flashes before it ends, then the enemies are dangerous aga
 	for (int i = 0; i < kStepsPerSecond; ++i)
 	{
 		h.Update();
-		flashed = flashed || SameColour(h.Look(grit).color, game::kFrightFlashColor);
-		drained = drained || SameColour(h.Look(grit).color, game::kFrightenedColor);
+		flashed = flashed || h.Look(grit) == h.Clips().frightenedFlash;
+		drained = drained || h.Look(grit) == h.Clips().frightened;
 	}
 	CHECK(flashed);
 	CHECK(drained);
@@ -270,7 +277,7 @@ TEST_CASE("The fright flashes before it ends, then the enemies are dangerous aga
 	CHECK_FALSE(game::IsFrightActive(h.Clock()));
 	CHECK_FALSE(h.Brain(grit).frightened);
 	CHECK(game::IsDangerous(h.Brain(grit)));
-	CHECK(SameColour(h.Look(grit).color, game::TuningFor(Personality::Grit).look.color));
+	CHECK(h.Look(grit) == h.Clips().enemies[static_cast<std::size_t>(Personality::Grit)]);
 }
 
 TEST_CASE("Enemies wait while the round isn't being played", "[game][enemies]")
@@ -286,25 +293,42 @@ TEST_CASE("Enemies wait while the round isn't being played", "[game][enemies]")
 	CHECK(h.Mover(grit).offset == moving.offset);
 }
 
-TEST_CASE("EnemyLook drains a frightened enemy's colour and shrinks one going home", "[game][enemies]")
+TEST_CASE("EnemyLook drains a frightened enemy, flashes it as the fright ends, and shrinks one going home",
+          "[game][enemies]")
 {
+	using game::EnemyAppearance;
 	const game::ModeClock calm;
-	const engine::graphics::Shape grit = game::EnemyLook(Personality::Grit, EnemyBrain{}, calm);
-	CHECK(SameColour(grit.color, game::TuningFor(Personality::Grit).look.color));
-	CHECK(grit.layer == game::kEnemyLayer);
+	CHECK(game::EnemyLook(EnemyBrain{}, calm) == EnemyAppearance::Normal);
 
 	const EnemyBrain frightened{.state = EnemyState::Roaming, .frightened = true};
 	game::ModeClock clock{.frightSeconds = game::kFrightWarningSeconds + 1.0f};
-	CHECK(SameColour(game::EnemyLook(Personality::Snare, frightened, clock).color, game::kFrightenedColor));
-	CHECK(game::EnemyLook(Personality::Snare, frightened, clock).kind == engine::graphics::ShapeKind::Circle);
+	CHECK(game::EnemyLook(frightened, clock) == EnemyAppearance::Frightened);
 
 	// In the warning, a flash every 1 / kFrightFlashesPerSecond seconds: one half drained, one half lit.
 	const float half = 0.5f / game::kFrightFlashesPerSecond;
 	clock.frightSeconds = 2.0f * half + half / 2.0f;
-	CHECK(SameColour(game::EnemyLook(Personality::Snare, frightened, clock).color, game::kFrightenedColor));
+	CHECK(game::EnemyLook(frightened, clock) == EnemyAppearance::Frightened);
 	clock.frightSeconds = 3.0f * half + half / 2.0f;
-	CHECK(SameColour(game::EnemyLook(Personality::Snare, frightened, clock).color, game::kFrightFlashColor));
+	CHECK(game::EnemyLook(frightened, clock) == EnemyAppearance::FrightFlash);
 
 	const EnemyBrain returning{.state = EnemyState::Returning};
-	CHECK(game::EnemyLook(Personality::Wisp, returning, calm).radius == game::kReturningLook.radius);
+	CHECK(game::EnemyLook(returning, calm) == EnemyAppearance::Returning);
+}
+
+TEST_CASE("Each appearance has its own animation, and each personality its own sprite", "[game][enemies]")
+{
+	using game::EnemyAppearance;
+	const game::SpriteClips clips = TestAssets().clips;
+	CHECK(game::EnemyClip(clips, Personality::Snare, EnemyAppearance::Normal) == clips.enemies[1]);
+	CHECK(game::EnemyClip(clips, Personality::Snare, EnemyAppearance::Frightened) == clips.frightened);
+	CHECK(game::EnemyClip(clips, Personality::Wisp, EnemyAppearance::FrightFlash) == clips.frightenedFlash);
+	CHECK(game::EnemyClip(clips, Personality::Wisp, EnemyAppearance::Returning) == clips.returning);
+	for (std::size_t a = 0; a < game::kPersonalityCount; ++a)
+	{
+		CHECK(clips.enemies[a].frames > 1); // animated
+		for (std::size_t b = a + 1; b < game::kPersonalityCount; ++b)
+		{
+			CHECK_FALSE(clips.enemies[a] == clips.enemies[b]);
+		}
+	}
 }

@@ -75,10 +75,7 @@ TEST_CASE("The four personalities differ in name, look, corner and release time"
 			CHECK(first.name != second.name);
 			CHECK(first.corner != second.corner);
 			CHECK(first.releaseSeconds < second.releaseSeconds);
-			const bool sameColour = first.look.color.r == second.look.color.r &&
-			                        first.look.color.g == second.look.color.g &&
-			                        first.look.color.b == second.look.color.b;
-			CHECK_FALSE(sameColour);
+			CHECK(first.sprite != second.sprite);
 		}
 	}
 }
