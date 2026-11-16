@@ -33,6 +33,7 @@
 #include "gridmovement.hpp"
 #include "hud.hpp"
 #include "looks.hpp"
+#include "save.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "sounds.hpp"
@@ -80,11 +81,22 @@ namespace game
 			return;
 		}
 		Build(*maze, *assets);
+
+		SaveFile& save = world.resources.Get<SaveFile>();
+		save.path = DefaultSaveFile();
+		save.savedHighScore = LoadHighScore(save.path);
+		world.resources.Get<HighScore>().points = save.savedHighScore;
 	}
 
 	MazeGame::MazeGame(const TileMap& maze, const GameAssets& assets)
 	{
 		Build(maze, assets);
+	}
+
+	MazeGame::~MazeGame()
+	{
+		// Closing the window part-way through a game ends it without a GameOver.
+		if (valid) SaveHighScore(world);
 	}
 
 	bool MazeGame::WantsToQuit() const
@@ -109,6 +121,7 @@ namespace game
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
+		world.resources.Emplace<SaveFile>(); // no path: saves nothing until MazeGame() sets one
 		world.resources.Emplace<SoundBank>();
 		world.resources.Emplace<SoundQueue>();
 		const DifficultyTable& difficulty = world.resources.Emplace<DifficultyTable>(assets.difficulty);
@@ -172,6 +185,7 @@ namespace game
 		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
+		world.events.Subscribe<StageChanged>(SaveHighScoreOnStageChange); // first: before ResetRound clears the score
 		world.events.Subscribe<StageChanged>(ResetRound);
 		world.events.Subscribe<StageChanged>(ResetEnemies);
 	}
