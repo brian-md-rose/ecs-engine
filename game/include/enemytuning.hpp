@@ -84,7 +84,7 @@ namespace game
 		std::string_view name;
 		Corner corner;           // patrols around the maze's corner tile on this side
 		float releaseSeconds;    // leaves the house this long after the round starts
-		std::string_view sprite; // its animation in assets/sprites/sprites.txt
+		std::string_view sprite; // its animation in the sprites sheet (assets/sprites/sprites.sheet)
 	};
 
 	inline constexpr std::uint8_t kEnemyLayer = 2; // above the pellets, below the player

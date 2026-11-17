@@ -7,6 +7,7 @@
 
 #include "core/text.hpp"
 #include "graphics/image.hpp"
+#include "graphics/sheetmanifest.hpp"
 
 namespace game
 {
@@ -37,13 +38,21 @@ namespace game
 		// The sheet, or nothing with the error printed to stderr.
 		[[nodiscard]] std::optional<PixelSheet> LoadSheet(const std::filesystem::path& file)
 		{
-			engine::graphics::PixelSheetResult result = engine::graphics::LoadPixelSheet(file);
+			engine::graphics::PixelSheetResult result = engine::graphics::LoadSheetFile(file);
 			if (!result.sheet)
 			{
 				const std::string message = engine::core::FormatError(engine::core::PathText(file), result.error);
 				std::fprintf(stderr, "%s\n", message.c_str());
 			}
 			return std::move(result.sheet);
+		}
+
+		// folder/name.sheet (PNGs) if there is one, else folder/name.txt (the fallback).
+		[[nodiscard]] std::filesystem::path SheetPath(const std::filesystem::path& folder, const char* name)
+		{
+			const std::filesystem::path manifest = folder / (std::string(name) + ".sheet");
+			if (std::filesystem::exists(manifest)) return manifest;
+			return folder / (std::string(name) + ".txt");
 		}
 
 		// Where each sprite of the sprite sheet went in the atlas, by name.
@@ -165,8 +174,8 @@ namespace game
 
 	std::optional<GameAssets> LoadGameAssets(const std::filesystem::path& folder)
 	{
-		const std::optional<PixelSheet> font = LoadSheet(folder / "sprites" / "font.txt");
-		const std::filesystem::path spriteFile = folder / "sprites" / "sprites.txt";
+		const std::optional<PixelSheet> font = LoadSheet(SheetPath(folder / "sprites", "font"));
+		const std::filesystem::path spriteFile = SheetPath(folder / "sprites", "sprites");
 		const std::optional<PixelSheet> sprites = LoadSheet(spriteFile);
 		if (!font || !sprites) return std::nullopt;
 

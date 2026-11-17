@@ -40,7 +40,8 @@ enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
   and variable-rate rendering. SDL types stay out of the public headers.
 - **Graphics**: shapes, animated sprites and bitmap-font text drawn in batches from one atlas
   texture, with a camera that scales a fixed logical resolution to the window. Sprites and the
-  font are hand-drawn as text ([pixel sheets](docs/pixel-sheets.md)).
+  font are PNG files named by a small manifest, with the original text format as a fallback
+  ([pixel sheets](docs/pixel-sheets.md)).
 - **Audio**: an SDL3 audio device that plays synthesised sound effects.
 - **Debug panel** (F3): frames per second, draw time, entity counts per component and the
   time each system takes, drawn on screen with the bitmap font. The scheduler times every system.

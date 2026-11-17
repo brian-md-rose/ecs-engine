@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <initializer_list>
@@ -10,6 +11,7 @@
 
 #include "assets.hpp"
 #include "graphics/image.hpp"
+#include "graphics/sheetmanifest.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "tilemap.hpp"
@@ -171,4 +173,48 @@ TEST_CASE("The game's font and sprites load, with a glyph for every character th
 		CHECK(glyph->width <= game::kGlyphAdvance);
 		CHECK(glyph->height <= game::kGlyphLineHeight);
 	}
+}
+
+TEST_CASE("The PNG sheets draw exactly what the text sheets do", "[game][assets]")
+{
+	for (const std::string& name : {std::string("font"), std::string("sprites")})
+	{
+		INFO(name);
+		const std::filesystem::path folder = kAssets / "sprites";
+		const engine::graphics::PixelSheetResult text = engine::graphics::LoadSheetFile(folder / (name + ".txt"));
+		const engine::graphics::PixelSheetResult png = engine::graphics::LoadSheetFile(folder / (name + ".sheet"));
+		INFO(engine::core::FormatError(name, png.error));
+		REQUIRE(text.sheet.has_value());
+		REQUIRE(png.sheet.has_value());
+		REQUIRE(text.sheet->sprites.size() == png.sheet->sprites.size());
+
+		for (std::size_t i = 0; i < text.sheet->sprites.size(); ++i)
+		{
+			const engine::graphics::SheetSprite& a = text.sheet->sprites[i];
+			const engine::graphics::SheetSprite& b = png.sheet->sprites[i];
+			INFO(a.name);
+			REQUIRE(a.name == b.name);
+			REQUIRE(a.frameWidth == b.frameWidth);
+			REQUIRE(a.frameHeight == b.frameHeight);
+			REQUIRE(a.frames == b.frames);
+			REQUIRE(a.image.Width() == b.image.Width());
+			REQUIRE(a.image.Height() == b.image.Height());
+			CHECK(std::equal(a.image.Pixels().begin(), a.image.Pixels().end(), b.image.Pixels().begin()));
+		}
+	}
+}
+
+TEST_CASE("The game still loads from the text sheets when there are no PNG sheets", "[game][assets]")
+{
+	const std::filesystem::path folder = std::filesystem::temp_directory_path() / "ecs_engine_text_only_assets";
+	std::filesystem::remove_all(folder);
+	std::filesystem::copy(kAssets, folder, std::filesystem::copy_options::recursive);
+	std::filesystem::remove(folder / "sprites" / "font.sheet");
+	std::filesystem::remove(folder / "sprites" / "sprites.sheet");
+
+	const std::optional<game::GameAssets> assets = game::LoadGameAssets(folder);
+	std::filesystem::remove_all(folder);
+	REQUIRE(assets.has_value());
+	CHECK_FALSE(assets->atlas.image.IsEmpty());
+	CHECK(assets->font.Glyph('A') != nullptr);
 }
