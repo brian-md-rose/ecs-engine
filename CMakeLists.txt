@@ -41,6 +41,22 @@ else()
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
 endif()
 
+# AddressSanitizer + UndefinedBehaviorSanitizer for GCC/Clang. Applied only to our own
+# targets (they all link engine::warnings), not to SDL. Any finding aborts the run, so the
+# tests fail instead of just printing a report.
+option(ENGINE_SANITIZE "Build our targets with ASan and UBSan (GCC/Clang only)" OFF)
+if(ENGINE_SANITIZE)
+    if(MSVC)
+        message(FATAL_ERROR "ENGINE_SANITIZE is for GCC/Clang; use the ninja-asan preset.")
+    endif()
+    target_compile_options(engine_warnings INTERFACE
+        -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    target_link_options(engine_warnings INTERFACE -fsanitize=address,undefined)
+endif()
+
+# clang-tidy reads this to know how each file is compiled.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Visual Studio compiles the files of one project one at a time unless /MP is set.
 # Applied before SDL is added so its ~400 C files build in parallel too. Ninja already
 # runs one compiler per core, so this is for the Visual Studio generator only.
