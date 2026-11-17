@@ -57,8 +57,9 @@ namespace game
 	[[nodiscard]] GameAssets BuildGameAssets(const engine::graphics::PixelSheet& fontSheet,
 	                                         const engine::graphics::PixelSheet& spriteSheet);
 
-	// Reads sprites/font.txt, sprites/sprites.txt and levels.txt from folder (the assets folder)
-	// and builds the assets. On failure, prints the error with the file, line and column (or the
+	// Reads sprites/font and sprites/sprites (each a .sheet manifest of PNGs if there is one,
+	// else the .txt pixel sheet) and levels.txt from folder (the assets folder) and builds the
+	// assets. On failure, prints the error with the file, line and column (or the
 	// missing sprites) to stderr and returns nothing.
 	[[nodiscard]] std::optional<GameAssets> LoadGameAssets(const std::filesystem::path& folder);
 } // namespace game

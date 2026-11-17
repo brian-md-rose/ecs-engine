@@ -1,0 +1,20 @@
+# Generated from sprites.txt by tools/convert_sheet.py. The art now lives in the PNGs.
+sprite player_right sprites/player_right.png 8 8 2
+sprite player_down sprites/player_down.png 8 8 2
+sprite player_up sprites/player_up.png 8 8 2
+sprite player_death sprites/player_death.png 8 8 4
+sprite grit sprites/grit.png 8 8 2
+sprite snare sprites/snare.png 8 8 2
+sprite clasp sprites/clasp.png 8 8 2
+sprite wisp sprites/wisp.png 8 8 2
+sprite frightened sprites/frightened.png 8 8 2
+sprite frightened_flash sprites/frightened_flash.png 8 8 2
+sprite returning sprites/returning.png 8 8 2
+sprite pellet sprites/pellet.png 8 8 1
+sprite power_pellet sprites/power_pellet.png 8 8 2
+sprite door sprites/door.png 8 8 1
+sprite wall_core sprites/wall_core.png 8 8 1
+sprite wall_edge_up sprites/wall_edge_up.png 8 8 1
+sprite wall_edge_right sprites/wall_edge_right.png 8 8 1
+sprite wall_edge_down sprites/wall_edge_down.png 8 8 1
+sprite wall_edge_left sprites/wall_edge_left.png 8 8 1
