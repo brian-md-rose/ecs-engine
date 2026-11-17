@@ -37,6 +37,17 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_COMPILER": "clang++"
       }
+    },
+    {
+      "name": "ninja-asan",
+      "inherits": "base",
+      "displayName": "Ninja + GCC (Debug, ASan + UBSan)",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++",
+        "ENGINE_SANITIZE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -50,7 +61,8 @@
     { "name": "debug",       "inherits": "msvc-base", "configuration": "Debug" },
     { "name": "release",     "inherits": "msvc-base", "configuration": "Release" },
     { "name": "ninja-gcc",   "configurePreset": "ninja-gcc" },
-    { "name": "ninja-clang", "configurePreset": "ninja-clang" }
+    { "name": "ninja-clang", "configurePreset": "ninja-clang" },
+    { "name": "ninja-asan",  "configurePreset": "ninja-asan" }
   ],
   "testPresets": [
     {
@@ -61,6 +73,7 @@
     { "name": "debug",       "inherits": "test-base", "configurePreset": "msvc", "configuration": "Debug" },
     { "name": "release",     "inherits": "test-base", "configurePreset": "msvc", "configuration": "Release" },
     { "name": "ninja-gcc",   "inherits": "test-base", "configurePreset": "ninja-gcc" },
-    { "name": "ninja-clang", "inherits": "test-base", "configurePreset": "ninja-clang" }
+    { "name": "ninja-clang", "inherits": "test-base", "configurePreset": "ninja-clang" },
+    { "name": "ninja-asan",  "inherits": "test-base", "configurePreset": "ninja-asan" }
   ]
 }

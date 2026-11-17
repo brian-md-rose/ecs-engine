@@ -1,0 +1,14 @@
+# Bug-finding checks only; style is left to clang-format and the compiler warnings.
+# Run in CI by the clang-tidy job (see .github/workflows/ci.yml).
+Checks: >-
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -bugprone-narrowing-conversions,
+  performance-*,
+  -performance-no-int-to-ptr
+WarningsAsErrors: '*'
+# Only report on our own headers, never SDL or the standard library.
+HeaderFilterRegex: '.*/(engine|game)/(include|src)/.*'
