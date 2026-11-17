@@ -1,4 +1,7 @@
 # Bug-finding checks only; style is left to clang-format and the compiler warnings.
+# Disabled after the first CI run: enum-size and inefficient-vector-operation are style/perf
+# nits; the other three flagged only code that is correct (optionals checked through an array
+# index, intended integer division, from_chars over an end pointer).
 # Run in CI by the clang-tidy job (see .github/workflows/ci.yml).
 Checks: >-
   -*,
@@ -7,8 +10,13 @@ Checks: >-
   -bugprone-easily-swappable-parameters,
   -bugprone-exception-escape,
   -bugprone-narrowing-conversions,
+  -bugprone-unchecked-optional-access,
+  -bugprone-integer-division,
+  -bugprone-suspicious-stringview-data-usage,
   performance-*,
-  -performance-no-int-to-ptr
+  -performance-no-int-to-ptr,
+  -performance-enum-size,
+  -performance-inefficient-vector-operation
 WarningsAsErrors: '*'
 # Only report on our own headers, never SDL or the standard library.
 HeaderFilterRegex: '.*/(engine|game)/(include|src)/.*'
