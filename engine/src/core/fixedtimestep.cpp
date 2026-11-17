@@ -13,9 +13,19 @@ namespace engine::core
 		ENGINE_ASSERT(maxFrameSeconds >= stepSeconds, "max frame must allow at least one update");
 	}
 
+	void FixedTimestep::SetTimeScale(double scale)
+	{
+		ENGINE_ASSERT(scale >= 0.0, "time scale must not be negative");
+		timeScale = std::max(scale, 0.0);
+	}
+
 	int FixedTimestep::Advance(double frameSeconds)
 	{
-		accumulator += std::clamp(frameSeconds, 0.0, maxFrame);
+		if (paused)
+		{
+			return 0;
+		}
+		accumulator += std::clamp(frameSeconds, 0.0, maxFrame) * timeScale;
 
 		int updates = 0;
 		while (accumulator >= step)
