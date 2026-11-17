@@ -12,6 +12,8 @@ namespace engine::core
 		double step;
 		double maxFrame;
 		double accumulator = 0.0;
+		double timeScale = 1.0;
+		bool paused = false;
 
 	public:
 		// stepSeconds: length of one update (default 60 Hz).
@@ -28,5 +30,17 @@ namespace engine::core
 		[[nodiscard]] double Alpha() const noexcept { return accumulator / step; }
 
 		[[nodiscard]] double Step() const noexcept { return step; }
+
+		// Game speed: 1 is normal, 0.5 is slow motion, 2 is double speed. The update length
+		// stays Step(); a different scale changes how many updates run per real second. The
+		// stall cap applies to real time first, so a scale above 1 can run more than
+		// maxFrameSeconds / Step() updates in one frame (at most scale times as many).
+		void SetTimeScale(double scale);
+		[[nodiscard]] double TimeScale() const noexcept { return timeScale; }
+
+		// While paused, Advance() returns 0 and Alpha() stays where it was. Real time that
+		// passes during the pause is dropped, not replayed on resume.
+		void SetPaused(bool value) noexcept { paused = value; }
+		[[nodiscard]] bool Paused() const noexcept { return paused; }
 	};
 } // namespace engine::core

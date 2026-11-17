@@ -113,3 +113,42 @@ TEST_CASE("SystemClock never goes backwards", "[core][clock]")
 	const double second = clock.Now();
 	CHECK(second >= first);
 }
+
+TEST_CASE("FixedTimestep scales game speed", "[core][timestep]")
+{
+	FixedTimestep timestep(kStep);
+
+	timestep.SetTimeScale(0.5);
+	CHECK(timestep.Advance(kStep * 4.0) == 2);
+
+	timestep.SetTimeScale(2.0);
+	CHECK(timestep.Advance(kStep * 2.0) == 4);
+
+	timestep.SetTimeScale(0.0);
+	CHECK(timestep.Advance(1.0) == 0);
+}
+
+TEST_CASE("FixedTimestep still caps a stall when scaled up", "[core][timestep]")
+{
+	FixedTimestep timestep(kStep, 0.25);
+	timestep.SetTimeScale(2.0);
+
+	// The cap applies to real time first: 0.25 s of it at double speed is 30 updates, not 1200.
+	CHECK(timestep.Advance(10.0) == 30);
+}
+
+TEST_CASE("FixedTimestep pauses without replaying the paused time", "[core][timestep]")
+{
+	FixedTimestep timestep(kStep);
+
+	CHECK(timestep.Advance(kStep * 0.5) == 0);
+	const double alpha = timestep.Alpha();
+
+	timestep.SetPaused(true);
+	CHECK(timestep.Paused());
+	CHECK(timestep.Advance(5.0) == 0);
+	CHECK_THAT(timestep.Alpha(), WithinAbs(alpha, 1e-9));
+
+	timestep.SetPaused(false);
+	CHECK(timestep.Advance(kStep * 0.5) == 1);
+}
