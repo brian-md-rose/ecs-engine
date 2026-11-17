@@ -32,7 +32,7 @@ namespace engine::graphics
 
 		struct Parser
 		{
-			std::filesystem::path folder;
+			std::filesystem::path folder{};
 			PixelSheet sheet{};
 			std::optional<Image> current; // the latest `image`
 			std::string currentName;
@@ -160,7 +160,8 @@ namespace engine::graphics
 
 	PixelSheetResult ParseSheetManifest(std::string_view text, const std::filesystem::path& folder)
 	{
-		Parser parser{.folder = folder};
+		Parser parser;
+		parser.folder = folder;
 		const std::vector<std::string_view> lines = core::SplitLines(text);
 		for (std::size_t i = 0; i < lines.size(); ++i)
 		{
