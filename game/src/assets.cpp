@@ -50,7 +50,7 @@ namespace game
 		// folder/name.sheet (PNGs) if there is one, else folder/name.txt (the fallback).
 		[[nodiscard]] std::filesystem::path SheetPath(const std::filesystem::path& folder, const char* name)
 		{
-			const std::filesystem::path manifest = folder / (std::string(name) + ".sheet");
+			std::filesystem::path manifest = folder / (std::string(name) + ".sheet");
 			if (std::filesystem::exists(manifest)) return manifest;
 			return folder / (std::string(name) + ".txt");
 		}
