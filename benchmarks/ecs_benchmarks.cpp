@@ -49,7 +49,7 @@ namespace
 	using engine::ecs::Without;
 
 	// Entity counts every benchmark runs at: a small scene, a busy one, and a stress case.
-	constexpr std::array<std::size_t, 3> kEntityCounts = {1'000, 10'000, 100'000};
+	constexpr std::array<std::size_t, 3> kEntityCounts = {{1'000, 10'000, 100'000}};
 
 	// Catch2's console reporter cuts names at about 36 characters, so labels stay short:
 	// "Each<Pos,Vel> 10% 100k".
