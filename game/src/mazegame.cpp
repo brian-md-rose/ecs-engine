@@ -1,6 +1,5 @@
 #include "mazegame.hpp"
 
-#include <cstdio>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -12,6 +11,7 @@
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
+#include "core/log.hpp"
 #include "core/paths.hpp"
 #include "core/text.hpp"
 #include "debug/debugpanel.hpp"
@@ -51,7 +51,7 @@ namespace game
 		constexpr std::string_view kFirstMaze = "level1.txt";
 
 		// Loads assets/mazes/<fileName> from next to the executable (see game/assets/README.md).
-		// On failure, prints the error with the file, line and column to stderr and returns
+		// On failure, logs the error with the file, line and column and returns
 		// nothing.
 		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(const std::filesystem::path& folder,
 		                                                   std::string_view fileName)
@@ -62,7 +62,7 @@ namespace game
 			{
 				// The full path, so a missing asset shows where the game looked.
 				const std::string message = engine::core::FormatError(engine::core::PathText(file), result.error);
-				std::fprintf(stderr, "%s\n", message.c_str());
+				engine::core::LogError(message);
 			}
 			return std::move(result.map);
 		}

@@ -10,7 +10,8 @@ namespace engine::audio
 	{
 		if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
 		{
-			SDL_Log("SDL_InitSubSystem(SDL_INIT_AUDIO) failed, playing without sound: %s", SDL_GetError());
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+			            "SDL_InitSubSystem(SDL_INIT_AUDIO) failed, playing without sound: %s", SDL_GetError());
 			return;
 		}
 		subsystemStarted = true;
@@ -19,7 +20,8 @@ namespace engine::audio
 		device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
 		if (device == 0)
 		{
-			SDL_Log("SDL_OpenAudioDevice failed, playing without sound: %s", SDL_GetError());
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SDL_OpenAudioDevice failed, playing without sound: %s",
+			            SDL_GetError());
 			return;
 		}
 
@@ -30,12 +32,12 @@ namespace engine::audio
 			voice = SDL_CreateAudioStream(&spec, &spec);
 			if (voice == nullptr)
 			{
-				SDL_Log("SDL_CreateAudioStream failed: %s", SDL_GetError());
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateAudioStream failed: %s", SDL_GetError());
 				continue;
 			}
 			if (!SDL_BindAudioStream(device, voice))
 			{
-				SDL_Log("SDL_BindAudioStream failed: %s", SDL_GetError());
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_BindAudioStream failed: %s", SDL_GetError());
 				SDL_DestroyAudioStream(voice);
 				voice = nullptr;
 			}
@@ -77,7 +79,7 @@ namespace engine::audio
 		const auto bytes = static_cast<int>(sound.samples.size() * sizeof(float));
 		if (!SDL_PutAudioStreamData(chosen, sound.samples.data(), bytes))
 		{
-			SDL_Log("SDL_PutAudioStreamData failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_PutAudioStreamData failed: %s", SDL_GetError());
 		}
 	}
 } // namespace engine::audio

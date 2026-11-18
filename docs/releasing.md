@@ -47,5 +47,7 @@ set_target_properties(my_game PROPERTIES WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>
 #include <SDL3/SDL_main.h>
 ```
 
-Output to stdout/stderr goes nowhere once the console is gone, so log to a file in non-Debug
-builds. The property has no effect on other platforms. The game does this in `game/CMakeLists.txt`.
+Output to stdout/stderr goes nowhere once the console is gone, so make a `engine::core::LogSession`
+(`core/log.hpp`) at the top of `main()` to log to a file instead; see `game/src/main.cpp`. It also
+routes SDL's own log (`SDL_Log` and friends) into the file. The property has no effect on other
+platforms. The game hides its console in `game/CMakeLists.txt`.

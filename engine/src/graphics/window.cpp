@@ -9,14 +9,14 @@ namespace engine::graphics
 		videoInitialized = SDL_InitSubSystem(SDL_INIT_VIDEO);
 		if (!videoInitialized)
 		{
-			SDL_Log("SDL_InitSubSystem(VIDEO) failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_InitSubSystem(VIDEO) failed: %s", SDL_GetError());
 			return;
 		}
 
 		window = SDL_CreateWindow(title, width, height, SDL_WINDOW_RESIZABLE);
 		if (window == nullptr)
 		{
-			SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateWindow failed: %s", SDL_GetError());
 		}
 	}
 

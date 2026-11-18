@@ -59,7 +59,7 @@ namespace game
 
 	// Reads sprites/font and sprites/sprites (each a .sheet manifest of PNGs if there is one,
 	// else the .txt pixel sheet) and levels.txt from folder (the assets folder) and builds the
-	// assets. On failure, prints the error with the file, line and column (or the
-	// missing sprites) to stderr and returns nothing.
+	// assets. On failure, logs the error with the file, line and column (or the
+	// missing sprites) to the log and returns nothing.
 	[[nodiscard]] std::optional<GameAssets> LoadGameAssets(const std::filesystem::path& folder);
 } // namespace game

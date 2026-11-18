@@ -41,7 +41,7 @@ namespace game
 	[[nodiscard]] std::filesystem::path DefaultSaveFile();
 
 	// What is saved in file: the defaults for anything missing or no file at all. A file that
-	// can't be read is reported on stderr and counts as empty, so a broken save never stops the
+	// can't be read is logged and counts as empty, so a broken save never stops the
 	// game.
 	[[nodiscard]] SavedGame LoadSavedGame(const std::filesystem::path& file);
 
