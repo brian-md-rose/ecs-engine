@@ -15,6 +15,9 @@ namespace engine::ui
 	// bottom are the widths of the border that stays unstretched. NinePatchSystem draws it as nine
 	// stretched sprites, children of this entity, so the entity needs a graphics::Transform, and
 	// ScreenSpace or Clip on it apply to the pieces. The size is in the entity's units (like Sprite's).
+	//
+	// The pieces are children, so destroy a nine-patch with ecs::DestroyWithChildren. A plain Destroy leaves
+	// the pieces behind, still drawn, with a parent that no longer exists.
 	struct NinePatch
 	{
 		graphics::PixelRect source{};

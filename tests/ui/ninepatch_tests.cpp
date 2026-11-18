@@ -130,3 +130,20 @@ TEST_CASE("The system gives a nine-patch nine child sprites and re-lays them whe
 	CHECK_FALSE(world.registry.HasComponent<engine::graphics::Sprite>(pieces[0]));
 	CHECK(world.registry.GetComponent<engine::ui::NinePatchPieces>(panel).pieces == pieces); // no new ones
 }
+
+TEST_CASE("Destroying a nine-patch with its children takes the pieces too", "[ui][ninepatch]")
+{
+	engine::ecs::World world;
+	const engine::ecs::Entity panel = world.registry.Create();
+	world.registry.Add<engine::graphics::Transform>(panel);
+	world.registry.Add<NinePatch>(panel, Patch(40, 30));
+	engine::ecs::FrameContext context;
+	engine::ui::NinePatchSystem(world, context);
+	const auto pieces = world.registry.GetComponent<engine::ui::NinePatchPieces>(panel).pieces;
+
+	engine::ecs::DestroyWithChildren(world.registry, world.commands, panel);
+	world.commands.Apply(world.registry);
+	CHECK_FALSE(world.registry.IsAlive(panel));
+	for (const engine::ecs::Entity piece : pieces)
+		CHECK_FALSE(world.registry.IsAlive(piece));
+}
