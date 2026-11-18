@@ -56,5 +56,8 @@ namespace engine::ui
 	// The nine pieces, row by row from the top left, for a panel of patch.width x patch.height. Corners
 	// keep their size, the edges stretch along one axis and the middle along both. If the panel is
 	// smaller than its borders, the borders shrink in proportion so the pieces still fit exactly.
-	[[nodiscard]] std::array<NinePatchPiece, 9> NinePatchLayout(const NinePatch& patch);
+	//
+	// Fills pieces rather than returning them: MSVC /Wall warns (C4686) about returning a std::array of
+	// these by value.
+	void NinePatchLayout(const NinePatch& patch, std::array<NinePatchPiece, 9>& pieces);
 } // namespace engine::ui

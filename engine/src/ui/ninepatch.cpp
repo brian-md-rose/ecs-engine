@@ -27,7 +27,7 @@ namespace engine::ui
 		}
 	} // namespace
 
-	std::array<NinePatchPiece, 9> NinePatchLayout(const NinePatch& patch)
+	void NinePatchLayout(const NinePatch& patch, std::array<NinePatchPiece, 9>& pieces)
 	{
 		const Split across = SplitAxis(patch.width, patch.left, patch.right);
 		const Split down = SplitAxis(patch.height, patch.top, patch.bottom);
@@ -48,7 +48,6 @@ namespace engine::ui
 		                                 patch.source.y + sourceDown.first + sourceDown.middle};
 		const std::array<int, 3> sourceHeight{sourceDown.first, sourceDown.middle, sourceDown.last};
 
-		std::array<NinePatchPiece, 9> pieces{};
 		for (std::size_t row = 0; row < 3; ++row)
 		{
 			for (std::size_t column = 0; column < 3; ++column)
@@ -63,6 +62,5 @@ namespace engine::ui
 				    .height = destHeight[row]};
 			}
 		}
-		return pieces;
 	}
 } // namespace engine::ui

@@ -235,7 +235,8 @@ namespace engine::ui
 
 			const NinePatch patch = registry.GetComponent<NinePatch>(entity);
 			const NinePatchPieces pieces = registry.GetComponent<NinePatchPieces>(entity);
-			const std::array<NinePatchPiece, 9> layout = NinePatchLayout(patch);
+			std::array<NinePatchPiece, 9> layout{};
+			NinePatchLayout(patch, layout);
 			for (std::size_t i = 0; i < pieces.pieces.size(); ++i)
 			{
 				const ecs::Entity piece = pieces.pieces[i];

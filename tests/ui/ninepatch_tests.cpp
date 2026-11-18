@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+
 #include "ecs/hierarchy.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
@@ -12,6 +14,7 @@ namespace
 {
 	using engine::ui::NinePatch;
 	using engine::ui::NinePatchLayout;
+	using engine::ui::NinePatchPiece;
 
 	// A 12 x 12 picture at (100, 50) with borders of 3, 3, 4 and 2 (left, right, top, bottom).
 	NinePatch Patch(int width, int height)
@@ -28,7 +31,8 @@ namespace
 
 TEST_CASE("Nine-patch corners keep their size and the middle stretches", "[ui][ninepatch]")
 {
-	const auto pieces = NinePatchLayout(Patch(40, 30));
+	std::array<NinePatchPiece, 9> pieces{};
+	NinePatchLayout(Patch(40, 30), pieces);
 	// Top-left corner, top edge, top-right corner.
 	CHECK(pieces[0].width == 3);
 	CHECK(pieces[0].height == 4);
@@ -51,7 +55,8 @@ TEST_CASE("Nine-patch corners keep their size and the middle stretches", "[ui][n
 
 TEST_CASE("Nine-patch pieces cut the picture at the borders", "[ui][ninepatch]")
 {
-	const auto pieces = NinePatchLayout(Patch(40, 30));
+	std::array<NinePatchPiece, 9> pieces{};
+	NinePatchLayout(Patch(40, 30), pieces);
 	CHECK(pieces[0].source == engine::graphics::PixelRect{.x = 100, .y = 50, .width = 3, .height = 4});
 	CHECK(pieces[4].source == engine::graphics::PixelRect{.x = 103, .y = 54, .width = 6, .height = 6});
 	CHECK(pieces[8].source == engine::graphics::PixelRect{.x = 109, .y = 60, .width = 3, .height = 2});
@@ -63,7 +68,8 @@ TEST_CASE("The pieces exactly cover the panel", "[ui][ninepatch]")
 	{
 		for (const int height : {0, 3, 6, 7, 30})
 		{
-			const auto pieces = NinePatchLayout(Patch(width, height));
+			std::array<NinePatchPiece, 9> pieces{};
+			NinePatchLayout(Patch(width, height), pieces);
 			int top = 0;
 			int left = 0;
 			for (int column = 0; column < 3; ++column)
@@ -78,7 +84,8 @@ TEST_CASE("The pieces exactly cover the panel", "[ui][ninepatch]")
 
 TEST_CASE("A panel smaller than its borders shrinks them in proportion", "[ui][ninepatch]")
 {
-	const auto pieces = NinePatchLayout(Patch(3, 30)); // borders of 3 + 3 into 3: 1 and 2
+	std::array<NinePatchPiece, 9> pieces{};
+	NinePatchLayout(Patch(3, 30), pieces); // borders of 3 + 3 into 3: 1 and 2
 	CHECK(pieces[0].width == 1);
 	CHECK(pieces[2].width == 2);
 	CHECK(pieces[1].width == 0);
@@ -90,12 +97,15 @@ TEST_CASE("Pieces with no border or no size are not visible", "[ui][ninepatch]")
 {
 	NinePatch patch = Patch(40, 30);
 	patch.left = 0;
-	const auto pieces = NinePatchLayout(patch);
+	std::array<NinePatchPiece, 9> pieces{};
+	NinePatchLayout(patch, pieces);
 	CHECK_FALSE(pieces[0].Visible());
 	CHECK_FALSE(pieces[3].Visible());
 	CHECK(pieces[1].Visible());
 
-	CHECK_FALSE(NinePatchLayout(Patch(0, 0))[4].Visible());
+	std::array<NinePatchPiece, 9> empty{};
+	NinePatchLayout(Patch(0, 0), empty);
+	CHECK_FALSE(empty[4].Visible());
 }
 
 TEST_CASE("The system gives a nine-patch nine child sprites and re-lays them when it resizes", "[ui][ninepatch]")
