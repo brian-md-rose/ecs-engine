@@ -3,8 +3,8 @@
 #include <string_view>
 
 // Logging for the engine and the games built on it. Messages go to a log file, to the console
-// (stderr), or both, each with a time and a level. SDL's own log (SDL_Log, SDL_LogError, ...) is
-// routed through here too, so the engine's and SDL's messages land in the same file.
+// (stderr), or both, each with a time and a level. SDL-free, so it is part of engine::core. The platform
+// library can also route SDL's own log (SDL_Log, SDL_LogError, ...) through here; see core/sdllog.hpp.
 //
 // Without a LogSession, messages just go to stderr, so the engine and the tests need no setup.
 // A game makes one LogSession in main(), before it makes anything that might fail.
@@ -49,6 +49,9 @@ namespace engine::core
 	private:
 		bool owns = false; // false for a session made while another exists, which does nothing
 	};
+
+	// True while a LogSession exists.
+	[[nodiscard]] bool LogIsActive();
 
 	// Writes one line, "2026-11-18 16:09:27.123 [ERROR] message". Safe to call from any thread.
 	void Log(LogLevel level, std::string_view message);

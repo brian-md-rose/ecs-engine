@@ -22,9 +22,16 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 - `core/random.hpp`: `Random`, a PCG32 generator that gives the same numbers on MSVC, GCC and Clang (no `<random>`
   distributions). `Range` has no modulo bias, and there are `Unit`, `Chance`, `Shuffle`, `PickWeighted`, `Fork(name)`
   for independent named streams, and `State()` for saving a run mid-way.
+- `engine::core`: the SDL-free part of the engine (ECS, `core/`, input types, draw batching, fonts, sheets), for
+  headless tools. It has no SDL include path, so using SDL there fails the build. `engine::engine` links it
+  publicly and adds the platform, so code that links `engine::engine` is unchanged. Tests split the same way:
+  `engine_core_tests` (no SDL) and `engine_tests` (platform).
+- `core/sdllog.hpp`: `RouteSdlLog()` sends SDL's log through `core::Log`.
 
 ### Changed
 
+- `LogSession` no longer installs the SDL log routing itself (it is SDL-free now). Call `core::RouteSdlLog()` after
+  making one; `Application` also does. `Log` timestamps now come from `std::chrono`.
 - The engine's and the game's error messages go through the log instead of straight to stderr.
 
 ## [0.1.0] - 2026-11-18

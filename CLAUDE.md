@@ -10,7 +10,7 @@ everything printed into the conversation is re-read on every later turn.
     `cmake --build --preset debug 2>&1 | grep -E "\): (error|warning)" | head -30`.
     Don't print the full MSBuild log.
   - Tests: show only the summary line, plus failures if there are any:
-    `build/msvc/tests/Debug/engine_tests.exe 2>&1 | tail -3`.
+    `build/msvc/tests/Debug/engine_core_tests.exe 2>&1 | tail -3`, and the same for `engine_tests.exe`.
   - Git: prefer `git diff --stat` and `git log --oneline -5`; show a full diff only for the
     files being reviewed.
 - **Read narrowly.** Search with Grep first, then read the lines you need, by range. Don't
@@ -27,7 +27,7 @@ everything printed into the conversation is re-read on every later turn.
 ## Project facts (so they needn't be rediscovered)
 
 - Build: `cmake --preset msvc`, then `cmake --build --preset debug` (or `release`).
-  Tests: `build/msvc/tests/<Config>/engine_tests.exe` and `game_tests.exe`.
+  Tests: `build/msvc/tests/<Config>/engine_core_tests.exe`, `engine_tests.exe` and `game_tests.exe`.
   The game: `build/msvc/game/<Config>/game.exe`.
 - CI builds MSVC Debug and Release, GCC and Clang, and treats warnings as errors
   (`/Wall /WX /analyze`, `-Wshadow -Wconversion` and more).

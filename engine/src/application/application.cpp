@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "core/fixedtimestep.hpp"
+#include "core/sdllog.hpp"
 
 namespace engine::application
 {
@@ -44,6 +45,7 @@ namespace engine::application
 	{
 		// Subsystems (video, audio) are started by the classes that use them;
 		// this only initialises SDL's core so SDL_Quit below has something to pair with.
+		core::RouteSdlLog(); // once the platform code starts, SDL's log goes through the engine's
 		if (!SDL_Init(0))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed: %s", SDL_GetError());
