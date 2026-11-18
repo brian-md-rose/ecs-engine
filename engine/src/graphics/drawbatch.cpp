@@ -8,6 +8,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/hierarchy.hpp"
 #include "ecs/registry.hpp"
+#include "graphics/clip.hpp"
 #include "graphics/interpolation.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/sprite.hpp"
@@ -22,18 +23,51 @@ namespace engine::graphics
 			       topLeft.y < static_cast<float>(camera.logicalHeight) && topLeft.y + height > 0.0f;
 		}
 
-		// Whether entity, or an ancestor, is tagged ScreenSpace. The walk stops after a few hundred steps so a
-		// loop in the hierarchy can't hang the frame.
-		[[nodiscard]] bool IsScreenSpace(ecs::Registry& registry, ecs::Entity entity)
+		// Whether a width x height box at topLeft overlaps rect.
+		[[nodiscard]] bool OverlapsRect(Position topLeft, float width, float height, const PixelRect& rect)
 		{
+			return topLeft.x < static_cast<float>(rect.x + rect.width) &&
+			       topLeft.x + width > static_cast<float>(rect.x) &&
+			       topLeft.y < static_cast<float>(rect.y + rect.height) &&
+			       topLeft.y + height > static_cast<float>(rect.y);
+		}
+
+		// The part of a and b that both cover; empty (zero size) if they don't meet.
+		[[nodiscard]] PixelRect Intersect(const PixelRect& a, const PixelRect& b)
+		{
+			const int left = std::max(a.x, b.x);
+			const int top = std::max(a.y, b.y);
+			const int right = std::min(a.x + a.width, b.x + b.width);
+			const int bottom = std::min(a.y + a.height, b.y + b.height);
+			return {.x = left, .y = top, .width = std::max(right - left, 0), .height = std::max(bottom - top, 0)};
+		}
+
+		// What an entity inherits from itself and its ancestors: ScreenSpace if any has it, and every Clip
+		// among them intersected. The walk stops after a few hundred steps so a loop in the hierarchy can't
+		// hang the frame.
+		struct Ancestry
+		{
+			bool screenSpace = false;
+			bool clipped = false;
+			PixelRect clip{};
+		};
+
+		[[nodiscard]] Ancestry ResolveAncestry(ecs::Registry& registry, ecs::Entity entity)
+		{
+			Ancestry result;
 			for (int depth = 0; depth < 256 && entity != ecs::Entity::Null; ++depth)
 			{
-				if (registry.HasComponent<ScreenSpace>(entity)) return true;
+				if (registry.HasComponent<ScreenSpace>(entity)) result.screenSpace = true;
+				if (const Clip* clip = registry.TryGetComponent<Clip>(entity))
+				{
+					result.clip = result.clipped ? Intersect(result.clip, clip->rect) : clip->rect;
+					result.clipped = true;
+				}
 				const ecs::Parent* parent = registry.TryGetComponent<ecs::Parent>(entity);
-				if (parent == nullptr) return false;
+				if (parent == nullptr) break;
 				entity = parent->entity;
 			}
-			return false;
+			return result;
 		}
 
 		[[nodiscard]] Position Snap(Position position)
@@ -60,6 +94,7 @@ namespace engine::graphics
 	void DrawBatch::Build(ecs::Registry& registry, const BatchSettings& settings)
 	{
 		entries.clear();
+		runs.clear();
 		vertices.clear();
 		indices.clear();
 		const Camera& camera = settings.camera;
@@ -73,50 +108,76 @@ namespace engine::graphics
 			                                : InterpolatedPosition(transform, *interpolation, alpha);
 		};
 
-		// Where entity's top-left lands on the screen and the zoom it is drawn at: the camera places and
-		// magnifies world-space entities; screen-space ones stay where their Transform says, at 1.
+		// Where entity's top-left lands on the screen, the zoom it is drawn at, and the clip it is drawn
+		// inside. The camera places and magnifies world-space entities; screen-space ones stay where
+		// their Transform says, at 1. The clip is its own and its ancestors' Clip rects, intersected.
 		struct Placement
 		{
 			Position screen;
 			int zoom;
+			bool clipped;
+			PixelRect clip;
 		};
 		const auto place = [&registry, &camera, &worldPosition](ecs::Entity entity, const Transform& transform)
 		{
 			const Position world = worldPosition(entity, transform);
-			if (IsScreenSpace(registry, entity)) return Placement{.screen = world, .zoom = 1};
-			return Placement{.screen = camera.WorldToScreen(world), .zoom = camera.EffectiveZoom()};
+			const Ancestry ancestry = ResolveAncestry(registry, entity);
+			if (ancestry.screenSpace)
+			{
+				return Placement{.screen = world, .zoom = 1, .clipped = ancestry.clipped, .clip = ancestry.clip};
+			}
+			return Placement{.screen = camera.WorldToScreen(world),
+			                 .zoom = camera.EffectiveZoom(),
+			                 .clipped = ancestry.clipped,
+			                 .clip = ancestry.clip};
+		};
+		// Whether a width x height box at topLeft shows: inside the view and inside its clip.
+		const auto visible = [&camera](const Placement& placement, Position topLeft, float width, float height)
+		{
+			return Overlaps(topLeft, width, height, camera) &&
+			       (!placement.clipped || OverlapsRect(topLeft, width, height, placement.clip));
 		};
 
 		const auto collectShape =
-		    [this, &camera, &place](ecs::Entity entity, const Transform& transform, const Shape& shape)
+		    [this, &place, &visible](ecs::Entity entity, const Transform& transform, const Shape& shape)
 		{
-			const auto [screen, zoom] = place(entity, transform);
+			const Placement placement = place(entity, transform);
 			Shape drawn = shape;
-			const auto factor = static_cast<float>(zoom);
+			const auto factor = static_cast<float>(placement.zoom);
 			drawn.width *= factor;
 			drawn.height *= factor;
 			drawn.radius *= factor;
-			if (!Overlaps(screen, drawn.BoundsWidth(), drawn.BoundsHeight(), camera)) return;
-			entries.push_back({.screen = screen, .layer = shape.layer, .color = shape.color, .shape = drawn});
+			if (!visible(placement, placement.screen, drawn.BoundsWidth(), drawn.BoundsHeight())) return;
+			entries.push_back({.screen = placement.screen,
+			                   .layer = shape.layer,
+			                   .color = shape.color,
+			                   .clipped = placement.clipped,
+			                   .clip = placement.clip,
+			                   .shape = drawn});
 		};
 		registry.Each<Transform, Shape>(collectShape);
 
 		if (hasAtlas)
 		{
 			const auto collectSprite =
-			    [this, &camera, &place](ecs::Entity entity, const Transform& transform, const Sprite& sprite)
+			    [this, &place, &visible](ecs::Entity entity, const Transform& transform, const Sprite& sprite)
 			{
-				const auto [placed, zoom] = place(entity, transform);
-				const Position screen = Snap(placed);
-				const auto width = static_cast<float>(sprite.source.width * zoom);
-				const auto height = static_cast<float>(sprite.source.height * zoom);
-				if (!Overlaps(screen, width, height, camera)) return;
+				const Placement placement = place(entity, transform);
+				const Position screen = Snap(placement.screen);
+				// Its own size if it has one (stretched), else the picture's, magnified by the zoom.
+				const auto width =
+				    static_cast<float>((sprite.width > 0 ? sprite.width : sprite.source.width) * placement.zoom);
+				const auto height =
+				    static_cast<float>((sprite.height > 0 ? sprite.height : sprite.source.height) * placement.zoom);
+				if (!visible(placement, screen, width, height)) return;
 				entries.push_back({.screen = screen,
 				                   .layer = sprite.layer,
 				                   .color = sprite.tint,
+				                   .clipped = placement.clipped,
+				                   .clip = placement.clip,
 				                   .textured = true,
 				                   .source = sprite.source,
-				                   .scale = zoom,
+				                   .size = {width, height},
 				                   .flipX = sprite.flipX});
 			};
 			registry.Each<Transform, Sprite>(collectSprite);
@@ -126,24 +187,27 @@ namespace engine::graphics
 		{
 			const BitmapFont& font = *settings.font;
 			const auto collectText =
-			    [this, &camera, &font, &place](ecs::Entity entity, const Transform& transform, const Text& text)
+			    [this, &font, &place, &visible](ecs::Entity entity, const Transform& transform, const Text& text)
 			{
-				const auto [placed, zoom] = place(entity, transform);
+				const Placement placement = place(entity, transform);
 				// Zoom magnifies the text as a whole: its glyphs, spacing and wrap width.
-				const int scale = std::max(text.scale, 1) * zoom;
+				const int scale = std::max(text.scale, 1) * placement.zoom;
 				glyphs.clear();
-				LayoutText(font, text.value, Snap(placed), scale, text.wrapWidth * zoom, text.align, glyphs);
+				LayoutText(font, text.value, Snap(placement.screen), scale, text.wrapWidth * placement.zoom, text.align,
+				           glyphs);
 				for (const GlyphQuad& glyph : glyphs)
 				{
 					const auto width = static_cast<float>(glyph.source.width * scale);
 					const auto height = static_cast<float>(glyph.source.height * scale);
-					if (!Overlaps(glyph.screen, width, height, camera)) continue;
+					if (!visible(placement, glyph.screen, width, height)) continue;
 					entries.push_back({.screen = glyph.screen,
 					                   .layer = text.layer,
 					                   .color = text.color,
+					                   .clipped = placement.clipped,
+					                   .clip = placement.clip,
 					                   .textured = true,
 					                   .source = glyph.source,
-					                   .scale = scale});
+					                   .size = {width, height}});
 				}
 			};
 			registry.Each<Transform, Text>(collectText);
@@ -164,6 +228,7 @@ namespace engine::graphics
 
 		for (Entry entry : entries)
 		{
+			const auto firstIndex = static_cast<int>(indices.size());
 			if (entry.layer < settings.untintedFromLayer) entry.color = Multiply(entry.color, settings.tint);
 			if (entry.textured)
 			{
@@ -177,6 +242,13 @@ namespace engine::graphics
 			{
 				AddRectangle(entry, solidUv);
 			}
+
+			// Entries drawn one after another inside the same clip share a run, so the renderer sets
+			// the clip once for all of them.
+			const bool sameRun = !runs.empty() && runs.back().clipped == entry.clipped &&
+			                     (!entry.clipped || runs.back().clip == entry.clip);
+			if (!sameRun) runs.push_back({.firstIndex = firstIndex, .clipped = entry.clipped, .clip = entry.clip});
+			runs.back().indexCount += static_cast<int>(indices.size()) - firstIndex;
 		}
 	}
 
@@ -229,8 +301,8 @@ namespace engine::graphics
 		const int first = static_cast<int>(vertices.size());
 		const float left = entry.screen.x;
 		const float top = entry.screen.y;
-		const float right = left + static_cast<float>(entry.source.width * entry.scale);
-		const float bottom = top + static_cast<float>(entry.source.height * entry.scale);
+		const float right = left + entry.size.x;
+		const float bottom = top + entry.size.y;
 
 		const auto atlasWidth = static_cast<float>(settings.atlasWidth);
 		const auto atlasHeight = static_cast<float>(settings.atlasHeight);

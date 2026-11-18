@@ -8,6 +8,7 @@
 #include "ecs/hierarchy.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/camera.hpp"
+#include "graphics/clip.hpp"
 #include "graphics/drawbatch.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/sprite.hpp"
@@ -474,4 +475,209 @@ TEST_CASE("The camera offset moves the world but not screen-space entities", "[g
 	CHECK(batch.Vertices()[0].position.x == 13.0f);
 	CHECK(batch.Vertices()[0].position.y == 8.0f);
 	CHECK(batch.Vertices()[4].position.x == 10.0f);
+}
+
+TEST_CASE("A sprite with a width and height is stretched to it", "[graphics][batch][sprite]")
+{
+	Registry registry;
+	const Entity entity = AddSprite(registry, {10.0f, 20.0f}, 0); // source 8 x 4
+	registry.GetComponent<Sprite>(entity).width = 30;
+	registry.GetComponent<Sprite>(entity).height = 6;
+
+	DrawBatch batch;
+	batch.Build(registry, AtlasSettings());
+	REQUIRE(batch.ItemCount() == 1);
+	const auto vertices = batch.Vertices();
+	CHECK(vertices[2].position.x == 40.0f);
+	CHECK(vertices[2].position.y == 26.0f);
+	// The whole source is still sampled: 16..24 across a 64-wide atlas, 8..12 down a 32-high one.
+	CHECK(vertices[0].uv.x == Approx(16.0f / 64.0f));
+	CHECK(vertices[2].uv.x == Approx(24.0f / 64.0f));
+	CHECK(vertices[2].uv.y == Approx(12.0f / 32.0f));
+
+	// Only one axis set: the other keeps the picture's size.
+	registry.GetComponent<Sprite>(entity).height = 0;
+	batch.Build(registry, AtlasSettings());
+	CHECK(batch.Vertices()[2].position.x == 40.0f);
+	CHECK(batch.Vertices()[2].position.y == 24.0f);
+}
+
+TEST_CASE("A stretched sprite is zoomed with the world", "[graphics][batch][sprite][camera]")
+{
+	Registry registry;
+	const Entity entity = AddSprite(registry, {12.0f, 12.0f}, 0);
+	registry.GetComponent<Sprite>(entity).width = 10;
+	registry.GetComponent<Sprite>(entity).height = 5;
+
+	auto settings = AtlasSettings();
+	settings.camera = kZoomCamera; // zoom 2, position (10, 10)
+	DrawBatch batch;
+	batch.Build(registry, settings);
+	REQUIRE(batch.ItemCount() == 1);
+	CHECK(batch.Vertices()[0].position.x == 4.0f);
+	CHECK(batch.Vertices()[2].position.x == 24.0f);
+	CHECK(batch.Vertices()[2].position.y == 14.0f);
+}
+
+namespace
+{
+	using engine::graphics::Clip;
+
+	void AddClip(Registry& registry, Entity entity, PixelRect rect)
+	{
+		registry.Add<Clip>(entity, Clip{.rect = rect});
+	}
+} // namespace
+
+TEST_CASE("Without a clip everything is one run", "[graphics][batch][clip]")
+{
+	Registry registry;
+	AddRectangle(registry, {0.0f, 0.0f}, 0);
+	AddRectangle(registry, {20.0f, 0.0f}, 1);
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Runs().size() == 1);
+	CHECK(batch.Runs()[0].firstIndex == 0);
+	CHECK(batch.Runs()[0].indexCount == 12);
+	CHECK_FALSE(batch.Runs()[0].clipped);
+
+	Registry empty;
+	batch.Build(empty, kCamera);
+	CHECK(batch.Runs().empty());
+}
+
+TEST_CASE("Entries with the same clip share a run and different clips split it", "[graphics][batch][clip]")
+{
+	const PixelRect a{.x = 0, .y = 0, .width = 100, .height = 100};
+	const PixelRect b{.x = 50, .y = 50, .width = 100, .height = 100};
+	Registry registry;
+	AddClip(registry, AddRectangle(registry, {10.0f, 10.0f}, 0), a);
+	AddClip(registry, AddRectangle(registry, {20.0f, 10.0f}, 0), a);
+	AddClip(registry, AddRectangle(registry, {60.0f, 60.0f}, 0), b);
+	AddRectangle(registry, {70.0f, 70.0f}, 0);
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.ItemCount() == 4);
+	REQUIRE(batch.Runs().size() == 3);
+	CHECK(batch.Runs()[0].clipped);
+	CHECK(batch.Runs()[0].clip == a);
+	CHECK(batch.Runs()[0].firstIndex == 0);
+	CHECK(batch.Runs()[0].indexCount == 12);
+	CHECK(batch.Runs()[1].clip == b);
+	CHECK(batch.Runs()[1].firstIndex == 12);
+	CHECK(batch.Runs()[1].indexCount == 6);
+	CHECK_FALSE(batch.Runs()[2].clipped);
+	CHECK(batch.Runs()[2].firstIndex == 18);
+	CHECK(batch.Runs()[2].indexCount == 6);
+}
+
+TEST_CASE("Runs follow the layer order, so a clip never reorders what is drawn over it", "[graphics][batch][clip]")
+{
+	const PixelRect a{.x = 0, .y = 0, .width = 100, .height = 100};
+	Registry registry;
+	AddClip(registry, AddRectangle(registry, {10.0f, 10.0f}, 1), a);
+	AddRectangle(registry, {20.0f, 10.0f}, 2); // unclipped, over the clipped one
+	AddClip(registry, AddRectangle(registry, {30.0f, 10.0f}, 3), a);
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Runs().size() == 3);
+	CHECK(batch.Runs()[0].clipped);
+	CHECK_FALSE(batch.Runs()[1].clipped);
+	CHECK(batch.Runs()[2].clipped);
+	int total = 0;
+	for (const auto& run : batch.Runs())
+	{
+		CHECK(run.firstIndex == total);
+		total += run.indexCount;
+	}
+	CHECK(total == static_cast<int>(batch.Indices().size()));
+}
+
+TEST_CASE("A clip applies to the entity's descendants and nested clips intersect", "[graphics][batch][clip]")
+{
+	using engine::ecs::Parent;
+	const PixelRect panel{.x = 10, .y = 10, .width = 100, .height = 100};
+	const PixelRect list{.x = 60, .y = 0, .width = 100, .height = 50};
+
+	Registry registry;
+	const Entity root = registry.Create();
+	registry.Add<Transform>(root, Position{0.0f, 0.0f});
+	AddClip(registry, root, panel);
+	const Entity child = AddRectangle(registry, {70.0f, 20.0f}, 0);
+	registry.Add<Parent>(child, Parent{.entity = root});
+	const Entity inner = AddRectangle(registry, {80.0f, 20.0f}, 0);
+	registry.Add<Parent>(inner, Parent{.entity = child});
+	AddClip(registry, inner, list);
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Runs().size() == 2);
+	CHECK(batch.Runs()[0].clip == panel);
+	// Overlap of (10, 10, 100 x 100) and (60, 0, 100 x 50): x 60 to 110, y 10 to 50.
+	CHECK(batch.Runs()[1].clip == PixelRect{.x = 60, .y = 10, .width = 50, .height = 40});
+}
+
+TEST_CASE("Things wholly outside their clip are culled", "[graphics][batch][clip]")
+{
+	const PixelRect rect{.x = 10, .y = 10, .width = 20, .height = 20};
+	Registry registry;
+	AddClip(registry, AddRectangle(registry, {25.0f, 15.0f}, 0), rect); // 8 x 4 from x 25: sticks out, shown
+	AddClip(registry, AddRectangle(registry, {30.0f, 15.0f}, 0), rect); // starts at the edge: culled
+	AddClip(registry, AddRectangle(registry, {12.0f, 30.0f}, 0), rect); // starts below the bottom edge: culled
+	AddClip(registry, AddRectangle(registry, {0.0f, 12.0f}, 0), rect);  // ends at x 8: culled
+	AddRectangle(registry, {100.0f, 100.0f}, 0);                        // no clip: shown
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	CHECK(batch.ItemCount() == 2);
+}
+
+TEST_CASE("Clipped children of disjoint clips draw nothing", "[graphics][batch][clip]")
+{
+	using engine::ecs::Parent;
+	Registry registry;
+	const Entity root = registry.Create();
+	registry.Add<Transform>(root, Position{});
+	AddClip(registry, root, {.x = 0, .y = 0, .width = 10, .height = 10});
+	const Entity child = AddRectangle(registry, {50.0f, 50.0f}, 0);
+	registry.Add<Parent>(child, Parent{.entity = root});
+	AddClip(registry, child, {.x = 40, .y = 40, .width = 30, .height = 30});
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	CHECK(batch.ItemCount() == 0);
+	CHECK(batch.Runs().empty());
+}
+
+TEST_CASE("A clip is in screen pixels: the camera and zoom don't move it", "[graphics][batch][clip][camera]")
+{
+	Registry registry;
+	// World (20, 15) is screen (20, 10) at the zoomed camera; its 16 x 8 box reaches x 36.
+	AddClip(registry, AddRectangle(registry, {20.0f, 15.0f}, 0), {.x = 0, .y = 0, .width = 30, .height = 30});
+	// World (40, 15) is screen (60, 10): outside the same clip.
+	AddClip(registry, AddRectangle(registry, {40.0f, 15.0f}, 0), {.x = 0, .y = 0, .width = 30, .height = 30});
+
+	DrawBatch batch;
+	batch.Build(registry, kZoomCamera);
+	CHECK(batch.ItemCount() == 1);
+}
+
+TEST_CASE("Clipped text is split into the clip's run, glyph by glyph", "[graphics][batch][clip]")
+{
+	BitmapFont font;
+	font.SetGlyph('H', {.x = 30, .y = 0, .width = 5, .height = 7});
+
+	Registry registry;
+	const Entity text = registry.Create();
+	registry.Add<Transform>(text, Position{0.0f, 0.0f});
+	registry.Add<engine::graphics::Text>(text, engine::graphics::Text{.value = "HHHH"});
+	AddClip(registry, text, {.x = 0, .y = 0, .width = 13, .height = 8}); // advance 6: glyphs at 0, 6, 12, 18
+
+	DrawBatch batch;
+	batch.Build(registry, AtlasSettings(&font));
+	CHECK(batch.ItemCount() == 3); // the one at 18 is wholly outside
+	REQUIRE(batch.Runs().size() == 1);
+	CHECK(batch.Runs()[0].indexCount == 18);
 }

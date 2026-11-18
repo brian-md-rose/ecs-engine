@@ -43,6 +43,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   `offset` (screen shake that isn't zoomed), `WorldToScreen`, `ScreenToWorld`, `ViewSize`, and `FocusOn(camera, point, zoom)`.
   The `ScreenSpace` tag (`graphics/screenspace.hpp`) makes an entity ignore the camera; its children, through
   `ecs::Parent`, inherit it, so a HUD panel needs one tag. A `Text`'s `wrapWidth` is in world units, so it zooms too.
+- `graphics/clip.hpp`: the `Clip` component confines an entity and its descendants to a rectangle of screen pixels; nested
+  clips intersect and things wholly outside are culled. `DrawBatch::Runs()` splits the indices wherever the clip changes (in
+  layer order, so a clip never reorders what is drawn), and `Renderer2D` sets SDL's clip rect once per run. `Sprite` gains
+  `width` and `height` to stretch a picture to a size (0 keeps its own), for panel pieces and bars.
 
 ### Changed
 

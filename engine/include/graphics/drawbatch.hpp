@@ -56,15 +56,29 @@ namespace engine::graphics
 	// logical pixels, so pixel art stays sharp.
 	class DrawBatch
 	{
+	public:
+		// A stretch of Indices() drawn with the same clip rectangle: the renderer sets the clip, then draws
+		// indexCount indices from firstIndex, and repeats for the next run.
+		struct Run
+		{
+			int firstIndex = 0;
+			int indexCount = 0;
+			bool clipped = false; // otherwise nothing is clipped
+			PixelRect clip{};     // logical screen pixels
+		};
+
+	private:
 		struct Entry
 		{
 			Position screen{}; // top-left, camera applied
 			std::uint8_t layer = 0;
 			Color color{};
+			bool clipped = false;  // drawn only inside clip
+			PixelRect clip{};      // logical screen pixels
 			bool textured = false; // a quad cut from the atlas; otherwise a shape
 			Shape shape{};         // shapes
 			PixelRect source{};    // textured quads
-			int scale = 1;         // textured quads
+			Position size{};       // textured quads: on-screen size in pixels
 			bool flipX = false;    // textured quads
 		};
 
@@ -72,6 +86,7 @@ namespace engine::graphics
 		std::vector<GlyphQuad> glyphs; // reused by text layout
 		std::vector<Vertex> vertices;
 		std::vector<int> indices; // int because SDL_RenderGeometry takes int indices
+		std::vector<Run> runs;
 
 		void AddRectangle(const Entry& entry, Position uv);
 		void AddCircle(const Entry& entry, Position uv);
@@ -90,6 +105,10 @@ namespace engine::graphics
 
 		[[nodiscard]] std::span<const Vertex> Vertices() const noexcept { return vertices; }
 		[[nodiscard]] std::span<const int> Indices() const noexcept { return indices; }
+
+		// The indices in drawing order, split wherever the clip changes. Without any Clip component
+		// this is one run over every index. Empty if nothing is drawn.
+		[[nodiscard]] std::span<const Run> Runs() const noexcept { return runs; }
 
 		// Shapes, sprites and characters that made it into the batch (after culling).
 		[[nodiscard]] std::size_t ItemCount() const noexcept { return entries.size(); }
