@@ -3,6 +3,7 @@
 #include "application/application.hpp"
 #include "core/log.hpp"
 #include "core/paths.hpp"
+#include "core/sdllog.hpp"
 #include "mazegame.hpp"
 #include "save.hpp"
 
@@ -15,6 +16,7 @@ int main(int, char**) // SDL_main.h renames this to SDL_main and calls it with a
 	    engine::core::SaveDirectory(game::kSaveOrganisation, game::kSaveApplication);
 	const engine::core::LogSession logging(
 	    {.file = logFolder.empty() ? std::filesystem::path() : logFolder / "log.txt"});
+	engine::core::RouteSdlLog(); // SDL's own messages go to the same file
 
 	Application app(game::MazeGame::kConfig);
 	game::MazeGame game;

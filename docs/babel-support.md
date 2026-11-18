@@ -171,9 +171,9 @@ Decided (Q2). Files: `engine/CMakeLists.txt`, the top-level `CMakeLists.txt`, `t
       fixedtimestep, clock), grid, the `input` types, and the SDL-free parts of `graphics`
       (transform, camera, colour, shape, sprite, font layout, `DrawBatch`) and of `ui`. It does
       **not** link SDL, so an SDL include there fails the build.
-- [ ] `engine` (alias `engine::engine`) links `engine_core` publicly and adds the platform:
+- [ ] `engine_platform` (alias `engine::platform`) links `engine_core` publicly and adds the platform:
       `Application`, `Window`, `Renderer`, `Renderer2D`, image loading, `AudioDevice` and the
-      debug panel. Existing consumers that link `engine::engine` keep working.
+      debug panel. Consumers that linked `engine::engine` change to `engine::platform` (Brian chose the name; v0.3.0 is breaking anyway).
 - [ ] Engine tests that need no SDL link only `engine_core`. This is the check that stays
       honest.
 - [ ] Changelog: `babel_sim`-style headless tools link `engine::core`.

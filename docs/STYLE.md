@@ -167,7 +167,7 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 
 ## Tests
 
-- Catch2 v3. Engine tests go in `engine_tests`; game logic tests go in `game_tests`.
+- Catch2 v3. Tests of `engine::core` (no SDL) go in `engine_core_tests`, tests that need the platform library in `engine_tests`, and game logic tests in `game_tests`. A new engine test lands in `engine_core_tests` unless it is added to `PLATFORM_TEST_NAMES` in `tests/CMakeLists.txt`.
 - Test names are plain sentences that state the behaviour:
   `"Registry recycles ids with a new generation"`.
 - Tag by area: `[ecs][registry]`, `[core][timestep]`, `[input]`, `[game][controls]`.
@@ -190,7 +190,7 @@ The engine provides mechanisms; the game decides what they mean. For example, th
 - Convert between numeric types explicitly with `static_cast`. Use `std::size_t` for indices.
 - Use `constexpr` values at namespace scope when a lambda needs them (`std::clamp` and friends
   take references, which forces a capture).
-- Engine, game and test files are picked up by glob (`CONFIGURE_DEPENDS`), so new files need no CMake edit. Test files end in `_tests.cpp`; those under `tests/game/` go in `game_tests`, the rest in `engine_tests`.
+- Engine, game and test files are picked up by glob (`CONFIGURE_DEPENDS`), so new files need no CMake edit. Test files end in `_tests.cpp`; those under `tests/game/` go in `game_tests`. A new engine source file is part of `engine::core` unless it is added to `ENGINE_PLATFORM_SOURCE_NAMES` in `engine/CMakeLists.txt`; core files can't include SDL.
 - Before pushing, build and test Debug and Release: `cmake --build --preset debug`,
   `ctest --preset debug`, and the same for `release`.
 

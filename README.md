@@ -24,7 +24,7 @@ The version is available in code as `<core/version.hpp>`.
 
 ## Features
 
-**Engine** (`engine::engine`, a static library)
+**Engine** (`engine::core`, the SDL-free part, and `engine::platform`, which adds the SDL window, renderer and audio; both static libraries)
 
 - **ECS**: `Entity` handles with generations, sparse-set `ComponentPool`s, a `Registry` whose
   `Each` loops over the smallest pool and can leave some out (`Each<Enemy>(Without<Frightened>, ...)`),
@@ -85,7 +85,7 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 ## Layout
 
 ```
-engine/   static library (engine::engine)
+engine/   static libraries (engine::core, engine::platform)
   include/  application/ audio/ core/ ecs/ graphics/ grid/ input/
   src/
 game/     Tangle Run, the game executable

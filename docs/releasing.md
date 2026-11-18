@@ -25,8 +25,11 @@ FetchContent_Declare(ecs_engine
 FetchContent_MakeAvailable(ecs_engine)
 
 add_executable(my_game main.cpp)
-target_link_libraries(my_game PRIVATE engine::engine)
+target_link_libraries(my_game PRIVATE engine::platform)
 ```
+
+A headless tool (a simulator, a data checker) can link `engine::core` instead. It has the ECS, data, input
+types and draw batching, but no SDL, window or audio, and its build fails if it uses them.
 
 As a subproject the engine builds only the library (`ENGINE_BUILD_GAME`, `ENGINE_BUILD_TESTS`
 and `ENGINE_BUILD_BENCHMARKS` default to OFF). The engine's warning flags are applied to the

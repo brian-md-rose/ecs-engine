@@ -1,8 +1,8 @@
 #include "core/log.hpp"
 
-#include <SDL3/SDL_log.h>
-#include <SDL3/SDL_time.h>
+#include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <fstream>
 #include <mutex>
 #include <string>
@@ -46,52 +46,33 @@ namespace engine::core
 			return "?????";
 		}
 
-		// An if chain, not a switch: SDL_LogPriority has enumerators we have no use for, and /Wall warns about
-		// every one a switch leaves unhandled.
-		LogLevel FromSdl(SDL_LogPriority priority)
-		{
-			if (priority == SDL_LOG_PRIORITY_WARN) return LogLevel::Warning;
-			if (priority == SDL_LOG_PRIORITY_ERROR || priority == SDL_LOG_PRIORITY_CRITICAL) return LogLevel::Error;
-			if (priority == SDL_LOG_PRIORITY_INFO) return LogLevel::Info;
-			return LogLevel::Debug; // trace, verbose and debug
-		}
-
-		// "2026-11-18 16:09:27.123" in local time, or "-" if SDL can't say.
+		// "2026-11-18 16:09:27.123" in local time, or "-" if the clock can't say.
 		std::string Timestamp()
 		{
-			SDL_Time now = 0;
-			SDL_DateTime time{};
-			if (!SDL_GetCurrentTime(&now) || !SDL_TimeToDateTime(now, &time, true)) return "-";
-			char text[40];
-			std::snprintf(text, sizeof text, "%04d-%02d-%02d %02d:%02d:%02d.%03d", time.year, time.month, time.day,
-			              time.hour, time.minute, time.second, time.nanosecond / 1'000'000);
+			const auto now = std::chrono::system_clock::now();
+			const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
+			std::tm local{};
+#ifdef _WIN32
+			if (localtime_s(&local, &seconds) != 0) return "-";
+#else
+			if (localtime_r(&seconds, &local) == nullptr) return "-";
+#endif
+			const auto millis =
+			    std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+			char text[96]; // roomy: every int field could print 11 characters
+			std::snprintf(text, sizeof text, "%04d-%02d-%02d %02d:%02d:%02d.%03d", local.tm_year + 1900,
+			              local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec,
+			              static_cast<int>(millis));
 			return text;
 		}
-
-		bool IsActive()
-		{
-			LogState& state = State();
-			const std::lock_guard<std::mutex> lock(state.mutex);
-			return state.active;
-		}
-
-		// SDL's log output function: SDL_Log and friends end up in Log. It stays installed once a session has
-		// been made (restoring SDL's own function needs a pointer MSVC can't see is noexcept), and writes to
-		// SDL's default output while no session exists. Log takes the state mutex, so nothing that holds it
-		// may log through SDL (it would deadlock).
-		void SDLCALL WriteSdlMessage(void*, int category, SDL_LogPriority priority, const char* message) noexcept
-		{
-			const char* text = message != nullptr ? message : "";
-			if (IsActive())
-			{
-				Log(FromSdl(priority), text);
-			}
-			else
-			{
-				SDL_GetDefaultLogOutputFunction()(nullptr, category, priority, text);
-			}
-		}
 	} // namespace
+
+	bool LogIsActive()
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		return state.active;
+	}
 
 	LogSession::LogSession(const LogConfig& config)
 	{
@@ -121,7 +102,6 @@ namespace engine::core
 					state.file.open(config.file, std::ios::binary | std::ios::trunc);
 					if (!state.file) problem = PathText(config.file) + ": can't open the log file";
 				}
-				SDL_SetLogOutputFunction(&WriteSdlMessage, nullptr);
 				state.active = true;
 			}
 		}
