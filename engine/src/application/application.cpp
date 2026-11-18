@@ -38,100 +38,100 @@ namespace engine::application
 		}
 	} // namespace
 
-		Application::SdlScope::SdlScope()
+	Application::SdlScope::SdlScope()
+	{
+		// Subsystems (video, audio) are started by the classes that use them;
+		// this only initialises SDL's core so SDL_Quit below has something to pair with.
+		core::RouteSdlLog(); // once the platform code starts, SDL's log goes through the engine's
+		if (!SDL_Init(0))
 		{
-			// Subsystems (video, audio) are started by the classes that use them;
-			// this only initialises SDL's core so SDL_Quit below has something to pair with.
-			core::RouteSdlLog(); // once the platform code starts, SDL's log goes through the engine's
-			if (!SDL_Init(0))
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed: %s", SDL_GetError());
+		}
+	}
+
+	Application::SdlScope::~SdlScope()
+	{
+		SDL_Quit();
+	}
+
+	Application::Application(const ApplicationConfig& config)
+	    : window(config.title, config.windowWidth, config.windowHeight),
+	      renderer(window, config.logicalWidth, config.logicalHeight), updateStep(1.0 / config.updateRate)
+	{
+	}
+
+	int Application::Run(Game& game)
+	{
+		const core::SystemClock clock;
+		return Run(game, clock);
+	}
+
+	int Application::Run(Game& game, const core::Clock& clock)
+	{
+		if (!window.IsValid() || !renderer.IsValid())
+		{
+			return 1;
+		}
+
+		// SDL3 sends no SDL_EVENT_TEXT_INPUT until text input is started on the window.
+		SDL_StartTextInput(window.GetWindowHandle());
+
+		core::FixedTimestep timestep(updateStep);
+		double previous = clock.Now();
+
+		while (PumpEvents() && !game.WantsToQuit())
+		{
+			const double now = clock.Now();
+			const int updates = timestep.Advance(now - previous);
+			previous = now;
+
+			for (int i = 0; i < updates; ++i)
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed: %s", SDL_GetError());
+				game.Update(timestep.Step(), input, &audio);
+				input.EndUpdate();
 			}
+
+			game.Render(renderer, timestep.Alpha());
+			renderer.Present();
 		}
 
-		Application::SdlScope::~SdlScope()
-		{
-			SDL_Quit();
-		}
+		return 0;
+	}
 
-		Application::Application(const ApplicationConfig& config)
-		    : window(config.title, config.windowWidth, config.windowHeight),
-		      renderer(window, config.logicalWidth, config.logicalHeight), updateStep(1.0 / config.updateRate)
+	bool Application::PumpEvents()
+	{
+		bool open = true;
+		SDL_Event event{};
+		while (SDL_PollEvent(&event))
 		{
-		}
-
-		int Application::Run(Game& game)
-		{
-			const core::SystemClock clock;
-			return Run(game, clock);
-		}
-
-		int Application::Run(Game& game, const core::Clock& clock)
-		{
-			if (!window.IsValid() || !renderer.IsValid())
+			switch (event.type)
 			{
-				return 1;
-			}
-
-			// SDL3 sends no SDL_EVENT_TEXT_INPUT until text input is started on the window.
-			SDL_StartTextInput(window.GetWindowHandle());
-
-			core::FixedTimestep timestep(updateStep);
-			double previous = clock.Now();
-
-			while (PumpEvents() && !game.WantsToQuit())
-			{
-				const double now = clock.Now();
-				const int updates = timestep.Advance(now - previous);
-				previous = now;
-
-				for (int i = 0; i < updates; ++i)
+			case SDL_EVENT_QUIT:
+				open = false;
+				break;
+			case SDL_EVENT_KEY_DOWN:
+				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
-					game.Update(timestep.Step(), input, &audio);
-					input.EndUpdate();
+					input.keyboard.OnKeyDown(*key);
 				}
-
-				game.Render(renderer, timestep.Alpha());
-				renderer.Present();
-			}
-
-			return 0;
-		}
-
-		bool Application::PumpEvents()
-		{
-			bool open = true;
-			SDL_Event event{};
-			while (SDL_PollEvent(&event))
-			{
-				switch (event.type)
+				break;
+			case SDL_EVENT_KEY_UP:
+				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
-				case SDL_EVENT_QUIT:
-					open = false;
-					break;
-				case SDL_EVENT_KEY_DOWN:
-					if (const std::optional<input::Key> key = ToKey(event.key.scancode))
-					{
-						input.keyboard.OnKeyDown(*key);
-					}
-					break;
-				case SDL_EVENT_KEY_UP:
-					if (const std::optional<input::Key> key = ToKey(event.key.scancode))
-					{
-						input.keyboard.OnKeyUp(*key);
-					}
-					break;
-				case SDL_EVENT_TEXT_INPUT:
-					if (event.text.text != nullptr) input.OnText(event.text.text);
-					break;
-				case SDL_EVENT_WINDOW_FOCUS_LOST:
-					// Key-ups for keys released while unfocused never arrive; don't leave them stuck.
-					input.ReleaseAll();
-					break;
-				default:
-					break;
+					input.keyboard.OnKeyUp(*key);
 				}
+				break;
+			case SDL_EVENT_TEXT_INPUT:
+				if (event.text.text != nullptr) input.OnText(event.text.text);
+				break;
+			case SDL_EVENT_WINDOW_FOCUS_LOST:
+				// Key-ups for keys released while unfocused never arrive; don't leave them stuck.
+				input.ReleaseAll();
+				break;
+			default:
+				break;
 			}
-			return open;
 		}
-	} // namespace engine::application
+		return open;
+	}
+} // namespace engine::application
