@@ -9,13 +9,22 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
     message(FATAL_ERROR "In-source builds are not allowed. Use a preset, e.g. `cmake --preset msvc`.")
 endif()
 
-option(ENGINE_BUILD_GAME  "Build the game executable" ON)
-option(ENGINE_BUILD_TESTS "Build the engine tests"    ON)
-option(ENGINE_BUILD_BENCHMARKS "Build the ECS benchmarks" ON)
+# When another project pulls this one in (FetchContent or add_subdirectory), build only the
+# engine library: the game, tests and benchmarks default to OFF.
+if(PROJECT_IS_TOP_LEVEL)
+    set(ENGINE_IS_TOP_LEVEL ON)
+else()
+    set(ENGINE_IS_TOP_LEVEL OFF)
+endif()
+option(ENGINE_BUILD_GAME  "Build the game executable" ${ENGINE_IS_TOP_LEVEL})
+option(ENGINE_BUILD_TESTS "Build the engine tests"    ${ENGINE_IS_TOP_LEVEL})
+option(ENGINE_BUILD_BENCHMARKS "Build the ECS benchmarks" ${ENGINE_IS_TOP_LEVEL})
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(ENGINE_IS_TOP_LEVEL)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
 # Power of Ten rule 10: every warning on, warnings are errors, and the MSVC
 # static analyzer runs on every build. Applied to all of our own targets.
@@ -56,12 +65,14 @@ if(ENGINE_SANITIZE)
 endif()
 
 # clang-tidy reads this to know how each file is compiled.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(ENGINE_IS_TOP_LEVEL)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
 
 # Visual Studio compiles the files of one project one at a time unless /MP is set.
 # Applied before SDL is added so its ~400 C files build in parallel too. Ninja already
 # runs one compiler per core, so this is for the Visual Studio generator only.
-if(CMAKE_GENERATOR MATCHES "Visual Studio")
+if(ENGINE_IS_TOP_LEVEL AND CMAKE_GENERATOR MATCHES "Visual Studio")
     add_compile_options($<$<OR:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>:/MP>)
 endif()
 

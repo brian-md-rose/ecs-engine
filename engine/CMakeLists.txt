@@ -18,3 +18,11 @@ target_link_libraries(engine PRIVATE engine::warnings SDL3::SDL3)
 
 # Mirror the folder layout as IDE filters: include/ and src/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCES} ${ENGINE_HEADERS})
+
+# Generated version header (<core/version.hpp>), filled in from project(... VERSION ...).
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/core/version.hpp
+    @ONLY)
+target_include_directories(engine PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
+set_target_properties(engine PROPERTIES VERSION ${PROJECT_VERSION})
