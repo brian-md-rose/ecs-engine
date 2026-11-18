@@ -5,9 +5,11 @@
 #include <string>
 #include <system_error>
 
+#include "core/assert.hpp"
 #include "core/log.hpp"
 
 using namespace engine::core;
+using engine::SetAssertHandler;
 
 namespace
 {
@@ -92,4 +94,22 @@ TEST_CASE("Messages below the minimum level are dropped", "[log]")
 	const std::string text = ReadAll(file);
 	CHECK_FALSE(Contains(text, "dropped"));
 	CHECK(Contains(text, "[WARN ] kept\n"));
+}
+
+TEST_CASE("A second session leaves the first one alone", "[log]")
+{
+	const std::filesystem::path file = FreshFolder("overlap") / "log.txt";
+	{
+		const LogSession first({.file = file, .console = false});
+		LogInfo("before");
+		{
+			const auto previous = SetAssertHandler([](const char*, const char*, const char*, int) {});
+			const LogSession second({.file = file.parent_path() / "other.txt", .console = false});
+			SetAssertHandler(previous);
+		}
+		LogInfo("after");
+	}
+	const std::string text = ReadAll(file);
+	CHECK(Contains(text, "before"));
+	CHECK(Contains(text, "after"));
 }

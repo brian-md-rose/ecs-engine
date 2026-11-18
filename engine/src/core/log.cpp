@@ -100,37 +100,43 @@ namespace engine::core
 		bool overlapping = false;
 		{
 			const std::lock_guard<std::mutex> lock(state.mutex);
-			state.minimumLevel = config.minimumLevel;
-			state.console = config.console;
-			state.file.close();
-			if (!config.file.empty())
-			{
-				std::error_code error;
-				if (std::filesystem::exists(config.file, error))
-				{
-					std::filesystem::path old = config.file;
-					old.replace_filename(config.file.stem().native() + std::filesystem::path(".old").native() +
-					                     config.file.extension().native());
-					std::filesystem::rename(config.file, old, error); // replaces old if it exists
-				}
-				if (config.file.has_parent_path())
-					std::filesystem::create_directories(config.file.parent_path(), error);
-				state.file.open(config.file, std::ios::binary | std::ios::trunc);
-				if (!state.file) problem = PathText(config.file) + ": can't open the log file";
-			}
 			overlapping = state.active;
-			SDL_SetLogOutputFunction(&WriteSdlMessage, nullptr);
-			state.active = true;
+			if (!overlapping)
+			{
+				state.minimumLevel = config.minimumLevel;
+				state.console = config.console;
+				state.file.close();
+				if (!config.file.empty())
+				{
+					std::error_code error;
+					if (std::filesystem::exists(config.file, error))
+					{
+						std::filesystem::path old = config.file;
+						old.replace_filename(config.file.stem().native() + std::filesystem::path(".old").native() +
+						                     config.file.extension().native());
+						std::filesystem::rename(config.file, old, error); // replaces old if it exists
+					}
+					if (config.file.has_parent_path())
+						std::filesystem::create_directories(config.file.parent_path(), error);
+					state.file.open(config.file, std::ios::binary | std::ios::trunc);
+					if (!state.file) problem = PathText(config.file) + ": can't open the log file";
+				}
+				SDL_SetLogOutputFunction(&WriteSdlMessage, nullptr);
+				state.active = true;
+			}
 		}
 		// After the lock: the assert handler logs, and the mutex isn't recursive.
 		ENGINE_ASSERT(!overlapping, "only one LogSession can exist at a time");
 		static_cast<void>(overlapping); // unused when asserts are compiled out
+		owns = !overlapping;
+		if (overlapping) return; // leave the running session alone
 		if (!problem.empty()) Log(LogLevel::Error, problem);
 		if (!config.file.empty()) Log(LogLevel::Info, "Logging to " + PathText(config.file));
 	}
 
 	LogSession::~LogSession()
 	{
+		if (!owns) return;
 		LogState& state = State();
 		const std::lock_guard<std::mutex> lock(state.mutex);
 		state.file.close();

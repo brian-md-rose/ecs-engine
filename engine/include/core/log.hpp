@@ -45,6 +45,9 @@ namespace engine::core
 		~LogSession();
 		LogSession(const LogSession&) = delete;
 		LogSession& operator=(const LogSession&) = delete;
+
+	private:
+		bool owns = false; // false for a session made while another exists, which does nothing
 	};
 
 	// Writes one line, "2026-11-18 16:09:27.123 [ERROR] message". Safe to call from any thread.
