@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 #include "core/log.hpp"
 
@@ -68,8 +69,14 @@ TEST_CASE("The previous log is kept as name.old.ext", "[log]")
 TEST_CASE("A log file that can't be opened doesn't stop the session", "[log]")
 {
 	const std::filesystem::path folder = FreshFolder("unopenable");
-	std::filesystem::create_directories(folder / "log.txt"); // a folder where the file should go
-	const LogSession session({.file = folder / "log.txt", .console = false});
-	LogError("still fine"); // goes to stderr
-	SUCCEED();
+	std::filesystem::create_directories(folder);
+	const std::filesystem::path blocker = folder / "blocker";
+	std::ofstream(blocker) << "a file, so nothing can be made inside it";
+	const std::filesystem::path file = blocker / "log.txt";
+
+	const LogSession session({.file = file, .console = false});
+	LogError("falls back to stderr"); // must not crash
+
+	std::error_code error;
+	CHECK_FALSE(std::filesystem::exists(file, error));
 }
