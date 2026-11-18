@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 
 namespace engine::graphics
 {
@@ -13,6 +14,77 @@ namespace engine::graphics
 			const auto code = static_cast<unsigned char>(character);
 			if (code >= 128) return std::nullopt;
 			return static_cast<std::size_t>(code);
+		}
+
+		// Calls emit(line) for each line of text wrapped to maxWidth, without allocating. See WrapText.
+		template <typename Emit>
+		void ForEachLine(const BitmapFont& font, std::string_view text, int maxWidth, int scale, Emit&& emit)
+		{
+			if (text.empty()) return;
+
+			const int cell = std::max(font.advance * scale, 1);
+			const bool wrapping = maxWidth > 0;
+			const std::size_t maxChars = wrapping ? static_cast<std::size_t>(std::max(maxWidth / cell, 1))
+			                                      : std::numeric_limits<std::size_t>::max();
+			// Wrapped lines lose their trailing spaces, so alignment sees only the visible text; with no
+			// width the text is left exactly as written.
+			const auto emitLine = [&](std::string_view line)
+			{
+				if (wrapping)
+				{
+					while (!line.empty() && line.back() == ' ')
+						line.remove_suffix(1);
+				}
+				emit(line);
+			};
+
+			std::size_t paragraphStart = 0;
+			while (paragraphStart <= text.size())
+			{
+				std::size_t paragraphEnd = text.find('\n', paragraphStart);
+				if (paragraphEnd == std::string_view::npos) paragraphEnd = text.size();
+				const std::string_view paragraph = text.substr(paragraphStart, paragraphEnd - paragraphStart);
+				paragraphStart = paragraphEnd + 1;
+
+				// The line being built is paragraph[lineStart, lineEnd), words joined by single spaces
+				// exactly as in the source, so every line is a piece of the text.
+				std::size_t lineStart = 0;
+				std::size_t lineEnd = 0;
+				bool open = false;
+
+				std::size_t pos = 0;
+				while (pos <= paragraph.size())
+				{
+					std::size_t wordEnd = paragraph.find(' ', pos);
+					if (wordEnd == std::string_view::npos) wordEnd = paragraph.size();
+					const std::size_t length = wordEnd - pos;
+					const std::size_t needed = open ? wordEnd - lineStart : length;
+					if (needed <= maxChars)
+					{
+						if (!open)
+						{
+							lineStart = pos;
+							open = true;
+						}
+						lineEnd = wordEnd;
+					}
+					else if (length > 0)
+					{
+						if (open) emitLine(paragraph.substr(lineStart, lineEnd - lineStart));
+						std::size_t at = pos;
+						while (wordEnd - at > maxChars)
+						{
+							emit(paragraph.substr(at, maxChars));
+							at += maxChars;
+						}
+						lineStart = at;
+						lineEnd = wordEnd;
+						open = true;
+					}
+					pos = wordEnd + 1;
+				}
+				if (open) emitLine(paragraph.substr(lineStart, lineEnd - lineStart));
+			}
 		}
 	} // namespace
 
@@ -28,25 +100,66 @@ namespace engine::graphics
 		return &*glyphs[*index];
 	}
 
+	const PixelRect* BitmapFont::GlyphOrPlaceholder(char character) const noexcept
+	{
+		if (const PixelRect* glyph = Glyph(character)) return glyph;
+		// Spaces and control characters are gaps; anything else unknown is made visible.
+		if (static_cast<unsigned char>(character) <= ' ') return nullptr;
+		if (placeholder) return &*placeholder;
+		return Glyph('?');
+	}
+
 	void LayoutText(const BitmapFont& font, std::string_view text, Position origin, int scale,
 	                std::vector<GlyphQuad>& quads)
 	{
+		LayoutText(font, text, origin, scale, 0, Align::Left, quads);
+	}
+
+	void LayoutText(const BitmapFont& font, std::string_view text, Position origin, int scale, int wrapWidth,
+	                Align align, std::vector<GlyphQuad>& quads)
+	{
 		const auto advance = static_cast<float>(font.advance * scale);
 		const auto lineHeight = static_cast<float>(font.lineHeight * scale);
-		Position pen = origin;
-		for (const char character : text)
+		float top = origin.y;
+		ForEachLine(font, text, wrapWidth, scale, [&](std::string_view line)
 		{
-			if (character == '\n')
+			// Left keeps the origin as given, so a caller that snapped it keeps its position.
+			const float left = align == Align::Left
+			                       ? origin.x
+			                       : AlignedX(origin.x, align, static_cast<int>(line.size()) * font.advance * scale);
+			float x = left;
+			for (const char character : line)
 			{
-				pen = {origin.x, pen.y + lineHeight};
-				continue;
+				if (const PixelRect* glyph = font.GlyphOrPlaceholder(character))
+				{
+					quads.push_back({.screen = {x, top}, .source = *glyph});
+				}
+				x += advance;
 			}
-			if (const PixelRect* glyph = font.Glyph(character))
-			{
-				quads.push_back({.screen = pen, .source = *glyph});
-			}
-			pen.x += advance;
-		}
+			top += lineHeight;
+		});
+	}
+
+	std::vector<std::string_view> WrapText(const BitmapFont& font, std::string_view text, int maxWidth, int scale)
+	{
+		std::vector<std::string_view> lines;
+		ForEachLine(font, text, maxWidth, scale, [&lines](std::string_view line)
+		{
+			lines.push_back(line);
+		});
+		return lines;
+	}
+
+	TextSize MeasureText(const BitmapFont& font, std::string_view text, int maxWidth, int scale)
+	{
+		std::size_t widest = 0;
+		int count = 0;
+		ForEachLine(font, text, maxWidth, scale, [&](std::string_view line)
+		{
+			widest = std::max(widest, line.size());
+			++count;
+		});
+		return {.width = static_cast<int>(widest) * font.advance * scale, .height = count * font.lineHeight * scale};
 	}
 
 	int TextWidth(const BitmapFont& font, std::string_view text, int scale)

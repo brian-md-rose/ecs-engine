@@ -28,6 +28,14 @@ namespace engine::graphics
 
 		// nullptr if character has no picture.
 		[[nodiscard]] const PixelRect* Glyph(char character) const noexcept;
+
+		// What to draw for an unknown character, such as one outside 7-bit ASCII or a missing letter, so it
+		// shows as a visible mark instead of vanishing. Unset, the picture of '?' is used if the font has one.
+		std::optional<PixelRect> placeholder{};
+
+		// The picture to draw for character: its glyph, else the placeholder. nullptr for a space and other
+		// control characters, which are gaps, and for an unknown character when there is no placeholder.
+		[[nodiscard]] const PixelRect* GlyphOrPlaceholder(char character) const noexcept;
 	};
 
 	// One character to draw: where its top-left goes and which part of the atlas it shows.
@@ -43,10 +51,6 @@ namespace engine::graphics
 	void LayoutText(const BitmapFont& font, std::string_view text, Position origin, int scale,
 	                std::vector<GlyphQuad>& quads);
 
-	// The size text takes up when laid out at scale: the widest line, and every line.
-	[[nodiscard]] int TextWidth(const BitmapFont& font, std::string_view text, int scale = 1);
-	[[nodiscard]] int TextHeight(const BitmapFont& font, std::string_view text, int scale = 1);
-
 	// How a line of text sits against an x position.
 	enum class Align : std::uint8_t
 	{
@@ -55,17 +59,46 @@ namespace engine::graphics
 		Right   // anchorX is where the text ends
 	};
 
+	// The size text takes up when laid out at scale: the widest line, and every line.
+	[[nodiscard]] int TextWidth(const BitmapFont& font, std::string_view text, int scale = 1);
+	[[nodiscard]] int TextHeight(const BitmapFont& font, std::string_view text, int scale = 1);
+
 	// Where text of width pixels (TextWidth) starts so it sits against anchorX the way align
 	// says. Whole pixels, so the text stays sharp.
 	[[nodiscard]] float AlignedX(float anchorX, Align align, int width) noexcept;
 
-	// Component: text drawn with the Renderer2D's font, its top-left at the entity's Transform.
+	// Splits text into lines no wider than maxWidth pixels at scale, breaking at spaces. A word longer
+	// than the width is broken by characters, and an explicit '\n' always starts a new line (an empty
+	// line stays one). The spaces a break falls on are dropped. maxWidth of 0 or less means no wrapping,
+	// and a width narrower than one character still gives one character per line. Empty text has no
+	// lines. The lines point into text, so it must outlive them.
+	[[nodiscard]] std::vector<std::string_view> WrapText(const BitmapFont& font, std::string_view text, int maxWidth,
+	                                                     int scale = 1);
+
+	struct TextSize
+	{
+		int width = 0;  // the widest line, in pixels
+		int height = 0; // every line, in pixels
+	};
+
+	// The size text takes up once wrapped to maxWidth (0 for no wrapping) and scaled.
+	[[nodiscard]] TextSize MeasureText(const BitmapFont& font, std::string_view text, int maxWidth, int scale = 1);
+
+	// As LayoutText, after wrapping to wrapWidth pixels (0 for none). Each line is aligned against
+	// origin.x: its start, middle or end. A line's top is origin.y plus its number times the line height.
+	void LayoutText(const BitmapFont& font, std::string_view text, Position origin, int scale, int wrapWidth,
+	                Align align, std::vector<GlyphQuad>& quads);
+
+	// Component: text drawn with the Renderer2D's font, its top at the entity's Transform (and by default
+	// its left; see align).
 	// The glyphs are white in the atlas and take on color.
 	struct Text
 	{
 		std::string value{};
 		Color color{};
-		std::uint8_t layer = 0; // as Shape::layer
-		int scale = 1;          // whole numbers only, so the pixels stay square and sharp
+		std::uint8_t layer = 0;    // as Shape::layer
+		int scale = 1;             // whole numbers only, so the pixels stay square and sharp
+		int wrapWidth = 0;         // pixels; 0 for one line per '\n', else broken at spaces to fit (WrapText)
+		Align align = Align::Left; // each line against the entity's x: it starts, is centred, or ends there
 	};
 } // namespace engine::graphics

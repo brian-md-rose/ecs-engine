@@ -314,6 +314,28 @@ TEST_CASE("Text becomes one quad per glyph in the text's colour", "[graphics][ba
 	CHECK(batch.ItemCount() == 0);
 }
 
+TEST_CASE("Text wraps to its wrapWidth and aligns each line against the entity", "[graphics][batch]")
+{
+	BitmapFont font;
+	font.SetGlyph('H', {.x = 30, .y = 0, .width = 5, .height = 7});
+	font.SetGlyph('I', {.x = 36, .y = 0, .width = 5, .height = 7});
+
+	Registry registry;
+	const Entity entity = registry.Create();
+	registry.Add<Transform>(entity, Position{100.0f, 4.0f});
+	// Two characters fit in 12 pixels: "HI" and "H" on separate lines, right-aligned at x 100.
+	registry.Add<Text>(entity, Text{.value = "HI H", .wrapWidth = 12, .align = engine::graphics::Align::Right});
+
+	DrawBatch batch;
+	batch.Build(registry, AtlasSettings(&font));
+	REQUIRE(batch.ItemCount() == 3);
+	const auto vertices = batch.Vertices();
+	CHECK(vertices[0].position.x == 88.0f); // first line, 12 wide, ends at 100
+	CHECK(vertices[4].position.x == 94.0f);
+	CHECK(vertices[8].position.x == 94.0f); // second line, 6 wide
+	CHECK(vertices[8].position.y == 12.0f); // one line height (8) lower
+}
+
 TEST_CASE("Shapes, sprites and text share one layer order", "[graphics][batch]")
 {
 	Registry registry;
