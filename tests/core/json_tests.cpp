@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -7,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "core/files.hpp"
 #include "core/json.hpp"
@@ -180,7 +182,23 @@ TEST_CASE("Parse errors give the right line and column", "[core][json]")
 	CheckError("1.", 1, 3, "digit after '.'");
 	CheckError("1e", 1, 3, "exponent");
 	CheckError("1e999", 1, 1, "too large");
+	CheckError("-1e999", 1, 1, "too large");
+	CheckError("1" + std::string(400, '0'), 1, 1, "too large");
 	CheckError("[1,]", 1, 4, "expected a value");
+}
+
+TEST_CASE("Numbers too small for a double read as zero", "[core][json]")
+{
+	for (const std::string& text : std::vector<std::string>{"1e-400", "0.0000001e-330", "-1e-9999999999999999999",
+	                                                        "0." + std::string(400, '0') + "1"})
+	{
+		INFO("text: " << text);
+		const JsonValue value = Parse(text);
+		REQUIRE(value.IsDouble());
+		CHECK(*value.AsDouble() == 0.0);
+	}
+	CHECK(std::signbit(*Parse("-1e-400").AsDouble()));
+	CHECK(*Parse("5e-324").AsDouble() > 0.0); // the smallest denormal still reads
 }
 
 TEST_CASE("Nesting is capped at 64 levels", "[core][json]")

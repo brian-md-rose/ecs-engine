@@ -131,6 +131,45 @@ namespace engine::core
 			return c >= '0' && c <= '9';
 		}
 
+		// True if a number's text, which from_chars said is out of range, is too big rather than too
+		// small: whether its leading digit sits above the units place once the exponent is applied.
+		[[nodiscard]] bool OverflowsDouble(std::string_view number)
+		{
+			std::size_t digitsBeforePoint = 0;
+			std::size_t digitIndex = 0;
+			std::optional<std::size_t> firstNonZero;
+			bool pastPoint = false;
+			std::size_t i = number.front() == '-' ? 1 : 0;
+			for (; i < number.size(); ++i)
+			{
+				const char c = number[i];
+				if (c == '.')
+					pastPoint = true;
+				else if (c == 'e' || c == 'E')
+					break;
+				else
+				{
+					if (!pastPoint) ++digitsBeforePoint;
+					if (c != '0' && !firstNonZero) firstNonZero = digitIndex;
+					++digitIndex;
+				}
+			}
+			if (!firstNonZero) return false; // all zeros
+			long long exponent = 0;
+			if (i < number.size())
+			{
+				std::string_view digits = number.substr(i + 1);
+				const bool negative = !digits.empty() && digits.front() == '-';
+				if (!digits.empty() && (digits.front() == '+' || digits.front() == '-')) digits.remove_prefix(1);
+				const auto [end, code] = std::from_chars(digits.data(), digits.data() + digits.size(), exponent);
+				if (code == std::errc::result_out_of_range) exponent = std::numeric_limits<int>::max();
+				if (negative) exponent = -exponent;
+			}
+			const long long magnitude =
+			    static_cast<long long>(digitsBeforePoint) - static_cast<long long>(*firstNonZero) - 1 + exponent;
+			return magnitude > 0;
+		}
+
 		class Parser
 		{
 			std::string_view text;
@@ -460,10 +499,15 @@ namespace engine::core
 				}
 				double value = 0;
 				const auto [end, code] = std::from_chars(first, last, value);
-				if (code == std::errc::result_out_of_range || (code == std::errc() && !std::isfinite(value)))
+				const std::string_view numberText(first, static_cast<std::size_t>(last - first));
+				if (code == std::errc::result_out_of_range)
 				{
-					return Fail(start, "the number is too large");
+					// Too small to represent (1e-400) reads as zero, keeping its sign; too big is an error.
+					if (OverflowsDouble(numberText)) return Fail(start, "the number is too large");
+					out = JsonValue(numberText.front() == '-' ? -0.0 : 0.0);
+					return true;
 				}
+				if (code == std::errc() && !std::isfinite(value)) return Fail(start, "the number is too large");
 				if (code != std::errc() || end != last) return Fail(start, "not a valid number");
 				out = JsonValue(value);
 				return true;
