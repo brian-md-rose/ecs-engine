@@ -22,6 +22,7 @@
 	KEY(Shift, LSHIFT) KEY(Ctrl, LCTRL) KEY(Alt, LALT)
 
 // Second physical keys that count as a key above (the right-hand Shift, Ctrl and Alt). They add
-// no enumerators.
+// no enumerators. Known limit: the two
+// physical keys share one state, so with both held, letting go of one reports the key as up.
 #define ENGINE_KEY_ALIAS_LIST(KEY) KEY(Shift, RSHIFT) KEY(Ctrl, RCTRL) KEY(Alt, RALT)
 // clang-format on
