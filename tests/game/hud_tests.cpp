@@ -6,7 +6,7 @@
 #include "gameflow.hpp"
 #include "graphics/font.hpp"
 #include "hud.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "stage.hpp"
@@ -47,10 +47,10 @@ namespace
 
 	void Update(game::MazeGame& maze, int steps = 1)
 	{
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 		for (int i = 0; i < steps; ++i)
 		{
-			maze.Update(kStep, keyboard);
+			maze.Update(kStep, input);
 		}
 	}
 } // namespace

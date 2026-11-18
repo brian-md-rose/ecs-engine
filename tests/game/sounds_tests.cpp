@@ -8,7 +8,7 @@
 #include "ecs/world.hpp"
 #include "events.hpp"
 #include "gameflow.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "options.hpp"
 #include "scoring.hpp"
@@ -87,13 +87,13 @@ TEST_CASE("Playing the game makes the eating, power-up and level-clear sounds", 
 	                                              "#######\n");
 	REQUIRE(maze.map.has_value());
 	game::MazeGame game{*maze.map};
-	engine::input::Keyboard keyboard;
+	engine::input::Input input;
 	const auto update = [&](int steps)
 	{
 		for (int i = 0; i < steps; ++i)
 		{
-			game.Update(kStep, keyboard);
-			keyboard.EndUpdate();
+			game.Update(kStep, input);
+			input.EndUpdate();
 		}
 	};
 	const game::SoundQueue& sounds = game.world.resources.Get<game::SoundQueue>();
@@ -101,7 +101,7 @@ TEST_CASE("Playing the game makes the eating, power-up and level-clear sounds", 
 	gametest::RequestPlaying(game);
 	update(3 * 60); // past Ready
 	REQUIRE(gametest::StageOf(game) == gametest::Stage::Playing);
-	keyboard.OnKeyDown(Key::Right);
+	input.keyboard.OnKeyDown(Key::Right);
 	update(2 * 60);
 
 	CHECK(sounds.Played(Sfx::Eat) == 2);
@@ -120,19 +120,19 @@ TEST_CASE("With sound off in the options nothing is played, and the queue is sti
 	REQUIRE(maze.map.has_value());
 	game::MazeGame game{*maze.map};
 	game.world.resources.Get<game::Settings>().sound = false;
-	engine::input::Keyboard keyboard;
+	engine::input::Input input;
 	const auto update = [&](int steps)
 	{
 		for (int i = 0; i < steps; ++i)
 		{
-			game.Update(kStep, keyboard);
-			keyboard.EndUpdate();
+			game.Update(kStep, input);
+			input.EndUpdate();
 		}
 	};
 
 	gametest::RequestPlaying(game);
 	update(3 * 60);
-	keyboard.OnKeyDown(Key::Right);
+	input.keyboard.OnKeyDown(Key::Right);
 	update(2 * 60);
 
 	const game::SoundQueue& sounds = game.world.resources.Get<game::SoundQueue>();

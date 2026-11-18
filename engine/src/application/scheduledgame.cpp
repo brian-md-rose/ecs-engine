@@ -5,9 +5,9 @@
 
 namespace engine::application
 {
-	void ScheduledGame::Update(double dt, const input::Keyboard& keyboard, audio::AudioDevice* audio)
+	void ScheduledGame::Update(double dt, const input::Input& input, audio::AudioDevice* audio)
 	{
-		const ecs::FrameContext context{.dt = dt, .keyboard = &keyboard, .audio = audio};
+		const ecs::FrameContext context{.dt = dt, .input = &input, .audio = audio};
 		// First, so a reset made by a state change is not interpolated from where things were.
 		scheduler.RunTransitions(world, context);
 		graphics::RecordPreviousPositions(world.registry);

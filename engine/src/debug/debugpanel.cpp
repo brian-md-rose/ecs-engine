@@ -105,9 +105,9 @@ namespace engine::debug
 
 	void DebugPanelToggleSystem(World& world, const ecs::FrameContext& context)
 	{
-		if (context.keyboard == nullptr) return;
+		if (context.input == nullptr) return;
 		DebugPanel& panel = world.resources.Get<DebugPanel>();
-		if (!context.keyboard->WasPressed(panel.toggleKey)) return;
+		if (!context.input->keyboard.WasPressed(panel.toggleKey)) return;
 
 		panel.visible = !panel.visible;
 		if (panel.visible)

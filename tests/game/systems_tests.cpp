@@ -16,7 +16,7 @@
 #include "graphics/transform.hpp"
 #include "grid/direction.hpp"
 #include "hud.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "nameentry.hpp"
@@ -55,7 +55,7 @@ namespace
 	struct Harness
 	{
 		game::MazeGame maze{TestMaze()};
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		// Chooses START on the title screen, then waits for the round to be under way, past the
 		// Ready pause, unless told not to.
@@ -85,16 +85,16 @@ namespace
 		{
 			for (int i = 0; i < steps; ++i)
 			{
-				maze.Update(kStep, keyboard);
-				keyboard.EndUpdate();
+				maze.Update(kStep, input);
+				input.EndUpdate();
 			}
 		}
 
 		void Tap(Key key)
 		{
-			keyboard.OnKeyDown(key);
+			input.keyboard.OnKeyDown(key);
 			Update();
-			keyboard.OnKeyUp(key);
+			input.keyboard.OnKeyUp(key);
 			Update();
 		}
 
@@ -554,12 +554,12 @@ TEST_CASE("Clearing a level shows the level screen, then starts the next level",
 TEST_CASE("A game starts with the lives chosen in the options", "[game][systems][gameflow]")
 {
 	game::MazeGame maze{TestMaze()};
-	engine::input::Keyboard keyboard;
+	engine::input::Input input;
 	maze.world.resources.Get<game::Settings>().lives = 5;
-	keyboard.OnKeyDown(Key::Enter);
-	maze.Update(kStep, keyboard);
-	keyboard.EndUpdate();
-	maze.Update(kStep, keyboard); // the change to Playing takes effect
+	input.keyboard.OnKeyDown(Key::Enter);
+	maze.Update(kStep, input);
+	input.EndUpdate();
+	maze.Update(kStep, input); // the change to Playing takes effect
 	CHECK(gametest::StageOf(maze) == Stage::Ready);
 	CHECK(maze.world.resources.Get<game::GameFlow>().lives == 5);
 }

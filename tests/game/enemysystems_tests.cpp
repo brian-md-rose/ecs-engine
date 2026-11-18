@@ -18,7 +18,7 @@
 #include "gamestate.hpp"
 #include "graphics/animation.hpp"
 #include "grid/direction.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "stage.hpp"
@@ -89,7 +89,7 @@ namespace
 	struct Harness
 	{
 		game::MazeGame maze;
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		explicit Harness(const game::TileMap& map) : maze(map, TestAssets())
 		{
@@ -106,8 +106,8 @@ namespace
 		{
 			for (int i = 0; i < steps; ++i)
 			{
-				maze.Update(kStep, keyboard);
-				keyboard.EndUpdate();
+				maze.Update(kStep, input);
+				input.EndUpdate();
 			}
 		}
 
@@ -122,9 +122,9 @@ namespace
 
 		void Tap(Key key)
 		{
-			keyboard.OnKeyDown(key);
+			input.keyboard.OnKeyDown(key);
 			Update();
-			keyboard.OnKeyUp(key);
+			input.keyboard.OnKeyUp(key);
 		}
 
 		// The first enemy with this personality.

@@ -8,7 +8,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 
 namespace
 {
@@ -209,8 +209,8 @@ TEST_CASE("ScheduledGame runs the fixed phases in order on Update", "[ecs][sched
 	game.scheduler.Add(Phase::Input, Record<1>);
 	game.scheduler.Add(Phase::Update, RecordDt);
 
-	const engine::input::Keyboard keyboard;
-	game.Update(1.0 / 60.0, keyboard);
+	const engine::input::Input input;
+	game.Update(1.0 / 60.0, input);
 
 	CHECK(Calls(game.world) == std::vector<int>{1, 2, 3}); // never Render
 	CHECK(game.world.resources.Get<SeenDt>().value == 1.0 / 60.0);

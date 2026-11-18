@@ -8,7 +8,7 @@
 #include "gameflow.hpp"
 #include "graphics/font.hpp"
 #include "hud.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "stage.hpp"
 #include "tilemap.hpp"
@@ -35,22 +35,22 @@ namespace
 	struct Harness
 	{
 		game::MazeGame maze{TestMaze()};
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		void Update(int steps = 1)
 		{
 			for (int i = 0; i < steps; ++i)
 			{
-				maze.Update(kStep, keyboard);
-				keyboard.EndUpdate();
+				maze.Update(kStep, input);
+				input.EndUpdate();
 			}
 		}
 
 		void Tap(Key key)
 		{
-			keyboard.OnKeyDown(key);
+			input.keyboard.OnKeyDown(key);
 			Update();
-			keyboard.OnKeyUp(key);
+			input.keyboard.OnKeyUp(key);
 			Update();
 		}
 

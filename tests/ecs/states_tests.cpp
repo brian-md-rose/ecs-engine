@@ -8,7 +8,7 @@
 #include "ecs/scheduler.hpp"
 #include "ecs/states.hpp"
 #include "ecs/world.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 
 namespace
 {
@@ -94,11 +94,11 @@ namespace
 	struct Fixture
 	{
 		ScheduledGame game;
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		Fixture() { game.world.resources.Emplace<Log>(); }
 
-		void Update() { game.Update(1.0 / 60.0, keyboard); }
+		void Update() { game.Update(1.0 / 60.0, input); }
 
 		[[nodiscard]] std::vector<int>& Calls() { return game.world.resources.Get<Log>().calls; }
 		[[nodiscard]] Screen Current() { return game.world.resources.Get<State<Screen>>().value; }

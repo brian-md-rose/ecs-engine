@@ -11,7 +11,7 @@
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
 #include "graphics/color.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 
 // An on-screen readout for working on a game: frames per second and draw time, how many entities
 // have each component, and how long each system takes. Drawn with the Renderer2D's bitmap font

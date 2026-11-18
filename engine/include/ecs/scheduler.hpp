@@ -19,7 +19,7 @@ namespace engine::audio
 
 namespace engine::input
 {
-	class Keyboard;
+	struct Input;
 }
 
 namespace engine::graphics
@@ -60,12 +60,12 @@ namespace engine::ecs
 	// here can dangle. Fields that don't apply to the running phase are zero or null.
 	struct FrameContext
 	{
-		double dt = 0;                             // fixed phases: seconds per update
-		double alpha = 0;                          // Render: how far into the next update, [0, 1)
-		const input::Keyboard* keyboard = nullptr; // fixed phases
-		graphics::Renderer* renderer = nullptr;    // Render
-		audio::AudioDevice* audio = nullptr;       // fixed phases; null when there is no sound
-		const Scheduler* scheduler = nullptr;      // the scheduler running the system (Scheduler::Run sets it)
+		double dt = 0;                          // fixed phases: seconds per update
+		double alpha = 0;                       // Render: how far into the next update, [0, 1)
+		const input::Input* input = nullptr;    // fixed phases
+		graphics::Renderer* renderer = nullptr; // Render
+		audio::AudioDevice* audio = nullptr;    // fixed phases; null when there is no sound
+		const Scheduler* scheduler = nullptr;   // the scheduler running the system (Scheduler::Run sets it)
 	};
 
 	// Systems are plain functions: state they keep between runs belongs in a resource.

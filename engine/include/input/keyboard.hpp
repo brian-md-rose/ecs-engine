@@ -4,29 +4,20 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "input/keys.hpp"
+
 namespace engine::input
 {
-	// Engine key codes. The platform layer translates its own key events into these, so game
-	// code and tests never see SDL types. Keys are physical positions (scancodes): WASD stays
-	// in the same place on AZERTY or Dvorak keyboards. Add keys here as games need them.
+// Engine key codes, one per line of ENGINE_KEY_LIST (input/keys.hpp). The platform layer
+// translates its own key events into these, so game code and tests never see SDL types. Keys
+// are physical positions (scancodes): WASD stays in the same place on AZERTY or Dvorak
+// keyboards. Add keys to the list as games need them.
+#define ENGINE_KEY_ENUMERATOR(name, sdl) name,
 	enum class Key : std::uint8_t
 	{
-		Up,
-		Down,
-		Left,
-		Right,
-		W,
-		A,
-		S,
-		D,
-		P,
-		Space,
-		Enter,
-		Escape,
-		F1,
-		F3,
-		Count
+		ENGINE_KEY_LIST(ENGINE_KEY_ENUMERATOR) Count
 	};
+#undef ENGINE_KEY_ENUMERATOR
 
 	inline constexpr std::size_t kKeyCount = static_cast<std::size_t>(Key::Count);
 
