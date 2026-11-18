@@ -1,3 +1,5 @@
+#include <SDL3/SDL_main.h> // provides WinMain when the game is a Windows GUI app (see game/CMakeLists.txt)
+
 #include "application/application.hpp"
 #include "mazegame.hpp"
 
