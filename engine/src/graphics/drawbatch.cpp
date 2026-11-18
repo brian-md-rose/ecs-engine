@@ -6,8 +6,10 @@
 #include <utility>
 
 #include "ecs/entity.hpp"
+#include "ecs/hierarchy.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/interpolation.hpp"
+#include "graphics/screenspace.hpp"
 #include "graphics/sprite.hpp"
 
 namespace engine::graphics
@@ -20,9 +22,18 @@ namespace engine::graphics
 			       topLeft.y < static_cast<float>(camera.logicalHeight) && topLeft.y + height > 0.0f;
 		}
 
-		[[nodiscard]] Position ToScreen(Position world, const Camera& camera)
+		// Whether entity, or an ancestor, is tagged ScreenSpace. The walk stops after a few hundred steps so a
+		// loop in the hierarchy can't hang the frame.
+		[[nodiscard]] bool IsScreenSpace(ecs::Registry& registry, ecs::Entity entity)
 		{
-			return {world.x - camera.position.x, world.y - camera.position.y};
+			for (int depth = 0; depth < 256 && entity != ecs::Entity::Null; ++depth)
+			{
+				if (registry.HasComponent<ScreenSpace>(entity)) return true;
+				const ecs::Parent* parent = registry.TryGetComponent<ecs::Parent>(entity);
+				if (parent == nullptr) return false;
+				entity = parent->entity;
+			}
+			return false;
 		}
 
 		[[nodiscard]] Position Snap(Position position)
@@ -62,29 +73,50 @@ namespace engine::graphics
 			                                : InterpolatedPosition(transform, *interpolation, alpha);
 		};
 
-		const auto collectShape =
-		    [this, &camera, &worldPosition](ecs::Entity entity, const Transform& transform, const Shape& shape)
+		// Where entity's top-left lands on the screen and the zoom it is drawn at: the camera places and
+		// magnifies world-space entities; screen-space ones stay where their Transform says, at 1.
+		struct Placement
 		{
-			const Position screen = ToScreen(worldPosition(entity, transform), camera);
-			if (!Overlaps(screen, shape.BoundsWidth(), shape.BoundsHeight(), camera)) return;
-			entries.push_back({.screen = screen, .layer = shape.layer, .color = shape.color, .shape = shape});
+			Position screen;
+			int zoom;
+		};
+		const auto place = [&registry, &camera, &worldPosition](ecs::Entity entity, const Transform& transform)
+		{
+			const Position world = worldPosition(entity, transform);
+			if (IsScreenSpace(registry, entity)) return Placement{.screen = world, .zoom = 1};
+			return Placement{.screen = camera.WorldToScreen(world), .zoom = camera.EffectiveZoom()};
+		};
+
+		const auto collectShape =
+		    [this, &camera, &place](ecs::Entity entity, const Transform& transform, const Shape& shape)
+		{
+			const auto [screen, zoom] = place(entity, transform);
+			Shape drawn = shape;
+			const auto factor = static_cast<float>(zoom);
+			drawn.width *= factor;
+			drawn.height *= factor;
+			drawn.radius *= factor;
+			if (!Overlaps(screen, drawn.BoundsWidth(), drawn.BoundsHeight(), camera)) return;
+			entries.push_back({.screen = screen, .layer = shape.layer, .color = shape.color, .shape = drawn});
 		};
 		registry.Each<Transform, Shape>(collectShape);
 
 		if (hasAtlas)
 		{
 			const auto collectSprite =
-			    [this, &camera, &worldPosition](ecs::Entity entity, const Transform& transform, const Sprite& sprite)
+			    [this, &camera, &place](ecs::Entity entity, const Transform& transform, const Sprite& sprite)
 			{
-				const Position screen = Snap(ToScreen(worldPosition(entity, transform), camera));
-				const auto width = static_cast<float>(sprite.source.width);
-				const auto height = static_cast<float>(sprite.source.height);
+				const auto [placed, zoom] = place(entity, transform);
+				const Position screen = Snap(placed);
+				const auto width = static_cast<float>(sprite.source.width * zoom);
+				const auto height = static_cast<float>(sprite.source.height * zoom);
 				if (!Overlaps(screen, width, height, camera)) return;
 				entries.push_back({.screen = screen,
 				                   .layer = sprite.layer,
 				                   .color = sprite.tint,
 				                   .textured = true,
 				                   .source = sprite.source,
+				                   .scale = zoom,
 				                   .flipX = sprite.flipX});
 			};
 			registry.Each<Transform, Sprite>(collectSprite);
@@ -94,12 +126,13 @@ namespace engine::graphics
 		{
 			const BitmapFont& font = *settings.font;
 			const auto collectText =
-			    [this, &camera, &font, &worldPosition](ecs::Entity entity, const Transform& transform, const Text& text)
+			    [this, &camera, &font, &place](ecs::Entity entity, const Transform& transform, const Text& text)
 			{
-				const int scale = std::max(text.scale, 1);
+				const auto [placed, zoom] = place(entity, transform);
+				// Zoom magnifies the text as a whole: its glyphs, spacing and wrap width.
+				const int scale = std::max(text.scale, 1) * zoom;
 				glyphs.clear();
-				LayoutText(font, text.value, Snap(ToScreen(worldPosition(entity, transform), camera)), scale,
-				           text.wrapWidth, text.align, glyphs);
+				LayoutText(font, text.value, Snap(placed), scale, text.wrapWidth * zoom, text.align, glyphs);
 				for (const GlyphQuad& glyph : glyphs)
 				{
 					const auto width = static_cast<float>(glyph.source.width * scale);
