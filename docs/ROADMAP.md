@@ -115,6 +115,14 @@ See [screens.md](screens.md).
 
 ---
 
+## Phases 10 to 12 – Features for the Project Babel port
+
+JSON and a seeded RNG; mouse, more keys, full-ASCII text, camera zoom, clipping and UI
+mechanisms; then window settings, gamepads and audio files. See
+[babel-support.md](babel-support.md).
+
+---
+
 ## Open questions
 
 - Game name and character designs.

@@ -1,12 +1,11 @@
 #include "core/savedata.hpp"
 
-#include <fstream>
 #include <system_error>
 #include <utility>
 #include <vector>
 
 #include "core/assert.hpp"
-#include "core/log.hpp"
+#include "core/files.hpp"
 
 namespace engine::core
 {
@@ -113,35 +112,6 @@ namespace engine::core
 
 	bool WriteSaveData(const std::filesystem::path& file, const SaveData& data)
 	{
-		std::error_code error;
-		if (file.has_parent_path()) std::filesystem::create_directories(file.parent_path(), error);
-		if (error)
-		{
-			LogError(PathText(file) + ": can't make the folder: " + error.message());
-			return false;
-		}
-
-		std::filesystem::path temporary = file;
-		temporary += ".tmp";
-		{
-			std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-			stream << data.Format();
-			stream.flush();
-			if (!stream)
-			{
-				LogError(PathText(temporary) + ": can't write the file");
-				std::filesystem::remove(temporary, error);
-				return false;
-			}
-		}
-
-		std::filesystem::rename(temporary, file, error); // replaces file if it exists
-		if (error)
-		{
-			LogError(PathText(file) + ": can't replace the file: " + error.message());
-			std::filesystem::remove(temporary, error);
-			return false;
-		}
-		return true;
+		return WriteFileAtomic(file, data.Format());
 	}
 } // namespace engine::core

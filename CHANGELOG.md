@@ -14,6 +14,11 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 - `core/log.hpp`: `LogSession` and `Log`/`LogInfo`/`LogWarning`/`LogError` write timestamped, levelled
   messages to a log file (the previous run's kept as `log.old.txt`) and, in Debug builds, the console.
   SDL's log is routed through it. The game logs to `log.txt` next to its save file.
+- `core/json.hpp`: `JsonValue`, `ParseJson`, `LoadJson`, `FormatJson` and `WriteJson`. Objects keep their key
+  order, integers are stored as `int64_t` apart from doubles, parse errors give a line and column, and nesting
+  is capped at 64 levels. Phase 10 of [docs/babel-support.md](docs/babel-support.md).
+- `core/files.hpp`: `WriteFileAtomic`, the temporary-file-then-rename write that `WriteSaveData` and
+  `WriteJson` share.
 
 ### Changed
 
