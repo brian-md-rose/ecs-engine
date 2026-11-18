@@ -25,6 +25,19 @@ namespace engine::application
 		                                      ENGINE_KEY_ALIAS_LIST(ENGINE_KEY_MAPPING)};
 #undef ENGINE_KEY_MAPPING
 
+		// True if another physical key that counts as key (the other Shift, say) is still held, so
+		// letting go of one of a pair doesn't release the key while the other is down.
+		bool OtherPhysicalKeyHeld(input::Key key, SDL_Scancode released)
+		{
+			const bool* state = SDL_GetKeyboardState(nullptr);
+			if (state == nullptr) return false;
+			for (const KeyMapping& mapping : kKeyMap)
+			{
+				if (mapping.key == key && mapping.scancode != released && state[mapping.scancode]) return true;
+			}
+			return false;
+		}
+
 		std::optional<input::Key> ToKey(SDL_Scancode scancode)
 		{
 			for (const KeyMapping& mapping : kKeyMap)
@@ -74,7 +87,10 @@ namespace engine::application
 		}
 
 		// SDL3 sends no SDL_EVENT_TEXT_INPUT until text input is started on the window.
-		SDL_StartTextInput(window.GetWindowHandle());
+		if (!SDL_StartTextInput(window.GetWindowHandle()))
+		{
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SDL_StartTextInput failed, no typed text: %s", SDL_GetError());
+		}
 
 		core::FixedTimestep timestep(updateStep);
 		double previous = clock.Now();
@@ -118,7 +134,7 @@ namespace engine::application
 			case SDL_EVENT_KEY_UP:
 				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
-					input.keyboard.OnKeyUp(*key);
+					if (!OtherPhysicalKeyHeld(*key, event.key.scancode)) input.keyboard.OnKeyUp(*key);
 				}
 				break;
 			case SDL_EVENT_TEXT_INPUT:
