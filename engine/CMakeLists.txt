@@ -3,9 +3,9 @@
 #   engine::core    The ECS, data, text, input types, draw batching and everything else that needs no
 #                   platform. It does NOT link SDL and has no SDL include path, so an SDL include there
 #                   fails the build. Headless tools (a simulator) link just this.
-#   engine::engine  The platform: SDL window, renderer, audio device, image files, the application loop
-#                   and the debug panel. It links engine::core publicly, so existing code that links
-#                   engine::engine keeps working.
+#   engine::platform  The platform: SDL window, renderer, audio device, image files, the application loop
+#                   and the debug panel. It links engine::core publicly, so a game links just this one.
+#                   (It was called engine::engine before the split.)
 #
 # Headers all live in include/ and are shared; only the sources are split.
 
@@ -58,15 +58,15 @@ configure_file(
 target_include_directories(engine_core PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>)
 set_target_properties(engine_core PROPERTIES VERSION ${PROJECT_VERSION})
 
-# ---- engine::engine (the platform) ----
-add_library(engine STATIC ${ENGINE_PLATFORM_SOURCES})
-add_library(engine::engine ALIAS engine)
-target_link_libraries(engine PUBLIC engine::core)
+# ---- engine::platform ----
+add_library(engine_platform STATIC ${ENGINE_PLATFORM_SOURCES})
+add_library(engine::platform ALIAS engine_platform)
+target_link_libraries(engine_platform PUBLIC engine::core)
 # SDL3 is PRIVATE: only the platform .cpp files may include SDL headers (the game links SDL3 itself
-# just for SDL_main.h in main.cpp). The game still links SDL through the engine, since engine is a
+# just for SDL_main.h in main.cpp). The game still links SDL through the platform library, since it is a
 # static library.
-target_link_libraries(engine PRIVATE engine::warnings SDL3::SDL3)
-set_target_properties(engine PROPERTIES VERSION ${PROJECT_VERSION})
+target_link_libraries(engine_platform PRIVATE engine::warnings SDL3::SDL3)
+set_target_properties(engine_platform PROPERTIES VERSION ${PROJECT_VERSION})
 
 # Mirror the folder layout as IDE filters: include/ and src/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_CORE_SOURCES} ${ENGINE_PLATFORM_SOURCES} ${ENGINE_HEADERS})

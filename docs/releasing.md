@@ -25,7 +25,7 @@ FetchContent_Declare(ecs_engine
 FetchContent_MakeAvailable(ecs_engine)
 
 add_executable(my_game main.cpp)
-target_link_libraries(my_game PRIVATE engine::engine)
+target_link_libraries(my_game PRIVATE engine::platform)
 ```
 
 A headless tool (a simulator, a data checker) can link `engine::core` instead. It has the ECS, data, input

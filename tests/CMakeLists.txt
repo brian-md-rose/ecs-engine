@@ -26,7 +26,7 @@ target_link_libraries(engine_core_tests PRIVATE engine::core engine::warnings Ca
 target_include_directories(engine_core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(engine_tests ${PLATFORM_TEST_SOURCES} ${TEST_HEADERS})
-target_link_libraries(engine_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
+target_link_libraries(engine_tests PRIVATE engine::platform engine::warnings Catch2::Catch2WithMain)
 target_include_directories(engine_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 if(MSVC)
     # C4868 (brace-init evaluation order) fires inside Catch2's assertion
@@ -48,7 +48,7 @@ if(TARGET game)
     target_include_directories(game_tests PRIVATE ${GAME_INCLUDE_DIR})
     # The asset tests read the mazes from the source tree, as written.
     target_compile_definitions(game_tests PRIVATE GAME_ASSETS_DIR="${PROJECT_SOURCE_DIR}/game/assets")
-    target_link_libraries(game_tests PRIVATE engine::engine engine::warnings Catch2::Catch2WithMain)
+    target_link_libraries(game_tests PRIVATE engine::platform engine::warnings Catch2::Catch2WithMain)
     if(MSVC)
         target_compile_options(game_tests PRIVATE /wd4868)
     endif()

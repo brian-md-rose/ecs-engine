@@ -113,3 +113,13 @@ TEST_CASE("A second session leaves the first one alone", "[log]")
 	CHECK(Contains(text, "before"));
 	CHECK(Contains(text, "after"));
 }
+
+TEST_CASE("LogIsActive is true only while a LogSession exists", "[log]")
+{
+	CHECK_FALSE(engine::core::LogIsActive());
+	{
+		const LogSession session({.file = FreshFolder("active") / "log.txt", .console = false});
+		CHECK(engine::core::LogIsActive());
+	}
+	CHECK_FALSE(engine::core::LogIsActive());
+}

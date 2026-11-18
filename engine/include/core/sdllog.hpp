@@ -1,6 +1,6 @@
 #pragma once
 
-// Part of the platform library (engine::engine), not engine::core: it needs SDL.
+// Part of the platform library (engine::platform), not engine::core: it needs SDL.
 namespace engine::core
 {
 	// Sends SDL's own log (SDL_Log, SDL_LogError, ...) through core::Log, so the engine's and SDL's
