@@ -6,6 +6,7 @@
 #include "core/fixedtimestep.hpp"
 #include "core/sdllog.hpp"
 #include "input/input.hpp"
+#include "input/mouse.hpp"
 
 namespace engine::application
 {
@@ -48,6 +49,21 @@ namespace engine::application
 				}
 			}
 			return std::nullopt;
+		}
+
+		std::optional<input::MouseButton> ToMouseButton(Uint8 button)
+		{
+			switch (button)
+			{
+			case SDL_BUTTON_LEFT:
+				return input::MouseButton::Left;
+			case SDL_BUTTON_RIGHT:
+				return input::MouseButton::Right;
+			case SDL_BUTTON_MIDDLE:
+				return input::MouseButton::Middle;
+			default:
+				return std::nullopt;
+			}
 		}
 	} // namespace
 
@@ -114,6 +130,15 @@ namespace engine::application
 		return 0;
 	}
 
+	void Application::SetMousePosition(float x, float y)
+	{
+		int width = 0;
+		int height = 0;
+		SDL_GetRenderLogicalPresentation(renderer.GetRendererHandle(), &width, &height, nullptr);
+		const bool inside = x >= 0 && y >= 0 && x < static_cast<float>(width) && y < static_cast<float>(height);
+		input.mouse.OnMove({x, y}, inside);
+	}
+
 	bool Application::PumpEvents()
 	{
 		bool open = true;
@@ -139,6 +164,27 @@ namespace engine::application
 				break;
 			case SDL_EVENT_TEXT_INPUT:
 				if (event.text.text != nullptr) input.OnText(event.text.text);
+				break;
+			case SDL_EVENT_MOUSE_MOTION:
+				// Window pixels to logical pixels, so letterboxing and scaling are handled.
+				SDL_ConvertEventToRenderCoordinates(renderer.GetRendererHandle(), &event);
+				SetMousePosition(event.motion.x, event.motion.y);
+				break;
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			case SDL_EVENT_MOUSE_BUTTON_UP:
+				SDL_ConvertEventToRenderCoordinates(renderer.GetRendererHandle(), &event);
+				SetMousePosition(event.button.x, event.button.y);
+				if (const std::optional<input::MouseButton> button = ToMouseButton(event.button.button))
+				{
+					input.mouse.OnButton(*button, event.button.down);
+				}
+				break;
+			case SDL_EVENT_MOUSE_WHEEL:
+				// Notches, positive away from the user, whatever the OS's "natural scrolling" says.
+				input.mouse.OnWheel(event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y);
+				break;
+			case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+				input.mouse.inside = false;
 				break;
 			case SDL_EVENT_WINDOW_FOCUS_LOST:
 				// Key-ups for keys released while unfocused never arrive; don't leave them stuck.
