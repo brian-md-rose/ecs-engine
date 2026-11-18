@@ -5,9 +5,11 @@
 #include <cstdint>
 
 #include "ecs/entity.hpp"
+#include "ecs/hierarchy.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/drawbatch.hpp"
+#include "graphics/screenspace.hpp"
 #include "graphics/sprite.hpp"
 
 namespace
@@ -364,4 +366,112 @@ TEST_CASE("The tint dims layers below the untinted layer only", "[graphics][batc
 	CHECK(batch.Vertices()[0].color.r == 100);
 	CHECK(batch.Vertices()[0].color.g == 50);
 	CHECK(batch.Vertices()[4].color.r == 200);
+}
+
+namespace
+{
+	constexpr Camera kZoomCamera{.logicalWidth = 100, .logicalHeight = 100, .position = {10.0f, 10.0f}, .zoom = 2};
+} // namespace
+
+TEST_CASE("Zoom scales world-space shapes and moves them about the camera", "[graphics][batch][camera]")
+{
+	Registry registry;
+	AddRectangle(registry, {20.0f, 15.0f}, 0); // 8 x 4
+	DrawBatch batch;
+	batch.Build(registry, kZoomCamera);
+	REQUIRE(batch.ItemCount() == 1);
+	const auto vertices = batch.Vertices();
+	CHECK(vertices[0].position.x == 20.0f); // (20 - 10) * 2
+	CHECK(vertices[0].position.y == 10.0f); // (15 - 10) * 2
+	CHECK(vertices[2].position.x == 36.0f); // 8 wide, doubled
+	CHECK(vertices[2].position.y == 18.0f); // 4 high, doubled
+}
+
+TEST_CASE("Culling uses the zoomed size and the zoomed view", "[graphics][batch][camera]")
+{
+	Registry registry;
+	AddRectangle(registry, {59.0f, 20.0f}, 0); // screen x 98: just inside the 100-wide view
+	AddRectangle(registry, {60.0f, 20.0f}, 0); // screen x 100: outside
+	AddRectangle(registry, {5.0f, 20.0f}, 0);  // screen x -10, 16 wide: reaches x 6, inside
+	AddRectangle(registry, {2.0f, 20.0f}, 0);  // screen x -16, ends at 0: outside
+	DrawBatch batch;
+	batch.Build(registry, kZoomCamera);
+	CHECK(batch.ItemCount() == 2);
+}
+
+TEST_CASE("Zoom scales sprites and text, and the text's wrap width", "[graphics][batch][camera]")
+{
+	BitmapFont font;
+	font.SetGlyph('H', {.x = 30, .y = 0, .width = 5, .height = 7});
+
+	Registry registry;
+	const Entity sprite = AddSprite(registry, {12.0f, 12.0f}, 0);
+	(void)sprite;
+	const Entity text = registry.Create();
+	registry.Add<Transform>(text, Position{20.0f, 20.0f});
+	// 12 world pixels hold two 6-pixel characters, so "HHH" wraps after two.
+	registry.Add<engine::graphics::Text>(text, engine::graphics::Text{.value = "HHH", .wrapWidth = 12});
+
+	auto settings = AtlasSettings(&font);
+	settings.camera = kZoomCamera;
+	DrawBatch batch;
+	batch.Build(registry, settings);
+	REQUIRE(batch.ItemCount() == 4);
+	const auto vertices = batch.Vertices();
+	// The sprite (8 x 4 in the atlas) is drawn at (12 - 10) * 2 = 4, twice as big.
+	CHECK(vertices[0].position.x == 4.0f);
+	CHECK(vertices[2].position.x == 20.0f);
+	CHECK(vertices[2].position.y == 12.0f);
+	// Text: first glyph at screen 20, the second one character (6 * 2) along, the third on the next line.
+	CHECK(vertices[4].position.x == 20.0f);
+	CHECK(vertices[8].position.x == 32.0f);
+	CHECK(vertices[12].position.x == 20.0f);
+	CHECK(vertices[12].position.y == 36.0f); // 20 + one line of 8 pixels, doubled
+}
+
+TEST_CASE("Screen-space entities ignore the camera, and so do their children", "[graphics][batch][camera]")
+{
+	using engine::ecs::Parent;
+	using engine::graphics::ScreenSpace;
+
+	Registry registry;
+	const Entity world = AddRectangle(registry, {30.0f, 30.0f}, 0);
+	const Entity hud = AddRectangle(registry, {30.0f, 30.0f}, 0);
+	registry.Add<ScreenSpace>(hud);
+	const Entity panel = registry.Create();
+	registry.Add<ScreenSpace>(panel);
+	registry.Add<Transform>(panel, Position{0.0f, 0.0f});
+	const Entity child = AddRectangle(registry, {50.0f, 40.0f}, 0);
+	registry.Add<Parent>(child, Parent{.entity = panel});
+	const Entity grandchild = AddRectangle(registry, {60.0f, 40.0f}, 0);
+	registry.Add<Parent>(grandchild, Parent{.entity = child});
+	(void)world;
+
+	DrawBatch batch;
+	batch.Build(registry, kZoomCamera);
+	REQUIRE(batch.ItemCount() == 4);
+	const auto vertices = batch.Vertices();
+	// Entries come out in creation order here (same layer): world, hud, child, grandchild.
+	CHECK(vertices[0].position.x == 40.0f); // world: (30 - 10) * 2
+	CHECK(vertices[4].position.x == 30.0f); // screen-space: as is
+	CHECK(vertices[6].position.x == 38.0f); // ... and 8 wide, not 16
+	CHECK(vertices[8].position.x == 50.0f); // child of a screen-space panel
+	CHECK(vertices[12].position.x == 60.0f);
+}
+
+TEST_CASE("The camera offset moves the world but not screen-space entities", "[graphics][batch][camera]")
+{
+	Registry registry;
+	AddRectangle(registry, {10.0f, 10.0f}, 0);
+	const Entity hud = AddRectangle(registry, {10.0f, 10.0f}, 0);
+	registry.Add<engine::graphics::ScreenSpace>(hud);
+
+	Camera camera = kCamera;
+	camera.offset = {3.0f, -2.0f};
+	DrawBatch batch;
+	batch.Build(registry, camera);
+	REQUIRE(batch.ItemCount() == 2);
+	CHECK(batch.Vertices()[0].position.x == 13.0f);
+	CHECK(batch.Vertices()[0].position.y == 8.0f);
+	CHECK(batch.Vertices()[4].position.x == 10.0f);
 }

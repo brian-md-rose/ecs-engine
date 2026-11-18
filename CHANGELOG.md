@@ -39,6 +39,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   width and height). `Text` gains `wrapWidth` (0 for none) and `align`, so the draw batch wraps and aligns each line
   itself. A character with no glyph draws as `BitmapFont::placeholder`, or the font's `?`, instead of vanishing (spaces
   and control characters stay gaps).
+- `graphics::Camera` gains `zoom` (whole numbers; sprites, text and shapes come out that many times bigger about `position`),
+  `offset` (screen shake that isn't zoomed), `WorldToScreen`, `ScreenToWorld`, `ViewSize`, and `FocusOn(camera, point, zoom)`.
+  The `ScreenSpace` tag (`graphics/screenspace.hpp`) makes an entity ignore the camera; its children, through
+  `ecs::Parent`, inherit it, so a HUD panel needs one tag. A `Text`'s `wrapWidth` is in world units, so it zooms too.
 
 ### Changed
 
