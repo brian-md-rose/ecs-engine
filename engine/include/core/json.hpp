@@ -4,13 +4,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
 
+#include "core/assert.hpp"
 #include "core/text.hpp"
 
 // JSON for data files and saves: a value tree, a parser that reports line and column, and a
@@ -38,9 +41,12 @@ namespace engine::core
 		JsonValue() = default; // null
 		JsonValue(std::nullptr_t) {}
 		JsonValue(bool value) : storage(value) {}
+		// Any integer type except bool and the character types (so 'a' is not the number 97). An
+		// unsigned value above INT64_MAX has no integer form here and is a checked error.
 		template <std::integral T>
-		    requires(!std::same_as<T, bool>)
-		JsonValue(T value) : storage(static_cast<std::int64_t>(value))
+		    requires(!std::same_as<T, bool> && !std::same_as<T, char> && !std::same_as<T, wchar_t> &&
+		             !std::same_as<T, char8_t> && !std::same_as<T, char16_t> && !std::same_as<T, char32_t>)
+		JsonValue(T value) : storage(ToInt64(value))
 		{
 		}
 		JsonValue(double value) : storage(value) {}
@@ -87,6 +93,17 @@ namespace engine::core
 		JsonValue& Append(JsonValue value);
 
 		[[nodiscard]] friend bool operator==(const JsonValue&, const JsonValue&) = default;
+
+	private:
+		template <std::integral T> [[nodiscard]] static std::int64_t ToInt64(T value)
+		{
+			if constexpr (std::is_unsigned_v<T> && sizeof(T) >= sizeof(std::int64_t))
+			{
+				ENGINE_VERIFY(value <= static_cast<T>(std::numeric_limits<std::int64_t>::max()),
+				              "an unsigned value too big for a JSON integer");
+			}
+			return static_cast<std::int64_t>(value);
+		}
 	};
 
 	// Either the value, or the first error found and no value.

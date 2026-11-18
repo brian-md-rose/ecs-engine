@@ -446,6 +446,7 @@ namespace engine::core
 
 				const char* first = text.data() + start;
 				const char* last = text.data() + pos;
+				// "-0" is the integer 0: integers have no negative zero. Write -0.0 for that double.
 				if (isInteger)
 				{
 					std::int64_t value = 0;

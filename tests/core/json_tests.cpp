@@ -6,7 +6,9 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
+#include "core/files.hpp"
 #include "core/json.hpp"
 
 namespace
@@ -306,4 +308,45 @@ TEST_CASE("LoadJson reports a missing or broken file", "[core][json]")
 	REQUIRE_FALSE(broken.value.has_value());
 	CHECK(broken.error.line == 3);
 	CHECK(broken.error.column == 8);
+}
+
+TEST_CASE("JsonValue integer constructors", "[core][json]")
+{
+	// A character is not a number: JsonValue('a') doesn't compile.
+	static_assert(!std::is_constructible_v<JsonValue, char>);
+	CHECK(JsonValue(std::uint8_t{200}).AsInt() == 200);
+	CHECK(JsonValue(std::size_t{7}).AsInt() == 7);
+	CHECK(JsonValue(std::int64_t{-5}).AsInt() == -5);
+	CHECK(JsonValue(static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())).AsInt() ==
+	      std::numeric_limits<std::int64_t>::max());
+	CHECK(Parse("-0").AsInt() == 0); // integers have no negative zero
+}
+
+TEST_CASE("WriteFileAtomic makes the folder and leaves no temporary file", "[core][files]")
+{
+	const TempFolder folder("engine_files_tests");
+	const std::filesystem::path file = folder.path / "a" / "b" / "out.txt";
+
+	REQUIRE(engine::core::WriteFileAtomic(file, "first"));
+	REQUIRE(engine::core::WriteFileAtomic(file, "second")); // replaces
+	CHECK_FALSE(std::filesystem::exists(file.string() + ".tmp"));
+
+	std::ifstream stream(file, std::ios::binary);
+	std::stringstream contents;
+	contents << stream.rdbuf();
+	CHECK(contents.str() == "second");
+}
+
+TEST_CASE("WriteFileAtomic fails cleanly when the folder can't be made", "[core][files]")
+{
+	const TempFolder folder("engine_files_tests_fail");
+	std::filesystem::create_directories(folder.path);
+	const std::filesystem::path blocker = folder.path / "blocker";
+	{
+		std::ofstream stream(blocker);
+		stream << "a file, not a folder";
+	}
+	// A path that goes through a file can't be made into a folder.
+	CHECK_FALSE(engine::core::WriteFileAtomic(blocker / "sub" / "out.txt", "x"));
+	CHECK(std::filesystem::is_regular_file(blocker));
 }
