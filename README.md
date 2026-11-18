@@ -15,6 +15,13 @@ thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 All eight roadmap phases are done. The game is playable from title screen to game over, with
 enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
 
+## Versions and releases
+
+The engine uses [Semantic Versioning](https://semver.org/) and is released as `vX.Y.Z` git tags.
+See [CHANGELOG.md](CHANGELOG.md) for what changed, and [docs/releasing.md](docs/releasing.md) for how
+to pin a release from another project (`FetchContent` by tag) and how to cut one.
+The version is available in code as `<core/version.hpp>`.
+
 ## Features
 
 **Engine** (`engine::engine`, a static library)
