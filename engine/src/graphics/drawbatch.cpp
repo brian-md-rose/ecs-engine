@@ -98,7 +98,8 @@ namespace engine::graphics
 			{
 				const int scale = std::max(text.scale, 1);
 				glyphs.clear();
-				LayoutText(font, text.value, Snap(ToScreen(worldPosition(entity, transform), camera)), scale, glyphs);
+				LayoutText(font, text.value, Snap(ToScreen(worldPosition(entity, transform), camera)), scale,
+				           text.wrapWidth, text.align, glyphs);
 				for (const GlyphQuad& glyph : glyphs)
 				{
 					const auto width = static_cast<float>(glyph.source.width * scale);

@@ -35,6 +35,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 - `input/mouse.hpp`: `input::Mouse`, at `Input::mouse`: the pointer position in logical pixels (letterboxing is already
   undone), `inside` the logical area, wheel notches, and Left, Right and Middle buttons with `IsDown`/`WasPressed`/
   `WasReleased` edges that work like the keyboard's (a press and release inside one update still counts as a click).
+- `graphics/font.hpp`: `WrapText` (breaks at spaces, long words by characters, `\n` respected) and `MeasureText` (wrapped
+  width and height). `Text` gains `wrapWidth` (0 for none) and `align`, so the draw batch wraps and aligns each line
+  itself. A character with no glyph draws as `BitmapFont::placeholder`, or the font's `?`, instead of vanishing (spaces
+  and control characters stay gaps).
 
 ### Changed
 
