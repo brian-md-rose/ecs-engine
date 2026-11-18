@@ -22,8 +22,6 @@ namespace engine::core
 			bool console = true;
 			LogLevel minimumLevel = LogLevel::Info;
 			std::ofstream file;
-			SDL_LogOutputFunction previousOutput = nullptr;
-			void* previousUserData = nullptr;
 		};
 
 		LogState& State()
@@ -48,20 +46,14 @@ namespace engine::core
 			return "?????";
 		}
 
+		// An if chain, not a switch: SDL_LogPriority has enumerators we have no use for, and /Wall warns about
+		// every one a switch leaves unhandled.
 		LogLevel FromSdl(SDL_LogPriority priority)
 		{
-			switch (priority)
-			{
-			case SDL_LOG_PRIORITY_WARN:
-				return LogLevel::Warning;
-			case SDL_LOG_PRIORITY_ERROR:
-			case SDL_LOG_PRIORITY_CRITICAL:
-				return LogLevel::Error;
-			case SDL_LOG_PRIORITY_INFO:
-				return LogLevel::Info;
-			default:
-				return LogLevel::Debug; // trace, verbose and debug
-			}
+			if (priority == SDL_LOG_PRIORITY_WARN) return LogLevel::Warning;
+			if (priority == SDL_LOG_PRIORITY_ERROR || priority == SDL_LOG_PRIORITY_CRITICAL) return LogLevel::Error;
+			if (priority == SDL_LOG_PRIORITY_INFO) return LogLevel::Info;
+			return LogLevel::Debug; // trace, verbose and debug
 		}
 
 		// "2026-11-18 16:09:27.123" in local time, or "-" if SDL can't say.
@@ -76,11 +68,28 @@ namespace engine::core
 			return text;
 		}
 
-		// SDL's log output function: SDL_Log and friends end up in Log.
-		// Log takes the state mutex, so nothing that holds it may log through SDL (it would deadlock).
-		void SDLCALL WriteSdlMessage(void*, int, SDL_LogPriority priority, const char* message)
+		bool IsActive()
 		{
-			Log(FromSdl(priority), message != nullptr ? message : "");
+			LogState& state = State();
+			const std::lock_guard<std::mutex> lock(state.mutex);
+			return state.active;
+		}
+
+		// SDL's log output function: SDL_Log and friends end up in Log. It stays installed once a session has
+		// been made (restoring SDL's own function needs a pointer MSVC can't see is noexcept), and writes to
+		// SDL's default output while no session exists. Log takes the state mutex, so nothing that holds it
+		// may log through SDL (it would deadlock).
+		void SDLCALL WriteSdlMessage(void*, int category, SDL_LogPriority priority, const char* message) noexcept
+		{
+			const char* text = message != nullptr ? message : "";
+			if (IsActive())
+			{
+				Log(FromSdl(priority), text);
+			}
+			else
+			{
+				SDL_GetDefaultLogOutputFunction()(nullptr, category, priority, text);
+			}
 		}
 	} // namespace
 
@@ -110,12 +119,12 @@ namespace engine::core
 				if (!state.file) problem = PathText(config.file) + ": can't open the log file";
 			}
 			overlapping = state.active;
-			if (!overlapping) SDL_GetLogOutputFunction(&state.previousOutput, &state.previousUserData);
 			SDL_SetLogOutputFunction(&WriteSdlMessage, nullptr);
 			state.active = true;
 		}
 		// After the lock: the assert handler logs, and the mutex isn't recursive.
 		ENGINE_ASSERT(!overlapping, "only one LogSession can exist at a time");
+		static_cast<void>(overlapping); // unused when asserts are compiled out
 		if (!problem.empty()) Log(LogLevel::Error, problem);
 		if (!config.file.empty()) Log(LogLevel::Info, "Logging to " + PathText(config.file));
 	}
@@ -126,8 +135,6 @@ namespace engine::core
 		const std::lock_guard<std::mutex> lock(state.mutex);
 		state.file.close();
 		state.active = false;
-		if (state.previousOutput != nullptr) SDL_SetLogOutputFunction(state.previousOutput, state.previousUserData);
-		state.previousOutput = nullptr;
 	}
 
 	void Log(LogLevel level, std::string_view message)
