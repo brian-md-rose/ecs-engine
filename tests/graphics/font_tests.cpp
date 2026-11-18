@@ -221,3 +221,18 @@ TEST_CASE("An unknown character draws as the placeholder, a space as a gap", "[g
 	REQUIRE(quads.size() == 1);
 	CHECK(quads[0].source.x == 40);
 }
+
+TEST_CASE("WrapText trims trailing spaces on the last line too, but only when wrapping", "[graphics][font]")
+{
+	using Lines = std::vector<std::string>;
+	CHECK(Wrap("aa ", 30) == Lines{"aa"});
+	CHECK(Wrap("aa  \nbb", 30) == Lines{"aa", "bb"});
+	CHECK(Wrap("aa ", 0) == Lines{"aa "});
+
+	const BitmapFont font = TestFont();
+	std::vector<GlyphQuad> quads;
+	// "A " centred on 100 starts where "A" would: 97, not 94.
+	engine::graphics::LayoutText(font, "A ", {100, 0}, 1, 30, Align::Centre, quads);
+	REQUIRE(quads.size() == 1);
+	CHECK(quads[0].screen.x == 97.0f);
+}

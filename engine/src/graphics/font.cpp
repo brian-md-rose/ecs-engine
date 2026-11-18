@@ -15,6 +15,77 @@ namespace engine::graphics
 			if (code >= 128) return std::nullopt;
 			return static_cast<std::size_t>(code);
 		}
+
+		// Calls emit(line) for each line of text wrapped to maxWidth, without allocating. See WrapText.
+		template <typename Emit>
+		void ForEachLine(const BitmapFont& font, std::string_view text, int maxWidth, int scale, Emit&& emit)
+		{
+			if (text.empty()) return;
+
+			const int cell = std::max(font.advance * scale, 1);
+			const bool wrapping = maxWidth > 0;
+			const std::size_t maxChars = wrapping ? static_cast<std::size_t>(std::max(maxWidth / cell, 1))
+			                                      : std::numeric_limits<std::size_t>::max();
+			// Wrapped lines lose their trailing spaces, so alignment sees only the visible text; with no
+			// width the text is left exactly as written.
+			const auto emitLine = [&](std::string_view line)
+			{
+				if (wrapping)
+				{
+					while (!line.empty() && line.back() == ' ')
+						line.remove_suffix(1);
+				}
+				emit(line);
+			};
+
+			std::size_t paragraphStart = 0;
+			while (paragraphStart <= text.size())
+			{
+				std::size_t paragraphEnd = text.find('\n', paragraphStart);
+				if (paragraphEnd == std::string_view::npos) paragraphEnd = text.size();
+				const std::string_view paragraph = text.substr(paragraphStart, paragraphEnd - paragraphStart);
+				paragraphStart = paragraphEnd + 1;
+
+				// The line being built is paragraph[lineStart, lineEnd), words joined by single spaces
+				// exactly as in the source, so every line is a piece of the text.
+				std::size_t lineStart = 0;
+				std::size_t lineEnd = 0;
+				bool open = false;
+
+				std::size_t pos = 0;
+				while (pos <= paragraph.size())
+				{
+					std::size_t wordEnd = paragraph.find(' ', pos);
+					if (wordEnd == std::string_view::npos) wordEnd = paragraph.size();
+					const std::size_t length = wordEnd - pos;
+					const std::size_t needed = open ? wordEnd - lineStart : length;
+					if (needed <= maxChars)
+					{
+						if (!open)
+						{
+							lineStart = pos;
+							open = true;
+						}
+						lineEnd = wordEnd;
+					}
+					else if (length > 0)
+					{
+						if (open) emitLine(paragraph.substr(lineStart, lineEnd - lineStart));
+						std::size_t at = pos;
+						while (wordEnd - at > maxChars)
+						{
+							emit(paragraph.substr(at, maxChars));
+							at += maxChars;
+						}
+						lineStart = at;
+						lineEnd = wordEnd;
+						open = true;
+					}
+					pos = wordEnd + 1;
+				}
+				if (open) emitLine(paragraph.substr(lineStart, lineEnd - lineStart));
+			}
+		}
 	} // namespace
 
 	void BitmapFont::SetGlyph(char character, PixelRect source)
@@ -50,7 +121,7 @@ namespace engine::graphics
 		const auto advance = static_cast<float>(font.advance * scale);
 		const auto lineHeight = static_cast<float>(font.lineHeight * scale);
 		float top = origin.y;
-		for (const std::string_view line : WrapText(font, text, wrapWidth, scale))
+		ForEachLine(font, text, wrapWidth, scale, [&](std::string_view line)
 		{
 			// Left keeps the origin as given, so a caller that snapped it keeps its position.
 			const float left = align == Align::Left
@@ -66,84 +137,29 @@ namespace engine::graphics
 				x += advance;
 			}
 			top += lineHeight;
-		}
+		});
 	}
 
 	std::vector<std::string_view> WrapText(const BitmapFont& font, std::string_view text, int maxWidth, int scale)
 	{
 		std::vector<std::string_view> lines;
-		if (text.empty()) return lines;
-
-		const int cell = std::max(font.advance * scale, 1);
-		const std::size_t maxChars = maxWidth <= 0 ? std::numeric_limits<std::size_t>::max()
-		                                           : static_cast<std::size_t>(std::max(maxWidth / cell, 1));
-
-		std::size_t paragraphStart = 0;
-		while (paragraphStart <= text.size())
+		ForEachLine(font, text, maxWidth, scale, [&lines](std::string_view line)
 		{
-			std::size_t paragraphEnd = text.find('\n', paragraphStart);
-			if (paragraphEnd == std::string_view::npos) paragraphEnd = text.size();
-			const std::string_view paragraph = text.substr(paragraphStart, paragraphEnd - paragraphStart);
-			paragraphStart = paragraphEnd + 1;
-
-			// The line being built is paragraph[lineStart, lineEnd), words joined by single spaces
-			// exactly as in the source, so every line is a piece of the text.
-			std::size_t lineStart = 0;
-			std::size_t lineEnd = 0;
-			bool open = false;
-			const auto flushWrapped = [&]
-			{
-				std::string_view line = paragraph.substr(lineStart, lineEnd - lineStart);
-				while (!line.empty() && line.back() == ' ')
-					line.remove_suffix(1);
-				lines.push_back(line);
-				open = false;
-			};
-
-			std::size_t pos = 0;
-			while (pos <= paragraph.size())
-			{
-				std::size_t wordEnd = paragraph.find(' ', pos);
-				if (wordEnd == std::string_view::npos) wordEnd = paragraph.size();
-				const std::size_t length = wordEnd - pos;
-				const std::size_t needed = open ? wordEnd - lineStart : length;
-				if (needed <= maxChars)
-				{
-					if (!open)
-					{
-						lineStart = pos;
-						open = true;
-					}
-					lineEnd = wordEnd;
-				}
-				else if (length > 0)
-				{
-					if (open) flushWrapped();
-					std::size_t at = pos;
-					while (wordEnd - at > maxChars)
-					{
-						lines.push_back(paragraph.substr(at, maxChars));
-						at += maxChars;
-					}
-					lineStart = at;
-					lineEnd = wordEnd;
-					open = true;
-				}
-				pos = wordEnd + 1;
-			}
-			if (open) lines.push_back(paragraph.substr(lineStart, lineEnd - lineStart));
-		}
+			lines.push_back(line);
+		});
 		return lines;
 	}
 
 	TextSize MeasureText(const BitmapFont& font, std::string_view text, int maxWidth, int scale)
 	{
-		const std::vector<std::string_view> lines = WrapText(font, text, maxWidth, scale);
 		std::size_t widest = 0;
-		for (const std::string_view line : lines)
+		int count = 0;
+		ForEachLine(font, text, maxWidth, scale, [&](std::string_view line)
+		{
 			widest = std::max(widest, line.size());
-		return {.width = static_cast<int>(widest) * font.advance * scale,
-		        .height = static_cast<int>(lines.size()) * font.lineHeight * scale};
+			++count;
+		});
+		return {.width = static_cast<int>(widest) * font.advance * scale, .height = count * font.lineHeight * scale};
 	}
 
 	int TextWidth(const BitmapFont& font, std::string_view text, int scale)
