@@ -109,7 +109,7 @@ TEST_CASE("Range is roughly uniform", "[core][random]")
 	}
 }
 
-TEST_CASE("Unit is in [0, 1) and Chance follows its probability", "[core][random]")
+TEST_CASE("Unit stays below one and Chance follows its probability", "[core][random]")
 {
 	Random random(3);
 	float sum = 0;
