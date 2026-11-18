@@ -4,8 +4,14 @@ file(GLOB_RECURSE GAME_HEADERS CONFIGURE_DEPENDS include/*.hpp)
 file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(game ${GAME_SOURCES} ${GAME_HEADERS})
+# Hide the console window in every config except Debug (Windows only; ignored elsewhere). Debug
+# keeps the console so stdout/stderr output stays visible. SDL_main.h in main.cpp supplies the
+# WinMain entry point a GUI-subsystem executable needs.
+set_target_properties(game PROPERTIES WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>>")
 target_include_directories(game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(game PRIVATE engine::engine engine::warnings)
+# SDL3::SDL3 is linked directly only so main.cpp can include <SDL3/SDL_main.h>; the rest of the
+# game code still goes through the engine and never touches SDL headers.
+target_link_libraries(game PRIVATE engine::engine engine::warnings SDL3::SDL3)
 
 # Mirror the folder layout as IDE filters: include/ and src/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${GAME_SOURCES} ${GAME_HEADERS})
