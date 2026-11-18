@@ -47,6 +47,13 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   clips intersect and things wholly outside are culled. `DrawBatch::Runs()` splits the indices wherever the clip changes (in
   layer order, so a clip never reorders what is drawn), and `Renderer2D` sets SDL's clip rect once per run. `Sprite` gains
   `width` and `height` to stretch a picture to a size (0 keeps its own), for panel pieces and bars.
+- `ui/`: mechanisms for screens, with no look of their own. `Hitbox` and `Interactable` give `Hovered`, `Pressed` and a
+  `Clicked` event (press and release on the same enabled entity; the top-most hitbox by layer wins, blocking panels hide
+  what is under them, and clipped-out parts don't count, in world or screen space). `PointerState::clickConsumed` lets a world
+  click, like placing a tower, skip a click the UI took. `FocusOrder` and `Focused` give Tab and Shift+Tab navigation,
+  `NinePatch` draws a stretchable panel from nine child sprites (`NinePatchLayout` is the pure part), and `ScrollView` scrolls
+  its content child by wheel or drag, clamped. Systems: `UiPointerSystem`, `UiFocusSystem`, `ScrollViewSystem`,
+  `NinePatchSystem`. Phase 11 of [docs/babel-support.md](docs/babel-support.md).
 
 ### Changed
 
