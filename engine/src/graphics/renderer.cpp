@@ -18,19 +18,19 @@ namespace engine::graphics
 		renderer = SDL_CreateRenderer(window.GetWindowHandle(), nullptr);
 		if (renderer == nullptr)
 		{
-			SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateRenderer failed: %s", SDL_GetError());
 			return;
 		}
 
 		if (!SDL_SetRenderLogicalPresentation(renderer, renderWidth, renderHeight,
 		                                      SDL_LOGICAL_PRESENTATION_INTEGER_SCALE))
 		{
-			SDL_Log("SDL_SetRenderLogicalPresentation failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderLogicalPresentation failed: %s", SDL_GetError());
 		}
 
 		if (!SDL_SetRenderVSync(renderer, 1))
 		{
-			SDL_Log("SDL_SetRenderVSync failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderVSync failed: %s", SDL_GetError());
 		}
 	}
 
@@ -61,20 +61,20 @@ namespace engine::graphics
 		                                         image.Width(), image.Height());
 		if (texture == nullptr)
 		{
-			SDL_Log("SDL_CreateTexture failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateTexture failed: %s", SDL_GetError());
 			return kNoTexture;
 		}
 		if (!SDL_UpdateTexture(texture, nullptr, image.Pixels().data(), image.Width() * 4))
 		{
-			SDL_Log("SDL_UpdateTexture failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_UpdateTexture failed: %s", SDL_GetError());
 		}
 		if (!SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND))
 		{
-			SDL_Log("SDL_SetTextureBlendMode failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetTextureBlendMode failed: %s", SDL_GetError());
 		}
 		if (!SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST))
 		{
-			SDL_Log("SDL_SetTextureScaleMode failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetTextureScaleMode failed: %s", SDL_GetError());
 		}
 
 		textures.push_back(texture);

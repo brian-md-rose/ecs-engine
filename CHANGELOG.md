@@ -9,6 +9,16 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `core/log.hpp`: `LogSession` and `Log`/`LogInfo`/`LogWarning`/`LogError` write timestamped, levelled
+  messages to a log file (the previous run's kept as `log.old.txt`) and, in Debug builds, the console.
+  SDL's log is routed through it. The game logs to `log.txt` next to its save file.
+
+### Changed
+
+- The engine's and the game's error messages go through the log instead of straight to stderr.
+
 ## [0.1.0] - 2026-11-18
 
 First release. The engine as of roadmap phases 0 to 9: sparse-set ECS, scheduler with states, event bus,

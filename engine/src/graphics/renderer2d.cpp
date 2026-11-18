@@ -78,7 +78,7 @@ namespace engine::graphics
 		                        static_cast<int>(sdlVertices.size()), batch.Indices().data(),
 		                        static_cast<int>(batch.Indices().size())))
 		{
-			SDL_Log("SDL_RenderGeometry failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_RenderGeometry failed: %s", SDL_GetError());
 		}
 	}
 } // namespace engine::graphics

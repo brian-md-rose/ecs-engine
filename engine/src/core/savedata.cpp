@@ -1,6 +1,6 @@
 #include "core/savedata.hpp"
 
-#include <cstdio>
+#include "core/log.hpp"
 #include <fstream>
 #include <system_error>
 #include <utility>
@@ -117,7 +117,7 @@ namespace engine::core
 		if (file.has_parent_path()) std::filesystem::create_directories(file.parent_path(), error);
 		if (error)
 		{
-			std::fprintf(stderr, "%s: can't make the folder: %s\n", PathText(file).c_str(), error.message().c_str());
+			LogError(PathText(file) + ": can't make the folder: " + error.message());
 			return false;
 		}
 
@@ -129,7 +129,7 @@ namespace engine::core
 			stream.flush();
 			if (!stream)
 			{
-				std::fprintf(stderr, "%s: can't write the file\n", PathText(temporary).c_str());
+				LogError(PathText(temporary) + ": can't write the file");
 				std::filesystem::remove(temporary, error);
 				return false;
 			}
@@ -138,7 +138,7 @@ namespace engine::core
 		std::filesystem::rename(temporary, file, error); // replaces file if it exists
 		if (error)
 		{
-			std::fprintf(stderr, "%s: can't replace the file: %s\n", PathText(file).c_str(), error.message().c_str());
+			LogError(PathText(file) + ": can't replace the file: " + error.message());
 			std::filesystem::remove(temporary, error);
 			return false;
 		}

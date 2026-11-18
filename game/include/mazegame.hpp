@@ -59,8 +59,8 @@ namespace game
 		};
 
 		// Starts on the first maze, assets/mazes/level1.txt next to the executable, with the rest
-		// of assets/ (see LoadGameAssets). If something can't be loaded, the error is printed to
-		// stderr and the game is not valid: don't run it.
+		// of assets/ (see LoadGameAssets). If something can't be loaded, the error is written to
+		// the log and the game is not valid: don't run it.
 		MazeGame();
 
 		// Starts on the given maze, which ParseTileMap has accepted (tests build one in code).

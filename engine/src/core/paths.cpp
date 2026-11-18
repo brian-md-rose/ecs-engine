@@ -13,7 +13,7 @@ namespace engine::core
 		const char* base = SDL_GetBasePath();
 		if (base == nullptr)
 		{
-			SDL_Log("SDL_GetBasePath failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GetBasePath failed: %s", SDL_GetError());
 			return {};
 		}
 		// SDL returns UTF-8. Say so, or Windows would read it in the local code page.
@@ -26,7 +26,7 @@ namespace engine::core
 		char* folder = SDL_GetPrefPath(organisation, application);
 		if (folder == nullptr)
 		{
-			SDL_Log("SDL_GetPrefPath failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GetPrefPath failed: %s", SDL_GetError());
 			return {};
 		}
 		std::filesystem::path path(std::u8string(reinterpret_cast<const char8_t*>(folder)));

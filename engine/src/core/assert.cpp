@@ -1,7 +1,9 @@
 #include "core/assert.hpp"
 
-#include <cstdio>
 #include <cstdlib>
+#include <string>
+
+#include "core/log.hpp"
 
 namespace engine
 {
@@ -9,8 +11,8 @@ namespace engine
 	{
 		void DefaultAssertHandler(const char* expression, const char* message, const char* file, int line)
 		{
-			std::fprintf(stderr, "Assertion failed: %s\n  %s\n  at %s:%d\n", expression, message, file, line);
-			std::fflush(stderr);
+			core::LogError(std::string("Assertion failed: ") + expression + "\n  " + message + "\n  at " + file + ":" +
+			               std::to_string(line));
 			std::abort();
 		}
 

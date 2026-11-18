@@ -1,10 +1,10 @@
 #include "assets.hpp"
 
-#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "core/log.hpp"
 #include "core/text.hpp"
 #include "graphics/image.hpp"
 #include "graphics/sheetmanifest.hpp"
@@ -35,14 +35,14 @@ namespace game
 		    {"player_right", "player_down", "player_up", "player_death", "grit", "snare", "clasp", "wisp", "frightened",
 		     "frightened_flash", "returning", "pellet", "power_pellet", "door"}};
 
-		// The sheet, or nothing with the error printed to stderr.
+		// The sheet, or nothing with the error logged.
 		[[nodiscard]] std::optional<PixelSheet> LoadSheet(const std::filesystem::path& file)
 		{
 			engine::graphics::PixelSheetResult result = engine::graphics::LoadSheetFile(file);
 			if (!result.sheet)
 			{
 				const std::string message = engine::core::FormatError(engine::core::PathText(file), result.error);
-				std::fprintf(stderr, "%s\n", message.c_str());
+				engine::core::LogError(message);
 			}
 			return std::move(result.sheet);
 		}
@@ -187,7 +187,7 @@ namespace game
 			{
 				list += (list.empty() ? "" : ", ") + name;
 			}
-			std::fprintf(stderr, "%s: missing sprites: %s\n", engine::core::PathText(spriteFile).c_str(), list.c_str());
+			engine::core::LogError(engine::core::PathText(spriteFile) + ": missing sprites: " + list);
 			return std::nullopt;
 		}
 
@@ -196,7 +196,7 @@ namespace game
 		if (!difficulty.table)
 		{
 			const std::string message = engine::core::FormatError(engine::core::PathText(levels), difficulty.error);
-			std::fprintf(stderr, "%s\n", message.c_str());
+			engine::core::LogError(message);
 			return std::nullopt;
 		}
 

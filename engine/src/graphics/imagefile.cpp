@@ -57,7 +57,7 @@ namespace engine::graphics
 		    SDL_CreateSurfaceFrom(image.Width(), image.Height(), SDL_PIXELFORMAT_RGBA32, pixels, image.Width() * 4));
 		if (!surface || !SDL_SavePNG(surface.get(), path.c_str()))
 		{
-			SDL_Log("SaveImage failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SaveImage failed: %s", SDL_GetError());
 			return false;
 		}
 		return true;

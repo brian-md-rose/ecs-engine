@@ -46,7 +46,7 @@ namespace engine::application
 		// this only initialises SDL's core so SDL_Quit below has something to pair with.
 		if (!SDL_Init(0))
 		{
-			SDL_Log("SDL_Init failed: %s", SDL_GetError());
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed: %s", SDL_GetError());
 		}
 	}
 
