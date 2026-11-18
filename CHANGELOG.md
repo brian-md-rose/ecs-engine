@@ -19,6 +19,9 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   is capped at 64 levels. Phase 10 of [docs/babel-support.md](docs/babel-support.md).
 - `core/files.hpp`: `WriteFileAtomic`, the temporary-file-then-rename write that `WriteSaveData` and
   `WriteJson` share.
+- `core/random.hpp`: `Random`, a PCG32 generator that gives the same numbers on MSVC, GCC and Clang (no `<random>`
+  distributions). `Range` has no modulo bias, and there are `Unit`, `Chance`, `Shuffle`, `PickWeighted`, `Fork(name)`
+  for independent named streams, and `State()` for saving a run mid-way.
 
 ### Changed
 
