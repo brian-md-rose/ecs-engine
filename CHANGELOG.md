@@ -27,9 +27,20 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   application loop, debug panel) is `engine::platform`, which links `engine::core` publicly; a game links just that. Tests split the same way:
   `engine_core_tests` (no SDL) and `engine_tests` (platform).
 - `core/sdllog.hpp`: `RouteSdlLog()` sends SDL's log through `core::Log`.
+- `input/input.hpp`: `input::Input`, everything the player does in one update (the keyboard, and `typed`, the UTF-8 text
+  typed since the last update, for name fields). `Application` owns one and fills it from SDL; tests build one by hand.
+- `input::Key` now has the keys a PC game needs: A to Z, `Num0` to `Num9`, F1 to F12, Tab, Backspace, Delete, Home, End,
+  PageUp, PageDown, Shift, Ctrl and Alt (left and right count as one). They are one table, `ENGINE_KEY_LIST` in
+  `input/keys.hpp`, which also builds the SDL scancode map, so a new key is a one-line change.
 
 ### Changed
 
+- **Breaking:** `Game::Update` and `ScheduledGame::Update` take `const input::Input&` instead of `const input::Keyboard&`, and
+  `ecs::FrameContext::keyboard` is replaced by `ecs::FrameContext::input`. Migrating a game (Sky Hop): in a `Game`
+  subclass, change the parameter type; in systems, `context.keyboard->WasPressed(k)` becomes
+  `context.input->keyboard.WasPressed(k)` (search for `context.keyboard` and `context.keyboard->`); in tests, keep an
+  `input::Input input;` instead of an `input::Keyboard keyboard;`, call `input.keyboard.OnKeyDown(...)`, and
+  `input.EndUpdate()` after each update. `Keyboard` itself is unchanged.
 - **Breaking:** the library target `engine::engine` is now `engine::platform` (the SDL platform), with the SDL-free part split
   out as `engine::core`. Change `target_link_libraries(... engine::engine)` to `engine::platform`.
 - `LogSession` no longer installs the SDL log routing itself (it is SDL-free now). Call `core::RouteSdlLog()` after

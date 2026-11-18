@@ -9,7 +9,7 @@
 #include "gameflow.hpp"
 #include "graphics/font.hpp"
 #include "hud.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "nameentry.hpp"
 #include "options.hpp"
@@ -42,7 +42,7 @@ namespace
 	struct Harness
 	{
 		game::MazeGame maze{TestMaze()};
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		[[nodiscard]] Stage CurrentStage() const { return gametest::StageOf(maze); }
 		[[nodiscard]] bool Paused() const { return gametest::IsPaused(maze); }
@@ -52,16 +52,16 @@ namespace
 		{
 			for (int i = 0; i < steps; ++i)
 			{
-				maze.Update(kStep, keyboard);
-				keyboard.EndUpdate();
+				maze.Update(kStep, input);
+				input.EndUpdate();
 			}
 		}
 
 		void Tap(Key key)
 		{
-			keyboard.OnKeyDown(key);
+			input.keyboard.OnKeyDown(key);
 			Update();
-			keyboard.OnKeyUp(key);
+			input.keyboard.OnKeyUp(key);
 			Update();
 		}
 

@@ -10,7 +10,7 @@
 #include "ecs/world.hpp"
 #include "graphics/font.hpp"
 #include "graphics/shape.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 
 namespace
 {
@@ -99,26 +99,26 @@ TEST_CASE("The toggle key shows the panel's entities and hides them again", "[de
 	CHECK(scheduler.SystemCount(Phase::Input) == 1);
 	CHECK(scheduler.SystemCount(Phase::Render) == 1);
 
-	engine::input::Keyboard keyboard;
+	engine::input::Input input;
 	const auto update = [&]()
 	{
-		scheduler.Run(Phase::Input, world, engine::ecs::FrameContext{.keyboard = &keyboard});
-		keyboard.EndUpdate();
+		scheduler.Run(Phase::Input, world, engine::ecs::FrameContext{.input = &input});
+		input.EndUpdate();
 	};
 
 	update();
 	const DebugPanel& panel = world.resources.Get<DebugPanel>();
 	CHECK_FALSE(panel.visible);
 
-	keyboard.OnKeyDown(engine::input::Key::F3);
+	input.keyboard.OnKeyDown(engine::input::Key::F3);
 	update();
 	REQUIRE(panel.visible);
 	CHECK(world.registry.HasComponent<engine::graphics::Text>(panel.text));
 	CHECK(world.registry.HasComponent<engine::graphics::Shape>(panel.background));
 	const engine::ecs::Entity text = panel.text;
 
-	keyboard.OnKeyUp(engine::input::Key::F3);
-	keyboard.OnKeyDown(engine::input::Key::F3);
+	input.keyboard.OnKeyUp(engine::input::Key::F3);
+	input.keyboard.OnKeyDown(engine::input::Key::F3);
 	update();
 	CHECK_FALSE(panel.visible);
 	CHECK_FALSE(world.registry.IsAlive(text));

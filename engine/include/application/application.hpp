@@ -4,7 +4,7 @@
 #include "core/clock.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 
 namespace engine::application
 {
@@ -25,11 +25,11 @@ namespace engine::application
 		virtual ~Game() = default;
 
 		// Called at a fixed rate (1 / ApplicationConfig::updateRate seconds, passed as dt),
-		// zero or more times per frame. Run ECS systems here. The keyboard's pressed/released
-		// edges are cleared after each call, so each press is seen by exactly one update.
+		// zero or more times per frame. Run ECS systems here. The input's pressed/released
+		// edges and typed text are cleared after each call, so each press is seen by exactly one update.
 		// Mapping keys to game actions is the game's job. audio plays sound effects; it is null
 		// when there is nothing to play them on (tests), and silent when there is no device.
-		virtual void Update(double dt, const input::Keyboard& keyboard, audio::AudioDevice* audio) = 0;
+		virtual void Update(double dt, const input::Input& input, audio::AudioDevice* audio) = 0;
 
 		// Called once per frame: clear and draw. Application presents the frame afterwards.
 		// alpha in [0, 1) is how far the game is into the next update, for optional
@@ -62,10 +62,10 @@ namespace engine::application
 		graphics::Window window;
 		graphics::Renderer renderer;
 		audio::AudioDevice audio;
-		input::Keyboard keyboard;
+		input::Input input;
 		double updateStep;
 
-		// Drains pending SDL events, feeding key events to keyboard. Returns false once the
+		// Drains pending SDL events, feeding keyboard and text events to input. Returns false once the
 		// window has been asked to close.
 		bool PumpEvents();
 

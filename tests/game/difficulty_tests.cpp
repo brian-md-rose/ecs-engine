@@ -12,7 +12,7 @@
 #include "ecs/states.hpp"
 #include "enemytuning.hpp"
 #include "gameflow.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "mazegame.hpp"
 #include "stage.hpp"
 #include "tilemap.hpp"
@@ -179,18 +179,18 @@ TEST_CASE("A new level sets the player to that level's speed", "[game][difficult
 		});
 		return speed;
 	};
-	engine::input::Keyboard keyboard;
-	game.Update(1.0 / 60.0, keyboard); // enters the title
+	engine::input::Input input;
+	game.Update(1.0 / 60.0, input); // enters the title
 	gametest::RequestPlaying(game);
-	game.Update(1.0 / 60.0, keyboard);
+	game.Update(1.0 / 60.0, input);
 	CHECK(playerSpeed() == 7.5f);
 
 	// Straight to the end of level 1.
 	game.world.resources.Get<engine::ecs::NextState<game::Screen>>().Set(game::Screen::LevelTransition);
-	game.Update(1.0 / 60.0, keyboard); // enters the level screen
+	game.Update(1.0 / 60.0, input); // enters the level screen
 	for (int i = 0; i < 10 * 60 && gametest::StageOf(game) != gametest::Stage::Ready; ++i)
 	{
-		game.Update(1.0 / 60.0, keyboard);
+		game.Update(1.0 / 60.0, input);
 	}
 	REQUIRE(game.world.resources.Get<game::GameFlow>().level == 2);
 	CHECK(playerSpeed() == 8.0f);

@@ -24,10 +24,10 @@ namespace engine::application
 		ecs::World world;
 		ecs::Scheduler scheduler;
 
-		void Update(double dt, const input::Keyboard& keyboard, audio::AudioDevice* audio) override;
+		void Update(double dt, const input::Input& input, audio::AudioDevice* audio) override;
 
 		// An update with no sound, for tests.
-		void Update(double dt, const input::Keyboard& keyboard) { Update(dt, keyboard, nullptr); }
+		void Update(double dt, const input::Input& input) { Update(dt, input, nullptr); }
 		void Render(graphics::Renderer& renderer, double alpha) override;
 	};
 } // namespace engine::application

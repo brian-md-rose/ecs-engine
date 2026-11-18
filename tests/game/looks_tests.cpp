@@ -11,7 +11,7 @@
 #include "graphics/animation.hpp"
 #include "graphics/sprite.hpp"
 #include "grid/direction.hpp"
-#include "input/keyboard.hpp"
+#include "input/input.hpp"
 #include "looks.hpp"
 #include "mazegame.hpp"
 #include "stage.hpp"
@@ -39,7 +39,7 @@ namespace
 	struct Harness
 	{
 		game::MazeGame maze;
-		engine::input::Keyboard keyboard;
+		engine::input::Input input;
 
 		Harness() : maze(Maze(), Assets())
 		{
@@ -70,16 +70,16 @@ namespace
 		{
 			for (int i = 0; i < steps; ++i)
 			{
-				maze.Update(kStep, keyboard);
-				keyboard.EndUpdate();
+				maze.Update(kStep, input);
+				input.EndUpdate();
 			}
 		}
 
 		void Tap(Key key)
 		{
-			keyboard.OnKeyDown(key);
+			input.keyboard.OnKeyDown(key);
 			Update();
-			keyboard.OnKeyUp(key);
+			input.keyboard.OnKeyUp(key);
 			Update();
 		}
 

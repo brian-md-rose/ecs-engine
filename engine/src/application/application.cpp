@@ -5,6 +5,7 @@
 
 #include "core/fixedtimestep.hpp"
 #include "core/sdllog.hpp"
+#include "input/input.hpp"
 
 namespace engine::application
 {
@@ -16,17 +17,26 @@ namespace engine::application
 			input::Key key;
 		};
 
-		// A table rather than a switch: SDL_Scancode has hundreds of enumerators and /Wall
-		// warns about every one a switch leaves unhandled.
-		constexpr KeyMapping kKeyMap[] = {
-		    {SDL_SCANCODE_UP, input::Key::Up},        {SDL_SCANCODE_DOWN, input::Key::Down},
-		    {SDL_SCANCODE_LEFT, input::Key::Left},    {SDL_SCANCODE_RIGHT, input::Key::Right},
-		    {SDL_SCANCODE_W, input::Key::W},          {SDL_SCANCODE_A, input::Key::A},
-		    {SDL_SCANCODE_S, input::Key::S},          {SDL_SCANCODE_D, input::Key::D},
-		    {SDL_SCANCODE_P, input::Key::P},          {SDL_SCANCODE_SPACE, input::Key::Space},
-		    {SDL_SCANCODE_RETURN, input::Key::Enter}, {SDL_SCANCODE_ESCAPE, input::Key::Escape},
-		    {SDL_SCANCODE_F1, input::Key::F1},        {SDL_SCANCODE_F3, input::Key::F3},
-		};
+		// Built from the one key table (input/keys.hpp), so a new key needs no change here. A table
+		// rather than a switch: SDL_Scancode has hundreds of enumerators and /Wall warns about every
+		// one a switch leaves unhandled.
+#define ENGINE_KEY_MAPPING(name, sdl) {SDL_SCANCODE_##sdl, input::Key::name},
+		constexpr KeyMapping kKeyMap[] = {ENGINE_KEY_LIST(ENGINE_KEY_MAPPING)
+		                                      ENGINE_KEY_ALIAS_LIST(ENGINE_KEY_MAPPING)};
+#undef ENGINE_KEY_MAPPING
+
+		// True if another physical key that counts as key (the other Shift, say) is still held, so
+		// letting go of one of a pair doesn't release the key while the other is down.
+		bool OtherPhysicalKeyHeld(input::Key key, SDL_Scancode released)
+		{
+			const bool* state = SDL_GetKeyboardState(nullptr);
+			if (state == nullptr) return false;
+			for (const KeyMapping& mapping : kKeyMap)
+			{
+				if (mapping.key == key && mapping.scancode != released && state[mapping.scancode]) return true;
+			}
+			return false;
+		}
 
 		std::optional<input::Key> ToKey(SDL_Scancode scancode)
 		{
@@ -76,6 +86,12 @@ namespace engine::application
 			return 1;
 		}
 
+		// SDL3 sends no SDL_EVENT_TEXT_INPUT until text input is started on the window.
+		if (!SDL_StartTextInput(window.GetWindowHandle()))
+		{
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SDL_StartTextInput failed, no typed text: %s", SDL_GetError());
+		}
+
 		core::FixedTimestep timestep(updateStep);
 		double previous = clock.Now();
 
@@ -87,8 +103,8 @@ namespace engine::application
 
 			for (int i = 0; i < updates; ++i)
 			{
-				game.Update(timestep.Step(), keyboard, &audio);
-				keyboard.EndUpdate();
+				game.Update(timestep.Step(), input, &audio);
+				input.EndUpdate();
 			}
 
 			game.Render(renderer, timestep.Alpha());
@@ -112,18 +128,21 @@ namespace engine::application
 			case SDL_EVENT_KEY_DOWN:
 				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
-					keyboard.OnKeyDown(*key);
+					input.keyboard.OnKeyDown(*key);
 				}
 				break;
 			case SDL_EVENT_KEY_UP:
 				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
-					keyboard.OnKeyUp(*key);
+					if (!OtherPhysicalKeyHeld(*key, event.key.scancode)) input.keyboard.OnKeyUp(*key);
 				}
+				break;
+			case SDL_EVENT_TEXT_INPUT:
+				if (event.text.text != nullptr) input.OnText(event.text.text);
 				break;
 			case SDL_EVENT_WINDOW_FOCUS_LOST:
 				// Key-ups for keys released while unfocused never arrive; don't leave them stuck.
-				keyboard.ReleaseAll();
+				input.ReleaseAll();
 				break;
 			default:
 				break;
