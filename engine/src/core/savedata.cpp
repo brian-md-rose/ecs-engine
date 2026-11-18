@@ -1,12 +1,12 @@
 #include "core/savedata.hpp"
 
-#include "core/log.hpp"
 #include <fstream>
 #include <system_error>
 #include <utility>
 #include <vector>
 
 #include "core/assert.hpp"
+#include "core/log.hpp"
 
 namespace engine::core
 {

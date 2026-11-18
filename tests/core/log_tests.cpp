@@ -80,3 +80,16 @@ TEST_CASE("A log file that can't be opened doesn't stop the session", "[log]")
 	std::error_code error;
 	CHECK_FALSE(std::filesystem::exists(file, error));
 }
+
+TEST_CASE("Messages below the minimum level are dropped", "[log]")
+{
+	const std::filesystem::path file = FreshFolder("minimum") / "log.txt";
+	{
+		const LogSession session({.file = file, .minimumLevel = LogLevel::Warning, .console = false});
+		LogInfo("dropped");
+		LogWarning("kept");
+	}
+	const std::string text = ReadAll(file);
+	CHECK_FALSE(Contains(text, "dropped"));
+	CHECK(Contains(text, "[WARN ] kept\n"));
+}
