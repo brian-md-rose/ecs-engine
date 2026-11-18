@@ -12,7 +12,8 @@ target_compile_definitions(engine PUBLIC $<$<CONFIG:Debug>:ENGINE_ENABLE_ASSERTS
 
 target_include_directories(engine PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_compile_features(engine PUBLIC cxx_std_20)
-# SDL3 is PRIVATE: only engine .cpp files may include SDL headers. The game
+# SDL3 is PRIVATE: only engine .cpp files may include SDL headers (the game links SDL3 itself
+# just for SDL_main.h in main.cpp). The game
 # still links SDL through the engine, since engine is a static library.
 target_link_libraries(engine PRIVATE engine::warnings SDL3::SDL3)
 

@@ -5,7 +5,7 @@
 
 using engine::application::Application;
 
-int main()
+int main(int, char**) // SDL_main.h renames this to SDL_main and calls it with argc and argv
 {
 	Application app(game::MazeGame::kConfig);
 	game::MazeGame game;
