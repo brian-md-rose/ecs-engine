@@ -8,6 +8,7 @@
 #include <string>
 #include <system_error>
 
+#include "core/assert.hpp"
 #include "core/text.hpp"
 
 namespace engine::core
@@ -76,6 +77,7 @@ namespace engine::core
 		}
 
 		// SDL's log output function: SDL_Log and friends end up in Log.
+		// Log takes the state mutex, so nothing that holds it may log through SDL (it would deadlock).
 		void SDLCALL WriteSdlMessage(void*, int, SDL_LogPriority priority, const char* message)
 		{
 			Log(FromSdl(priority), message != nullptr ? message : "");
@@ -86,6 +88,7 @@ namespace engine::core
 	{
 		LogState& state = State();
 		std::string problem;
+		bool overlapping = false;
 		{
 			const std::lock_guard<std::mutex> lock(state.mutex);
 			state.minimumLevel = config.minimumLevel;
@@ -106,10 +109,13 @@ namespace engine::core
 				state.file.open(config.file, std::ios::binary | std::ios::trunc);
 				if (!state.file) problem = PathText(config.file) + ": can't open the log file";
 			}
-			if (!state.active) SDL_GetLogOutputFunction(&state.previousOutput, &state.previousUserData);
+			overlapping = state.active;
+			if (!overlapping) SDL_GetLogOutputFunction(&state.previousOutput, &state.previousUserData);
 			SDL_SetLogOutputFunction(&WriteSdlMessage, nullptr);
 			state.active = true;
 		}
+		// After the lock: the assert handler logs, and the mutex isn't recursive.
+		ENGINE_ASSERT(!overlapping, "only one LogSession can exist at a time");
 		if (!problem.empty()) Log(LogLevel::Error, problem);
 		if (!config.file.empty()) Log(LogLevel::Info, "Logging to " + PathText(config.file));
 	}
@@ -121,6 +127,7 @@ namespace engine::core
 		state.file.close();
 		state.active = false;
 		if (state.previousOutput != nullptr) SDL_SetLogOutputFunction(state.previousOutput, state.previousUserData);
+		state.previousOutput = nullptr;
 	}
 
 	void Log(LogLevel level, std::string_view message)
