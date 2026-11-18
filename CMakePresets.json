@@ -48,6 +48,20 @@
         "CMAKE_CXX_COMPILER": "g++",
         "ENGINE_SANITIZE": "ON"
       }
+    },
+    {
+      "name": "ninja-bench",
+      "displayName": "Ninja + GCC (Release, benchmarks only)",
+      "description": "Optimized build of the engine and engine_benchmarks; the game and tests are skipped.",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++",
+        "ENGINE_BUILD_GAME": "OFF",
+        "ENGINE_BUILD_TESTS": "OFF",
+        "ENGINE_BUILD_BENCHMARKS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -62,7 +76,15 @@
     { "name": "release",     "inherits": "msvc-base", "configuration": "Release" },
     { "name": "ninja-gcc",   "configurePreset": "ninja-gcc" },
     { "name": "ninja-clang", "configurePreset": "ninja-clang" },
-    { "name": "ninja-asan",  "configurePreset": "ninja-asan" }
+    { "name": "ninja-asan",  "configurePreset": "ninja-asan" },
+    {
+      "name": "bench",
+      "inherits": "msvc-base",
+      "configuration": "Release",
+      "targets": ["engine_benchmarks"],
+      "description": "Release build of engine_benchmarks with the msvc configure preset."
+    },
+    { "name": "ninja-bench", "configurePreset": "ninja-bench", "targets": ["engine_benchmarks"] }
   ],
   "testPresets": [
     {

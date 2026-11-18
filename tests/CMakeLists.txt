@@ -1,10 +1,4 @@
-include(FetchContent)
-FetchContent_Declare(Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.7.1
-    GIT_SHALLOW    TRUE
-    SYSTEM)
-FetchContent_MakeAvailable(Catch2)
+# Catch2 is fetched by the top-level CMakeLists.txt (the benchmarks use it too).
 
 # Every test file, picked up automatically (CONFIGURE_DEPENDS re-globs on each build).
 # Files under game/ test the game and go in game_tests; everything else tests the engine.

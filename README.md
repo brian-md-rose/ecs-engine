@@ -85,6 +85,7 @@ game/     Tangle Run, the game executable
   assets/   mazes, levels, sprites and font, copied next to the executable on every build
   include/ src/
 tests/    Catch2 unit tests for the engine and the game's SDL-free logic
+benchmarks/  Catch2 benchmarks for Registry iteration and component add/remove churn
 docs/     roadmap, style guide, file formats, enemy design and decision records
 thirdparty/SDL   SDL3, as a git submodule
 ```
@@ -123,8 +124,27 @@ ctest --preset ninja-clang
 
 Options:
 
-- `-DENGINE_BUILD_TESTS=OFF` skips the tests (and the Catch2 download).
+- `-DENGINE_BUILD_TESTS=OFF` skips the tests.
+- `-DENGINE_BUILD_BENCHMARKS=OFF` skips the benchmarks (with the tests also off, Catch2 isn't
+  downloaded).
 - `-DENGINE_BUILD_GAME=OFF` builds the engine only.
+
+**Benchmarks:** `engine_benchmarks` times `Registry::Each` and component add/remove churn at
+1k, 10k and 100k entities. Timings only mean something in an optimized build, so they have
+their own presets and aren't run by `ctest`:
+
+```bash
+# Windows: Release build with the msvc configure preset
+cmake --build --preset bench
+build/msvc/benchmarks/Release/engine_benchmarks.exe
+
+# Linux / macOS: Release, engine and benchmarks only
+cmake --preset ninja-bench
+cmake --build --preset ninja-bench
+./build/ninja-bench/benchmarks/engine_benchmarks
+```
+
+Pass `[iteration]` or `[churn]` to run one group, and `--benchmark-samples 20` for a quicker run.
 
 All targets build with every warning enabled and warnings as errors (`/Wall /WX /analyze` on
 MSVC), so new warnings fail the build. Code style is in [docs/STYLE.md](docs/STYLE.md).

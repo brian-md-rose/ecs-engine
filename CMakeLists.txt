@@ -11,6 +11,7 @@ endif()
 
 option(ENGINE_BUILD_GAME  "Build the game executable" ON)
 option(ENGINE_BUILD_TESTS "Build the engine tests"    ON)
+option(ENGINE_BUILD_BENCHMARKS "Build the ECS benchmarks" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -83,10 +84,26 @@ if(ENGINE_BUILD_GAME)
     set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT game)
 endif()
 
+# Catch2 runs both the tests and the benchmarks.
+if(ENGINE_BUILD_TESTS OR ENGINE_BUILD_BENCHMARKS)
+    include(FetchContent)
+    FetchContent_Declare(Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.7.1
+        GIT_SHALLOW    TRUE
+        SYSTEM)
+    FetchContent_MakeAvailable(Catch2)
+endif()
+
 if(ENGINE_BUILD_TESTS)
     if(NOT EXISTS ${PROJECT_SOURCE_DIR}/tests/CMakeLists.txt)
         message(FATAL_ERROR "ENGINE_BUILD_TESTS is ON but tests/CMakeLists.txt is missing.")
     endif()
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+
+if(ENGINE_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
