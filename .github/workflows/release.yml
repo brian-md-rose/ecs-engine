@@ -26,6 +26,7 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           awk -v v="$tag" '
             /^## \[/ { if (found) exit; if (index($0, "[" v "]")) { found = 1; next } }
+            /^\[[^]]+\]: / { if (found) exit }
             found { print }
           ' CHANGELOG.md > notes.md
           if [ ! -s notes.md ]; then
