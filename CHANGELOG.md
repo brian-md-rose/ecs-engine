@@ -32,6 +32,9 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 - `input::Key` now has the keys a PC game needs: A to Z, `Num0` to `Num9`, F1 to F12, Tab, Backspace, Delete, Home, End,
   PageUp, PageDown, Shift, Ctrl and Alt (left and right count as one). They are one table, `ENGINE_KEY_LIST` in
   `input/keys.hpp`, which also builds the SDL scancode map, so a new key is a one-line change.
+- `input/mouse.hpp`: `input::Mouse`, at `Input::mouse`: the pointer position in logical pixels (letterboxing is already
+  undone), `inside` the logical area, wheel notches, and Left, Right and Middle buttons with `IsDown`/`WasPressed`/
+  `WasReleased` edges that work like the keyboard's (a press and release inside one update still counts as a click).
 
 ### Changed
 

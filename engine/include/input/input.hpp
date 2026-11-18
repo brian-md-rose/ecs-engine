@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "input/keyboard.hpp"
+#include "input/mouse.hpp"
 
 namespace engine::input
 {
@@ -17,6 +18,7 @@ namespace engine::input
 	struct Input
 	{
 		Keyboard keyboard;
+		Mouse mouse;
 
 		// Text typed since the last update, as UTF-8, with case, punctuation and the keyboard
 		// layout applied (so "Shift+1" on a US layout is "!"). Keys alone can't give that; use

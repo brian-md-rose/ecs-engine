@@ -65,9 +65,11 @@ namespace engine::application
 		input::Input input;
 		double updateStep;
 
-		// Drains pending SDL events, feeding keyboard and text events to input. Returns false once the
+		// Drains pending SDL events, feeding keyboard, text and mouse events to input. Returns false once the
 		// window has been asked to close.
 		bool PumpEvents();
+		// Records the pointer at a logical-pixel position, and whether it is over the logical area.
+		void SetMousePosition(float x, float y);
 
 	public:
 		explicit Application(const ApplicationConfig& config);
