@@ -101,7 +101,10 @@ TEST_CASE("Range is roughly uniform", "[core][random]")
 	Random random(2024);
 	std::array<int, 6> counts{};
 	for (int i = 0; i < 60000; ++i)
-		++counts[static_cast<std::size_t>(random.Range(1, 6) - 1)];
+	{
+		const auto face = static_cast<std::size_t>(random.Range(1, 6) - 1);
+		++counts[face];
+	}
 	for (const int count : counts)
 	{
 		CHECK(count > 9500);
@@ -186,7 +189,10 @@ TEST_CASE("PickWeighted follows the weights", "[core][random]")
 	const std::array<float, 3> weights{{1.0F, 2.0F, 1.0F}};
 	std::array<int, 3> counts{};
 	for (int i = 0; i < 20000; ++i)
-		++counts[random.PickWeighted(weights)];
+	{
+		const std::size_t picked = random.PickWeighted(weights);
+		++counts[picked];
+	}
 	CHECK(counts[1] > 9500);
 	CHECK(counts[1] < 10500);
 	CHECK(counts[0] > 4500);
@@ -211,7 +217,10 @@ TEST_CASE("PickWeighted edge cases", "[core][random]")
 	const std::array<float, 3> zeros{{0.0F, 0.0F, 0.0F}};
 	std::array<int, 3> counts{};
 	for (int i = 0; i < 3000; ++i)
-		++counts[random.PickWeighted(zeros)];
+	{
+		const std::size_t picked = random.PickWeighted(zeros);
+		++counts[picked];
+	}
 	for (const int count : counts)
 		CHECK(count > 800);
 }
