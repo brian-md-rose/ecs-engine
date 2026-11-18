@@ -99,6 +99,8 @@ namespace engine::ui
 	// same rectangle, and `content` is a child (with graphics::Parent and LocalTransform) holding the
 	// rows. The wheel over the view, or dragging it with the left button, moves the content up and
 	// down; ScrollViewSystem keeps the content's LocalTransform y at -offset.
+	// It tests only its own Hitbox, so something drawn over it (a modal panel) doesn't stop it scrolling: a
+	// game with such panels should skip the scrolling while one is open.
 	struct ScrollView
 	{
 		ecs::Entity content = ecs::Entity::Null;

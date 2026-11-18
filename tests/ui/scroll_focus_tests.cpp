@@ -195,3 +195,22 @@ TEST_CASE("Shift+Tab with nothing focused starts at the end", "[ui][focus]")
 	CHECK(world.registry.HasComponent<engine::ui::Focused>(b));
 	CHECK_FALSE(world.registry.HasComponent<engine::ui::Focused>(a));
 }
+
+TEST_CASE("Tab moves on from a focused entity that has since been disabled", "[ui][focus]")
+{
+	World world;
+	Input input;
+	const Entity a = world.registry.Create();
+	const Entity b = world.registry.Create();
+	world.registry.Add<engine::ui::FocusOrder>(a, engine::ui::FocusOrder{.order = 1});
+	world.registry.Add<engine::ui::FocusOrder>(b, engine::ui::FocusOrder{.order = 2});
+	world.registry.Add<engine::ui::Focused>(a);
+	world.registry.Add<engine::ui::Interactable>(a, engine::ui::Interactable{.enabled = false});
+
+	input.keyboard.OnKeyDown(Key::Tab);
+	FrameContext context;
+	context.input = &input;
+	engine::ui::UiFocusSystem(world, context);
+	CHECK_FALSE(world.registry.HasComponent<engine::ui::Focused>(a));
+	CHECK(world.registry.HasComponent<engine::ui::Focused>(b));
+}

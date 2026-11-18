@@ -221,7 +221,8 @@ namespace engine::ui
 		{
 			if (!registry.HasComponent<NinePatchPieces>(entity))
 			{
-				NinePatchPieces& made = registry.Add<NinePatchPieces>(entity);
+				// Built in a local first: Create and Add must not run while a reference into a pool is held.
+				NinePatchPieces made;
 				for (ecs::Entity& piece : made.pieces)
 				{
 					piece = registry.Create();
@@ -229,6 +230,7 @@ namespace engine::ui
 					registry.Add<graphics::Transform>(piece);
 					registry.Add<graphics::LocalTransform>(piece);
 				}
+				registry.Add<NinePatchPieces>(entity, made);
 			}
 
 			const NinePatch patch = registry.GetComponent<NinePatch>(entity);
