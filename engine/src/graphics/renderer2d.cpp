@@ -74,11 +74,24 @@ namespace engine::graphics
 			sdlVertices.push_back({{vertex.position.x, vertex.position.y}, colour, {vertex.uv.x, vertex.uv.y}});
 		}
 
-		if (!SDL_RenderGeometry(renderer.GetRendererHandle(), handle, sdlVertices.data(),
-		                        static_cast<int>(sdlVertices.size()), batch.Indices().data(),
-		                        static_cast<int>(batch.Indices().size())))
+		// One draw call per stretch of the same clip rectangle; usually just one. The clip is in logical
+		// pixels, like everything else drawn here, and is switched off again afterwards.
+		SDL_Renderer* sdlRenderer = renderer.GetRendererHandle();
+		const int indexCount = static_cast<int>(batch.Indices().size());
+		for (const DrawBatch::Run& run : batch.Runs())
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_RenderGeometry failed: %s", SDL_GetError());
+			const SDL_Rect rect{run.clip.x, run.clip.y, run.clip.width, run.clip.height};
+			if (!SDL_SetRenderClipRect(sdlRenderer, run.clipped ? &rect : nullptr))
+			{
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderClipRect failed: %s", SDL_GetError());
+			}
+			if (run.firstIndex + run.indexCount > indexCount) break;
+			if (!SDL_RenderGeometry(sdlRenderer, handle, sdlVertices.data(), static_cast<int>(sdlVertices.size()),
+			                        batch.Indices().data() + run.firstIndex, run.indexCount))
+			{
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_RenderGeometry failed: %s", SDL_GetError());
+			}
 		}
+		SDL_SetRenderClipRect(sdlRenderer, nullptr);
 	}
 } // namespace engine::graphics
