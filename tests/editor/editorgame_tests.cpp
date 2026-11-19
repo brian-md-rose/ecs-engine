@@ -141,3 +141,14 @@ TEST_CASE("Play runs a copy and Stop leaves the edit world as it was", "[editor]
 	CHECK(game.EditWorld().registry.TryGetComponent<Transform>(edited)->position.x == 0.0F);
 	CHECK(game.EditWorld().registry.TryGetComponent<Name>(edited)->value == "a");
 }
+
+TEST_CASE("Edits made before Play still count as unsaved while playing", "[editor][game]")
+{
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(TempFolder("playdirty")));
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 0);
+	REQUIRE(game.StartPlay());
+	CHECK(game.IsDirty());
+	game.StopPlay();
+}

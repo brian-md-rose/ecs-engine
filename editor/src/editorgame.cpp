@@ -165,6 +165,7 @@ namespace engine::editor
 	bool EditorGame::StartPlay()
 	{
 		if (play) return true;
+		CheckDirty(); // so the prompt on New and Open while playing knows about edits made before Play
 		ecs::Issues issues;
 		const core::JsonValue snapshot = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
 		if (!issues.Ok())
@@ -229,7 +230,7 @@ namespace engine::editor
 
 	void EditorGame::Request(Action action, const std::string& name)
 	{
-		if (dirty && !play)
+		if (dirty)
 		{
 			pendingAction = action;
 			pendingName = name;
