@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <functional>
 
 #include "application/application.hpp"
 #include "application/editorhost.hpp"
@@ -41,7 +42,8 @@ namespace
 		void Update(double, const engine::input::Input&, engine::audio::AudioDevice*) override
 		{
 			++updates;
-			if (updates == 2)
+			if (onUpdate) onUpdate(updates);
+			if (pressF1 && updates == 2)
 			{
 				SDL_Event event{};
 				event.type = SDL_EVENT_KEY_DOWN;
@@ -56,6 +58,8 @@ namespace
 
 		int updates = 0;
 		int renders = 0;
+		bool pressF1 = true;
+		std::function<void(int)> onUpdate; // called from each update, with the update's number
 	};
 
 	class SpyHost final : public EditorHost
@@ -123,4 +127,78 @@ TEST_CASE("The editor overlay toggles with F1 and draws without trouble", "[edit
 	CHECK(editor.IsVisible()); // F1 was pressed once
 	CHECK(panelCalls == 0);    // panels start closed
 	CHECK(game.renders > 0);
+}
+
+TEST_CASE("An open panel is drawn every frame and may add panels", "[editor][application]")
+{
+	Application app(TestConfig());
+	ScriptedGame game;
+	game.pressF1 = false;
+	engine::editor::Editor editor;
+	int panelCalls = 0;
+	int innerCalls = 0;
+	editor.AddPanel("Outer", [&]
+	{
+		++panelCalls;
+		if (panelCalls == 1)
+		{
+			editor.AddPanel("Inner", [&innerCalls]
+			{
+				++innerCalls;
+			});
+			editor.SetPanelOpen("Inner", true);
+		}
+	});
+	CHECK(editor.SetPanelOpen("Outer", true));
+	CHECK_FALSE(editor.SetPanelOpen("Missing", true));
+	editor.SetVisible(true);
+	app.SetEditorHost(&editor);
+	if (app.Run(game) != 0) SKIP("no offscreen video driver");
+
+	CHECK(panelCalls == game.renders);
+	CHECK(innerCalls == game.renders); // drawn in the frame it was added, too
+}
+
+TEST_CASE("The editor swallows F1 but never a quit request", "[editor][application]")
+{
+	Application app(TestConfig());
+	ScriptedGame game;
+	game.pressF1 = false;
+	engine::editor::Editor editor;
+	bool f1Taken = false;
+	bool quitTaken = true;
+	bool keyTakenWhileHidden = true;
+	game.onUpdate = [&](int update)
+	{
+		if (update != 3) return;
+		SDL_Event quit{};
+		quit.type = SDL_EVENT_QUIT;
+		quitTaken = editor.OnEvent(&quit);
+		SDL_Event f1{};
+		f1.type = SDL_EVENT_KEY_DOWN;
+		f1.key.scancode = SDL_SCANCODE_F1;
+		f1Taken = editor.OnEvent(&f1);
+		SDL_Event other{};
+		other.type = SDL_EVENT_KEY_DOWN;
+		other.key.scancode = SDL_SCANCODE_A;
+		editor.SetVisible(false);
+		keyTakenWhileHidden = editor.OnEvent(&other);
+	};
+	app.SetEditorHost(&editor);
+	if (app.Run(game) != 0) SKIP("no offscreen video driver");
+
+	CHECK_FALSE(quitTaken);
+	CHECK(f1Taken);
+	CHECK_FALSE(keyTakenWhileHidden); // a hidden editor leaves every other event to the game
+}
+
+TEST_CASE("An editor that was never attached ignores events and wants no pointer", "[editor]")
+{
+	engine::editor::Editor editor;
+	editor.SetVisible(true);
+	SDL_Event f1{};
+	f1.type = SDL_EVENT_KEY_DOWN;
+	f1.key.scancode = SDL_SCANCODE_F1;
+	CHECK_FALSE(editor.OnEvent(&f1));
+	CHECK_FALSE(editor.WantsSystemCursor());
 }

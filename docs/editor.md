@@ -13,7 +13,7 @@ That adds `engine::editor`, the `tangle_run_editor` executable (Tangle Run with 
 
 ## Using it
 
-In `tangle_run_editor`, F1 shows and hides the overlay. While it is shown, a menu bar appears with **Panels** (the ImGui demo window for now) and **Help > About**. The mouse and keyboard go to the overlay's windows when the pointer is over one or a text box has focus, and to the game otherwise. The system mouse pointer is shown while the overlay is, even when the game draws its own.
+In `tangle_run_editor`, F1 (which the game never sees) shows and hides the overlay. While it is shown, a menu bar appears with **Panels** (the ImGui demo window for now) and **Help > About**. The mouse and keyboard go to the overlay's windows when the pointer is over one or a text box has focus, and to the game otherwise. The system mouse pointer is shown while the overlay is, even when the game draws its own.
 
 To add it to another game:
 

@@ -18,7 +18,7 @@ add_library(imgui STATIC
 add_library(imgui::imgui ALIAS imgui)
 target_include_directories(imgui SYSTEM PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_compile_features(imgui PUBLIC cxx_std_20)
-# Dear ImGui writes no imgui.ini and needs no old-style key-index API.
+# Leave out the obsolete API, so code written against it fails to build here rather than in a later update.
 target_compile_definitions(imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 target_link_libraries(imgui PUBLIC SDL3::SDL3)
 if(MSVC)

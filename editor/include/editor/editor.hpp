@@ -1,8 +1,9 @@
 #pragma once
 
+#include <deque>
 #include <functional>
 #include <string>
-#include <vector>
+#include <string_view>
 
 #include "application/editorhost.hpp"
 
@@ -28,7 +29,11 @@ namespace engine::editor
 		Editor& operator=(Editor&&) = delete;
 
 		// Adds a window called name that calls draw each frame while it is open. Panels start closed.
+		// A panel may add more panels while it draws.
 		void AddPanel(std::string name, PanelFunction draw);
+
+		// Opens or closes the panel called name; false when there is none.
+		bool SetPanelOpen(std::string_view name, bool open);
 
 		[[nodiscard]] bool IsVisible() const noexcept { return visible; }
 		void SetVisible(bool shown) noexcept { visible = shown; }
@@ -38,7 +43,7 @@ namespace engine::editor
 		void Detach() override;
 		bool OnEvent(const void* sdlEvent) override;
 		void Draw() override;
-		[[nodiscard]] bool WantsSystemCursor() const override { return visible; }
+		[[nodiscard]] bool WantsSystemCursor() const override { return attached && visible; }
 
 	private:
 		struct Panel
@@ -56,6 +61,6 @@ namespace engine::editor
 		bool visible = false;
 		bool showAbout = false;
 		bool showImGuiDemo = false;
-		std::vector<Panel> panels;
+		std::deque<Panel> panels; // a deque, so a panel adding a panel does not move the one drawing
 	};
 } // namespace engine::editor

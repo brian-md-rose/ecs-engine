@@ -5,6 +5,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+#include <cstddef>
 #include <utility>
 
 #include "core/version.hpp"
@@ -37,6 +38,17 @@ namespace engine::editor
 	void Editor::AddPanel(std::string name, PanelFunction draw)
 	{
 		panels.push_back({std::move(name), std::move(draw), false});
+	}
+
+	bool Editor::SetPanelOpen(std::string_view name, bool open)
+	{
+		for (Panel& panel : panels)
+		{
+			if (panel.name != name) continue;
+			panel.open = open;
+			return true;
+		}
+		return false;
 	}
 
 	void Editor::Attach(const application::EditorSurface& surface)
@@ -142,10 +154,11 @@ namespace engine::editor
 			ImGui::EndMainMenuBar();
 		}
 
-		for (Panel& panel : panels)
+		// By index, since a panel may add panels (the deque keeps the ones already there in place).
+		for (std::size_t i = 0; i < panels.size(); ++i)
 		{
-			if (!panel.open) continue;
-			if (ImGui::Begin(panel.name.c_str(), &panel.open)) panel.draw();
+			if (!panels[i].open) continue;
+			if (ImGui::Begin(panels[i].name.c_str(), &panels[i].open)) panels[i].draw();
 			ImGui::End();
 		}
 		if (showAbout) DrawAbout();
