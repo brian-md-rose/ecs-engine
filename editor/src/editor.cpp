@@ -96,10 +96,10 @@ namespace engine::editor
 		if (!attached || sdlEvent == nullptr) return false;
 		const SDL_Event& event = *static_cast<const SDL_Event*>(sdlEvent);
 
-		if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == kToggleKey)
+		if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && event.key.scancode == kToggleKey)
 		{
-			if (!event.key.repeat) visible = !visible;
-			return true;
+			if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) visible = !visible;
+			return true; // both halves of the press, so the game never sees a lone release
 		}
 		if (!visible) return false;
 

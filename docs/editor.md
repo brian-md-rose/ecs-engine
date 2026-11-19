@@ -9,7 +9,7 @@ git submodule update --init thirdparty/imgui
 cmake -S . -B build/editor -DENGINE_BUILD_EDITOR=ON
 ```
 
-That adds `engine::editor`, the `tangle_run_editor` executable (Tangle Run with the overlay) and, with tests on, `editor_tests`. CI builds it on Windows (MSVC); the code is plain SDL3 and ImGui and also builds with GCC and Clang.
+That adds `engine::editor`, the `tangle_run_editor` executable (Tangle Run with the overlay) and, with tests on, `editor_tests`. CI builds it on Windows (MSVC) only. The code is plain SDL3 and ImGui, and was also built with GCC and Clang during development, but nothing checks that.
 
 ## Using it
 
