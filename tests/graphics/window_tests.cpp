@@ -20,7 +20,13 @@ namespace
 	[[maybe_unused]] const bool kOffscreenChosen = []
 	{
 #ifdef _WIN32
-		if (std::getenv("SDL_VIDEO_DRIVER") == nullptr) _putenv_s("SDL_VIDEO_DRIVER", "offscreen");
+		char* chosen = nullptr;
+		std::size_t length = 0;
+		if (_dupenv_s(&chosen, &length, "SDL_VIDEO_DRIVER") != 0 || chosen == nullptr)
+		{
+			_putenv_s("SDL_VIDEO_DRIVER", "offscreen");
+		}
+		std::free(chosen);
 #else
 		setenv("SDL_VIDEO_DRIVER", "offscreen", 0);
 #endif
