@@ -315,6 +315,17 @@ TEST_CASE("The left stick moves focus once per push", "[ui][focus][pad]")
 	CHECK(f.FocusedIndex() == 2);
 }
 
+TEST_CASE("Focus moves on from a button that has since been disabled", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	f.Tap(PadButton::DRight);
+	f.Tap(PadButton::DRight);
+	REQUIRE(f.FocusedIndex() == 1);
+	f.world.registry.GetComponent<engine::ui::Interactable>(f.buttons[1]).enabled = false;
+	f.Tap(PadButton::DRight); // from where the disabled one is, not back to the first
+	CHECK(f.FocusedIndex() == 2);
+}
+
 TEST_CASE("South clicks the focused button, and only an enabled one", "[ui][focus][pad]")
 {
 	PadFocusFixture f;

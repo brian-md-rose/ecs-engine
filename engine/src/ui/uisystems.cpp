@@ -192,29 +192,53 @@ namespace engine::ui
 			const bool backwards = in.keyboard.IsDown(input::Key::Shift);
 			index = position ? (*position + (backwards ? count - 1 : 1)) % count : (backwards ? count - 1 : 0);
 		}
-		else if (position)
+		else
 		{
-			// Toward the nearest stop in the direction pushed; stay put if there is none that way.
-			std::vector<FocusCandidate> candidates;
-			for (const Stop& stop : stops)
+			const auto centreOf = [&](ecs::Entity entity)
 			{
 				graphics::Position centre{};
-				if (const auto* transform = registry.TryGetComponent<graphics::Transform>(stop.entity))
+				if (const auto* transform = registry.TryGetComponent<graphics::Transform>(entity))
 				{
 					centre = transform->position;
-					if (const Hitbox* hitbox = registry.TryGetComponent<Hitbox>(stop.entity))
+					if (const Hitbox* hitbox = registry.TryGetComponent<Hitbox>(entity))
 					{
 						centre.x += hitbox->width / 2.0f;
 						centre.y += hitbox->height / 2.0f;
 					}
 				}
-				candidates.push_back({.entity = stop.entity, .centre = centre});
+				return centre;
+			};
+			std::vector<FocusCandidate> candidates;
+			for (const Stop& stop : stops)
+			{
+				candidates.push_back({.entity = stop.entity, .centre = centreOf(stop.entity)});
 			}
-			const std::optional<std::size_t> next =
-			    PickFocusNeighbour(candidates, static_cast<std::size_t>(*position), *pushed);
-			index = next ? static_cast<std::ptrdiff_t>(*next) : *position;
+			// The origin is the focused stop, or, if that has since been disabled, where it still is, so focus
+			// moves on from there rather than jumping to the first stop.
+			std::optional<std::size_t> from;
+			if (position)
+			{
+				from = static_cast<std::size_t>(*position);
+			}
+			else if (!current.empty() && registry.IsAlive(current.front()) &&
+			         registry.TryGetComponent<graphics::Transform>(current.front()) != nullptr)
+			{
+				candidates.push_back({.entity = current.front(), .centre = centreOf(current.front())});
+				from = candidates.size() - 1;
+			}
+			// Toward the nearest stop in the direction pushed; stay put if there is none that way. With nothing
+			// focused yet, the first stop gets it.
+			if (from)
+			{
+				const std::optional<std::size_t> next = PickFocusNeighbour(candidates, *from, *pushed);
+				if (next)
+					index = static_cast<std::ptrdiff_t>(*next);
+				else if (position)
+					index = *position;
+				else
+					return; // a disabled focus with nowhere to go keeps its tag
+			}
 		}
-		// else: nothing focused yet, so the first stop gets it.
 
 		for (const ecs::Entity entity : current)
 			registry.Remove<Focused>(entity);
