@@ -19,6 +19,7 @@
 #include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
 #include "input/input.hpp"
+#include "scenes.hpp"
 #include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 
@@ -145,24 +146,7 @@ namespace game
 		world.resources.Get<UiDemoState>() = UiDemoState{};
 
 		// The layout is a scene file (assets/scenes/uidemo.json). A broken one leaves the screen empty, and says why.
-		const engine::ecs::SceneLoadResult loaded = LoadScene(
-		    registry, world.resources.Get<engine::ecs::TypeRegistry>(), world.resources.Get<UiDemoScene>().json);
-		for (const engine::ecs::Issue& issue : loaded.issues.errors)
-		{
-			engine::core::LogError("uidemo scene: " + issue.path + ": " + issue.message);
-		}
-		for (const engine::ecs::Issue& issue : loaded.issues.warnings)
-		{
-			engine::core::LogWarning("uidemo scene: " + issue.path + ": " + issue.message);
-		}
-		if (!loaded.Ok()) return;
-
-		// Everything the screen spawns goes when the state does.
-		for (const Entity entity : loaded.entities)
-		{
-			registry.Add<DespawnOnExit<Screen>>(entity, DespawnOnExit<Screen>{kScope});
-		}
-		ResolveClipNames(registry, world.resources.Get<SpriteClips>());
+		if (SpawnScene(world, "uidemo", kScope).empty()) return;
 		SpawnListRows(registry);
 	}
 

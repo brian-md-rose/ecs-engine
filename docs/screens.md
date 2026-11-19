@@ -30,9 +30,27 @@ carries `DespawnOnEnter<Screen>{Title}`, so entering the title removes them, and
 clears the flag. NameEntry and GameOver keep the world, dimmed, behind them. The maze file and
 assets are still loaded and checked at launch, so a broken maze is reported before the title.
 
+## Layouts are scenes
+
+Every screen except the playing field is laid out by a scene file in `game/assets/scenes/`: `title`, `help`, `options`,
+`nameentry`, `leveltransition`, `pause` and `uidemo`. The screen's enter system calls `SpawnScene` (`scenes.hpp`),
+which loads the file, resolves its `ClipName`s (a scene names a picture, the atlas rectangle is filled in afterwards)
+and scopes what it made to the state, so leaving the state removes it. What a file can't hold stays in code:
+
+- the changing text, as a `ScreenText` component with a `kind`: menu lines with their `> ` cursor, the options from the
+  settings, the name slots, `SCORE n` and `LEVEL n` (a `label` followed by the number), and the title's high score,
+  which is blank until there is a record. `ScreenTextSystem` writes them every frame;
+- the how-to-play rows (where each goes depends on how tall the ones before it wrap), spawned under the list's content
+  entity, which also sets the scroll view's content height.
+
+Centred lines are `Align::Centre` text at x 112 (half the 224-wide screen), so editing the words keeps them centred.
+The game loads every `.json` in `assets/scenes` at start-up, and a broken file stops it like any other asset; if a
+scene is missing or fails to load when its screen opens, the screen is empty and the errors are logged. Open the
+files in `tangle_run_editor` to move things about ([editor.md](editor.md)).
+
 ## The menus
 
-The title, options and pause menus and the how-to-play screen are built from the engine's UI pieces
+The title, options and pause menus and the how-to-play screen are made of the engine's UI pieces
 ([ui.md](ui.md)): a nine-patch panel, a nine-patch button for each item (`MenuButton`, with a `Hitbox`,
 `Interactable` and `FocusOrder`) and its label as a child, so it moves with the button. `game/include/menuui.hpp` and
 `game/src/menuui.cpp` hold the glue.

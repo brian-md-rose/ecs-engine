@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "engine": "0.8.0",
+  "entities": [
+    {
+      "id": 1,
+      "name": "WELL DONE!",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 92.0
+          }
+        },
+        "Text": {
+          "value": "WELL DONE!",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "LEVEL 2",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 112.0
+          }
+        },
+        "Text": {
+          "value": "LEVEL 2",
+          "color": [
+            255,
+            200,
+            70
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Centre"
+        },
+        "ScreenText": {
+          "kind": "LevelLine",
+          "label": "LEVEL ",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "SCORE 0",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 144.0
+          }
+        },
+        "Text": {
+          "value": "SCORE 0",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        },
+        "ScreenText": {
+          "kind": "ScoreLine",
+          "label": "SCORE ",
+          "item": 0
+        }
+      }
+    }
+  ]
+}

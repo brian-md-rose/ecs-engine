@@ -1,0 +1,387 @@
+{
+  "format": 1,
+  "engine": "0.8.0",
+  "entities": [
+    {
+      "id": 1,
+      "name": "Name slot 4",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 4
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Name slot 1",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 64.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 1
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "Name slot 3",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 96.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 3
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "Name slot 2",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 80.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 2
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "ENTER: DONE",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 212.0
+          }
+        },
+        "Text": {
+          "value": "ENTER: DONE",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "LEFT RIGHT: MOVE",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 200.0
+          }
+        },
+        "Text": {
+          "value": "LEFT RIGHT: MOVE",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "UP DOWN: CHANGE LETTER",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 188.0
+          }
+        },
+        "Text": {
+          "value": "UP DOWN: CHANGE LETTER",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "name": "Name slot 7",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 160.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 7
+        }
+      }
+    },
+    {
+      "id": 9,
+      "name": "Name slot 6",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 144.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 6
+        }
+      }
+    },
+    {
+      "id": 10,
+      "name": "Name slot 5",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 128.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "-",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 5
+        }
+      }
+    },
+    {
+      "id": 11,
+      "name": "Name slot 0",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 48.0,
+            "y": 140.0
+          }
+        },
+        "Text": {
+          "value": "A",
+          "color": [
+            255,
+            200,
+            70
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "NameSlot",
+          "label": "",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 12,
+      "name": "ENTER YOUR NAME",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 116.0
+          }
+        },
+        "Text": {
+          "value": "ENTER YOUR NAME",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "name": "SCORE 0",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 92.0
+          }
+        },
+        "Text": {
+          "value": "SCORE 0",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        },
+        "ScreenText": {
+          "kind": "ScoreLine",
+          "label": "SCORE ",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 14,
+      "name": "NEW HIGH SCORE!",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 64.0
+          }
+        },
+        "Text": {
+          "value": "NEW HIGH SCORE!",
+          "color": [
+            255,
+            200,
+            70
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    }
+  ]
+}

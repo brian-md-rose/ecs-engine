@@ -9,6 +9,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Tangle Run's title, how-to-play, options, name entry, level transition and pause screens are laid out by scene files in `game/assets/scenes/` (the game's own change; see `docs/screens.md`), so they open and play in the editor. They look and behave as before.
+
 ## [0.8.0] - 2026-11-19
 
 ### Added

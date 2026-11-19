@@ -69,13 +69,8 @@ namespace game
 		int clicks = 0;
 	};
 
-	// Resource: the UI demo screen's scene file, parsed (assets/scenes/uidemo.json). Null until loaded.
-	struct UiDemoScene
-	{
-		engine::core::JsonValue json;
-	};
-
-	// Describes the UI demo's components (and ClipName) to a type registry, so its scene file can be loaded.
+	// Describes the UI demo's components (and ClipName) to a type registry, so its scene file can be loaded
+	// (RegisterGameComponents calls it).
 	void RegisterUiDemoComponents(engine::ecs::TypeRegistry& types);
 
 	// Sets the source rectangle of every NinePatch and Sprite that has a ClipName from the clip of that name.

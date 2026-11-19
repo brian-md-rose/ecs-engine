@@ -42,6 +42,7 @@
 #include "nameentry.hpp"
 #include "options.hpp"
 #include "save.hpp"
+#include "scenes.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "sounds.hpp"
@@ -166,10 +167,10 @@ namespace game
 		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
 		world.resources.Emplace<SpriteClips>(assets.clips);
-		world.resources.Emplace<UiDemoScene>(UiDemoScene{assets.uiDemoScene});
+		world.resources.Emplace<GameScenes>(GameScenes{assets.scenes});
 		auto& types = world.resources.Emplace<engine::ecs::TypeRegistry>();
 		engine::ecs::RegisterEngineComponents(types);
-		RegisterUiDemoComponents(types);
+		RegisterGameComponents(types);
 
 		// The whole frame, in run order. A system for one screen carries an InState condition.
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);
