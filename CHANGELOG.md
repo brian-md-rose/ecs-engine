@@ -12,6 +12,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ### Added
 
 - An optional editor overlay: Dear ImGui as a submodule (`thirdparty/imgui`), the `engine::editor` library, and `tangle_run_editor`, all behind `ENGINE_BUILD_EDITOR` (off by default). F1 shows the overlay. `Application::SetEditorHost` and `EditorHost` (`application/editorhost.hpp`) are the hook, and cost nothing without a host. See `docs/editor.md`.
+- Editor panels: `AddEntityPanels` adds a Hierarchy (tree, filter, drag to reparent, add child, duplicate, delete) and an Inspector (component fields as widgets from the type registry, add and remove components). `editor/entityops.hpp` has the operations behind them.
 - `RegisterEngineComponents` also registers `Text` and the UI components (`NinePatch`, `Hitbox`, `Interactable`, `FocusOrder`, `ScrollView`), so a scene can hold a screen's layout.
 
 ### Changed

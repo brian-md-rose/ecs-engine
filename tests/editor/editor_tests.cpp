@@ -7,7 +7,14 @@
 
 #include "application/application.hpp"
 #include "application/editorhost.hpp"
+#include "ecs/enginecomponents.hpp"
+#include "ecs/hierarchy.hpp"
+#include "ecs/name.hpp"
+#include "ecs/typeregistry.hpp"
+#include "ecs/world.hpp"
 #include "editor/editor.hpp"
+#include "editor/entityops.hpp"
+#include "editor/entitypanels.hpp"
 
 // A live smoke test of the editor overlay: the real Application and the real Editor, on SDL's offscreen
 // video driver, for a few frames. If a machine can't make even that window, the tests skip.
@@ -208,4 +215,33 @@ TEST_CASE("An editor that was never attached ignores events and wants no pointer
 	f1.key.scancode = SDL_SCANCODE_F1;
 	CHECK_FALSE(editor.OnEvent(&f1));
 	CHECK_FALSE(editor.WantsSystemCursor());
+}
+
+TEST_CASE("The hierarchy and inspector panels draw a world without changing it", "[editor][application]")
+{
+	engine::ecs::World world;
+	engine::ecs::RegisterEngineComponents(world.resources.Emplace<engine::ecs::TypeRegistry>());
+	const engine::ecs::Entity root = engine::editor::CreateEntity(world.registry, "root");
+	engine::editor::CreateEntity(world.registry, "child", root);
+	world.registry.Add<engine::ecs::Parent>(
+	    root, engine::ecs::Parent{}); // a component with an entity field (still null here)
+
+	Application app(TestConfig());
+	ScriptedGame game;
+	game.pressF1 = false;
+	engine::editor::Editor editor;
+	// two entities that are each other's parent, as a bad scene could hold: drawn once, not forever
+	const engine::ecs::Entity loopA = world.registry.Create();
+	const engine::ecs::Entity loopB = world.registry.Create();
+	world.registry.Add<engine::ecs::Parent>(loopA, engine::ecs::Parent{loopB});
+	world.registry.Add<engine::ecs::Parent>(loopB, engine::ecs::Parent{loopA});
+
+	const auto panels = engine::editor::AddEntityPanels(editor, world);
+	panels->selected = root; // so the inspector draws its fields too
+	editor.SetVisible(true);
+	app.SetEditorHost(&editor);
+	if (app.Run(game) != 0) SKIP("no offscreen video driver");
+
+	CHECK(game.renders > 0);
+	CHECK(world.registry.EntityCount() == 4);
 }
