@@ -13,6 +13,7 @@ namespace gametest
 	{
 		Title,
 		Options,
+		UiDemo,
 		NameEntry,
 		Ready,
 		Playing,
@@ -30,6 +31,8 @@ namespace gametest
 			return Stage::Title;
 		case game::Screen::Options:
 			return Stage::Options;
+		case game::Screen::UiDemo:
+			return Stage::UiDemo;
 		case game::Screen::NameEntry:
 			return Stage::NameEntry;
 		case game::Screen::LevelTransition:

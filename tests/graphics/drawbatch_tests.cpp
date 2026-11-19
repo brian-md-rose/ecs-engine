@@ -521,11 +521,11 @@ TEST_CASE("A stretched sprite is zoomed with the world", "[graphics][batch][spri
 
 namespace
 {
-	using engine::graphics::Clip;
+	using engine::graphics::ClipRect;
 
 	void AddClip(Registry& registry, Entity entity, PixelRect rect)
 	{
-		registry.Add<Clip>(entity, Clip{.rect = rect});
+		registry.Add<ClipRect>(entity, ClipRect{.rect = rect});
 	}
 } // namespace
 

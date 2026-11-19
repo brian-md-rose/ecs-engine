@@ -11,6 +11,7 @@
 //     │                │  └──(no lives left)────────────────────────────────────────┘
 //     │                └──(LevelCleared)──► LevelTransition ──(kLevelTransitionSeconds)──► Playing
 //     └──OPTIONS──► Options ──ESC──► Title
+//                      └──UI DEMO──► UiDemo ──ESC──► Options
 //
 //   Round, inside Playing:  Ready ──(kReadySeconds)──► Active ──(PlayerCaught)──► Dying
 //                             ▲                                                     │
@@ -27,6 +28,7 @@ namespace game
 	{
 		Title,
 		Options,
+		UiDemo,          // the mouse UI demo, opened from Options
 		NameEntry,       // after a game that beat the high score
 		Playing,         // a round is under way (see Round and Pause)
 		LevelTransition, // the level was cleared: its number and the score, for a moment

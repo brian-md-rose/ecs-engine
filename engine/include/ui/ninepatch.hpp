@@ -14,10 +14,10 @@ namespace engine::ui
 	// edges and keeping its corners. `source` is the whole picture in the atlas; left, right, top and
 	// bottom are the widths of the border that stays unstretched. NinePatchSystem draws it as nine
 	// stretched sprites, children of this entity, so the entity needs a graphics::Transform, and
-	// ScreenSpace or Clip on it apply to the pieces. The size is in the entity's units (like Sprite's).
+	// ScreenSpace or ClipRect on it apply to the pieces. The size is in the entity's units (like Sprite's).
 	//
-	// The pieces are children, so destroy a nine-patch with ecs::DestroyWithChildren. A plain Destroy leaves
-	// the pieces behind, still drawn, with a parent that no longer exists.
+	// Destroying the entity is enough: the next run of the system destroys the pieces left without a parent.
+	// (ecs::DestroyWithChildren does it at once.)
 	struct NinePatch
 	{
 		graphics::PixelRect source{};
@@ -29,6 +29,11 @@ namespace engine::ui
 		int height = 0;
 		graphics::Color tint{};
 		std::uint8_t layer = 0;
+	};
+
+	// Component (a tag), added by the system to each piece, so it can tidy up pieces whose NinePatch is gone.
+	struct NinePatchChild
+	{
 	};
 
 	// Component, added by the system: the nine child entities of a NinePatch, row by row.

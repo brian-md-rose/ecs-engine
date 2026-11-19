@@ -36,6 +36,12 @@ namespace game
 		engine::graphics::Clip pellet;
 		engine::graphics::Clip powerPellet;
 		engine::graphics::Clip door;
+		// The UI demo's pictures (see uidemo.hpp): one frame each, so firstFrame is the whole picture.
+		engine::graphics::Clip panel;
+		engine::graphics::Clip button;
+		engine::graphics::Clip buttonHover;
+		engine::graphics::Clip buttonPressed;
+		engine::graphics::Clip cursor;
 		std::array<engine::graphics::Clip, kWallTileCount> walls{}; // by WallMask
 	};
 

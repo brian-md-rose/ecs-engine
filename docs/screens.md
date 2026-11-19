@@ -11,6 +11,7 @@ Title ──START──► Playing ──(no lives, new high score)──► Nam
   │                ├──(level cleared)──► LevelTransition ──(2.5 s)──► Playing
   │                └──(quit from pause, new high score)──► NameEntry
   └──OPTIONS──► Options ──Esc / BACK──► Title
+                   └──UI DEMO──► UiDemo ──Esc / BACK──► Options
 ```
 
 Inside `Playing`, `Round` goes Ready (2 s) → Active → Dying (1.5 s) → Ready, and `Pause` goes
@@ -36,9 +37,19 @@ Up and down choose, left and right (or Enter) change, Esc or BACK goes back.
 |-------|--------------------|-------------------------------------------------|
 | SOUND | ON, OFF            | OFF mutes every sound effect (`AudioSystem`)    |
 | LIVES | 1 to 9 (default 3) | Tries at the start of each new game             |
+| UI DEMO | (opens a screen) | The mouse UI demo, see below                  |
 
 Saved to `save.txt` when the screen is left (and when the game closes) as `sound 0|1` and
 `lives N`, and loaded at start-up. A missing or out-of-range value keeps its default.
+
+## UI demo
+
+OPTIONS, then UI DEMO. A panel with a click counter, three buttons (COUNT adds one, RESET sets 0, BACK returns
+to Options) and a list of 30 rows, some wrapped onto several lines, that scrolls with the wheel or by dragging.
+Esc also goes back. The pointer is drawn as a sprite (the system pointer is hidden by `MazeGame::ShowSystemCursor`).
+It is built entirely from the engine's `ui/` module, see [ui.md](ui.md); the code is `game/src/uidemo.cpp`.
+Nothing of it exists outside the screen: the UI systems run only in `UiDemo`, and everything it spawns goes when it
+ends.
 
 ## Name entry
 

@@ -231,3 +231,68 @@ B.......
 B.......
 B.......
 B.......
+
+# The UI demo's pieces (docs/ui.md). The panel and the three buttons are nine-patches: 9 x 9 with a
+# border of 2 that stays as it is, and a middle that stretches. The cursor is drawn by the game
+# in place of the system's pointer.
+color u 50 70 140
+color v 90 125 205
+color q 30 45 100
+
+sprite panel 9 9
+.BBBBBBB.
+BBbbbbbBB
+BbbbbbbbB
+BbbbbbbbB
+BbbbbbbbB
+BbbbbbbbB
+BbbbbbbbB
+BBbbbbbBB
+.BBBBBBB.
+
+sprite button 9 9
+.BBBBBBB.
+BBuuuuuBB
+BuuuuuuuB
+BuuuuuuuB
+BuuuuuuuB
+BuuuuuuuB
+BuuuuuuuB
+BBuuuuuBB
+.BBBBBBB.
+
+sprite button_hover 9 9
+.WWWWWWW.
+WBvvvvvBW
+WvvvvvvvW
+WvvvvvvvW
+WvvvvvvvW
+WvvvvvvvW
+WvvvvvvvW
+WBvvvvvBW
+.WWWWWWW.
+
+sprite button_pressed 9 9
+.BBBBBBB.
+BBqqqqqBB
+BqqqqqqqB
+BqqqqqqqB
+BqqqqqqqB
+BqqqqqqqB
+BqqqqqqqB
+BBqqqqqBB
+.BBBBBBB.
+
+sprite cursor 8 12
+k.......
+kk......
+kWk.....
+kWWk....
+kWWWk...
+kWWWWk..
+kWWWWWk.
+kWWWWWWk
+kWWWkkk.
+kWkWWk..
+kk.kWWk.
+...kkkk.

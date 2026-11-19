@@ -27,6 +27,7 @@ namespace game
 	{
 		Sound,
 		Lives,
+		UiDemo, // opens the UI demo screen (uidemo.hpp)
 		Back,
 		Count
 	};

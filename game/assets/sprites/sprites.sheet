@@ -18,3 +18,8 @@ sprite wall_edge_up sprites/wall_edge_up.png 8 8 1
 sprite wall_edge_right sprites/wall_edge_right.png 8 8 1
 sprite wall_edge_down sprites/wall_edge_down.png 8 8 1
 sprite wall_edge_left sprites/wall_edge_left.png 8 8 1
+sprite panel sprites/panel.png 9 9 1
+sprite button sprites/button.png 9 9 1
+sprite button_hover sprites/button_hover.png 9 9 1
+sprite button_pressed sprites/button_pressed.png 9 9 1
+sprite cursor sprites/cursor.png 8 12 1

@@ -43,7 +43,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   `offset` (screen shake that isn't zoomed), `WorldToScreen`, `ScreenToWorld`, `ViewSize`, and `FocusOn(camera, point, zoom)`.
   The `ScreenSpace` tag (`graphics/screenspace.hpp`) makes an entity ignore the camera; its children, through
   `ecs::Parent`, inherit it, so a HUD panel needs one tag. A `Text`'s `wrapWidth` is in world units, so it zooms too.
-- `graphics/clip.hpp`: the `Clip` component confines an entity and its descendants to a rectangle of screen pixels; nested
+- `graphics/clip.hpp`: the `ClipRect` component confines an entity and its descendants to a rectangle of screen pixels; nested
   clips intersect and things wholly outside are culled. `DrawBatch::Runs()` splits the indices wherever the clip changes (in
   layer order, so a clip never reorders what is drawn), and `Renderer2D` sets SDL's clip rect once per run. `Sprite` gains
   `width` and `height` to stretch a picture to a size (0 keeps its own), for panel pieces and bars.
@@ -53,7 +53,12 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   click, like placing a tower, skip a click the UI took. `FocusOrder` and `Focused` give Tab and Shift+Tab navigation,
   `NinePatch` draws a stretchable panel from nine child sprites (`NinePatchLayout` is the pure part), and `ScrollView` scrolls
   its content child by wheel or drag, clamped. Systems: `UiPointerSystem`, `UiFocusSystem`, `ScrollViewSystem`,
-  `NinePatchSystem`. Phase 11 of [docs/babel-support.md](docs/babel-support.md).
+  `NinePatchSystem` (which also destroys the pieces of a nine-patch whose entity is gone). Phase 11 of
+  [docs/babel-support.md](docs/babel-support.md); see [docs/ui.md](docs/ui.md).
+- `Game::ShowSystemCursor()` (default `true`): return `false` to hide the operating system's mouse pointer while the game draws
+  its own. `Application` applies it each frame and restores the pointer on exit.
+- Tangle Run: a UI demo screen (OPTIONS, then UI DEMO) with a nine-slice panel, three buttons, a clipped list of 30
+  wrapped rows that scrolls by wheel or drag, and a cursor sprite; the new art is in `sprites.txt` and its PNG sheet.
 
 ### Changed
 

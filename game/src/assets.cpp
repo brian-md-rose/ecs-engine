@@ -31,9 +31,10 @@ namespace game
 		    {"wall_edge_up", "wall_edge_right", "wall_edge_down", "wall_edge_left"}};
 
 		// The sprites of sprites.txt the game draws, besides the wall pieces.
-		constexpr std::array<std::string_view, 14> kSpriteNames = {
+		constexpr std::array<std::string_view, 19> kSpriteNames = {
 		    {"player_right", "player_down", "player_up", "player_death", "grit", "snare", "clasp", "wisp", "frightened",
-		     "frightened_flash", "returning", "pellet", "power_pellet", "door"}};
+		     "frightened_flash", "returning", "pellet", "power_pellet", "door", "panel", "button", "button_hover",
+		     "button_pressed", "cursor"}};
 
 		// The sheet, or nothing with the error logged.
 		[[nodiscard]] std::optional<PixelSheet> LoadSheet(const std::filesystem::path& file)
@@ -163,6 +164,11 @@ namespace game
 		clips.pellet = sprites.Get("pellet", 0.0f);
 		clips.powerPellet = sprites.Get("power_pellet", kPowerPelletFrameSeconds);
 		clips.door = sprites.Get("door", 0.0f);
+		clips.panel = sprites.Get("panel", 0.0f);
+		clips.button = sprites.Get("button", 0.0f);
+		clips.buttonHover = sprites.Get("button_hover", 0.0f);
+		clips.buttonPressed = sprites.Get("button_pressed", 0.0f);
+		clips.cursor = sprites.Get("cursor", 0.0f);
 
 		const std::size_t firstWall = fontSheet.sprites.size() + spriteSheet.sprites.size();
 		for (std::size_t mask = 0; mask < kWallTileCount; ++mask)

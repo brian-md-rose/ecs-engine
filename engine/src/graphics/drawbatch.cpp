@@ -73,7 +73,7 @@ namespace engine::graphics
 
 		// Where entity's top-left lands on the screen, the zoom it is drawn at, and the clip it is drawn
 		// inside. The camera places and magnifies world-space entities; screen-space ones stay where
-		// their Transform says, at 1. The clip is its own and its ancestors' Clip rects, intersected.
+		// their Transform says, at 1. The clip is its own and its ancestors' ClipRect rects, intersected.
 		struct Placement
 		{
 			Position screen;

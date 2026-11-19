@@ -5,6 +5,7 @@
 #include "save.hpp"
 #include "screens.hpp"
 #include "systems.hpp"
+#include "uidemo.hpp"
 
 namespace game
 {
@@ -64,6 +65,7 @@ namespace game
 		scheduler.AddOnEnter(Screen::Playing, "SpawnGameWorld", EnterPlaying);
 		scheduler.AddOnEnter(Screen::Options, "SpawnOptionsScreen", SpawnOptionsScreen);
 		scheduler.AddOnExit(Screen::Options, "SaveSettings", ExitOptions);
+		scheduler.AddOnEnter(Screen::UiDemo, "SpawnUiDemoScreen", SpawnUiDemoScreen);
 		scheduler.AddOnEnter(Screen::NameEntry, "SpawnNameEntryScreen", SpawnNameEntryScreen);
 		scheduler.AddOnEnter(Screen::LevelTransition, "BeginLevelTransition", BeginLevelTransition);
 		scheduler.AddOnEnter(Screen::LevelTransition, "SpawnLevelTransitionScreen", SpawnLevelTransitionScreen);

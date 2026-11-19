@@ -157,3 +157,21 @@ TEST_CASE("Destroying a nine-patch with its children takes the pieces too", "[ui
 	for (const engine::ecs::Entity piece : pieces)
 		CHECK_FALSE(world.registry.IsAlive(piece));
 }
+
+TEST_CASE("A plain Destroy of a nine-patch loses its pieces at the next run of the system", "[ui][ninepatch]")
+{
+	engine::ecs::World world;
+	const engine::ecs::Entity panel = world.registry.Create();
+	world.registry.Add<engine::graphics::Transform>(panel);
+	world.registry.Add<NinePatch>(panel, Patch(40, 30));
+	engine::ecs::FrameContext context;
+	engine::ui::NinePatchSystem(world, context);
+	const auto pieces = world.registry.GetComponent<engine::ui::NinePatchPieces>(panel).pieces;
+
+	world.registry.Destroy(panel);
+	for (const engine::ecs::Entity piece : pieces)
+		CHECK(world.registry.IsAlive(piece)); // not yet
+	engine::ui::NinePatchSystem(world, context);
+	for (const engine::ecs::Entity piece : pieces)
+		CHECK_FALSE(world.registry.IsAlive(piece));
+}

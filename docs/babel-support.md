@@ -160,7 +160,7 @@ namespace engine::core {
 ## Phase 11 – Input, text, camera and UI mechanisms (E1: `v0.3.0`, breaking)
 
 Order: 11.0, then 11.1. Then 11.2, 11.3 and 11.4 can be done in parallel. Then 11.5 (its
-`Clip` is screen-space, so it needs 11.4), then 11.6 (it needs 11.2, 11.4 and 11.5), then 11.7.
+`ClipRect` is screen-space, so it needs 11.4), then 11.6 (it needs 11.2, 11.4 and 11.5), then 11.7.
 
 ### PR 11.0: Split the library (breaking for CMake consumers)
 
@@ -293,7 +293,7 @@ Files: `graphics/drawbatch.hpp/.cpp`, `graphics/renderer2d.cpp`, new `graphics/c
 `graphics/sprite.hpp`, tests.
 
 ```cpp
-struct Clip { PixelRect rect; };   // screen-space; applies to this entity and its children
+struct ClipRect { PixelRect rect; };   // screen-space; applies to this entity and its children
 struct Sprite { ...; int width = 0, height = 0; };  // 0 = source size x scale; else stretched
 ```
 
@@ -332,7 +332,7 @@ namespace engine::ui {
 
 - [ ] Hit-testing: the top-most `Hitbox` under the mouse wins, by layer and then by draw order.
       Screen-space and world-space hitboxes are both tested, each in its own coordinates.
-      Hitboxes outside their `Clip` don't count.
+      Hitboxes outside their `ClipRect` don't count.
 - [ ] `UiPointerSystem` sets `Hovered` and `Pressed` and sends `Clicked` (press and release on
       the same entity). It sets `PointerState::clickConsumed`, so the game's world-click
       systems (tower placement) can skip that click (point 11).

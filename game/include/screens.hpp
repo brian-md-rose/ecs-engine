@@ -82,8 +82,8 @@ namespace game
 	// QUIT asks the game to close).
 	void TitleSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
-	// Options: up and down choose; left, right or confirm change the item (BACK: confirm goes
-	// back); pause (Escape) goes back to the title.
+	// Options: up and down choose; left, right or confirm change the item (UI DEMO: confirm opens
+	// the demo; BACK: confirm goes back); pause (Escape) goes back to the title.
 	void OptionsSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Name entry: edits the name (nameentry.hpp); confirm records the score under it, saves it
