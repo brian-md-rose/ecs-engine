@@ -206,8 +206,17 @@ namespace game
 			return std::nullopt;
 		}
 
+		const std::filesystem::path sceneFile = folder / "scenes" / "uidemo.json";
+		engine::core::JsonResult scene = engine::core::LoadJson(sceneFile);
+		if (!scene.value)
+		{
+			engine::core::LogError(engine::core::FormatError(engine::core::PathText(sceneFile), scene.error));
+			return std::nullopt;
+		}
+
 		GameAssets assets = BuildGameAssets(*font, *sprites);
 		assets.difficulty = std::move(*difficulty.table);
+		assets.uiDemoScene = std::move(*scene.value);
 		return assets;
 	}
 } // namespace game

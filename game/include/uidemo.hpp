@@ -2,7 +2,11 @@
 #include <cstdint>
 #include <string>
 
+#include "assets.hpp"
+#include "core/json.hpp"
+#include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
+#include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
 #include "input/input.hpp"
 #include "ui/ui.hpp"
@@ -52,12 +56,33 @@ namespace game
 	};
 
 	// Resource: what the demo remembers.
+	// Component: which of the game's pictures (a SpriteClips name: "panel", "button", "cursor") a NinePatch or Sprite
+	// shows. A scene file names its pictures this way, since where they sit in the atlas is only known
+	// once the assets are loaded; ResolveClipNames fills in the rectangle.
+	struct ClipName
+	{
+		std::string value;
+	};
+
 	struct UiDemoState
 	{
 		int clicks = 0;
 	};
 
+	// Resource: the UI demo screen's scene file, parsed (assets/scenes/uidemo.json). Null until loaded.
+	struct UiDemoScene
+	{
+		engine::core::JsonValue json;
+	};
+
 	// The text of list row number row (from 1): some short, some long enough to wrap.
+	// Describes the UI demo's components (and ClipName) to a type registry, so its scene file can be loaded.
+	void RegisterUiDemoComponents(engine::ecs::TypeRegistry& types);
+
+	// Sets the source rectangle of every NinePatch and Sprite that has a ClipName from the clip of that name.
+	// An unknown name is left as it is (empty, which draws nothing).
+	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips);
+
 	[[nodiscard]] std::string DemoRowText(int row);
 
 	// A line (0 or 1) of the help text: the mouse and keyboard controls, or the pad's, named with the buttons

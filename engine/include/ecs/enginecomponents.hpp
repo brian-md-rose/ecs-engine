@@ -7,7 +7,7 @@
 #include "graphics/image.hpp"
 #include "graphics/transform.hpp"
 
-// Registers the engine's own components (Name, Parent, Position-based transforms, Shape, Sprite,
+// Registers the engine's own components (Name, Parent, Position-based transforms, Shape, Sprite, Text, UI,
 // ClipRect, ScreenSpace) with a TypeRegistry, and defines the FieldCodecs for the engine value
 // types a game's own components are likely to hold: Color, Position and PixelRect.
 namespace engine::ecs
@@ -36,7 +36,8 @@ namespace engine::ecs
 		static bool Load(graphics::PixelRect& value, const core::JsonValue& in, const IEntityIds&, std::string& error);
 	};
 
-	// Registers Name, Parent, Transform, LocalTransform, Shape, Sprite, ClipRect and ScreenSpace,
+	// Registers Name, Parent, Transform, LocalTransform, Shape, Sprite, ClipRect, ScreenSpace, Text and the
+	// UI components (NinePatch, Hitbox, Interactable, FocusOrder, ScrollView),
 	// and Interpolation as a Runtime component. Call it once, before a game's own registrations.
 	void RegisterEngineComponents(TypeRegistry& types);
 } // namespace engine::ecs
