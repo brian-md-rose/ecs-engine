@@ -80,6 +80,16 @@ namespace engine::editor
 		int targetHeight = 0;
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
+		// Undo: the scene as text after each finished change (a drag, a typed value, a menu click), oldest first;
+		// historyPos is the one the world is at. Undo and Redo reload the neighbour, which re-creates the entities
+		// (their ids change, the selection is kept by position).
+		std::vector<std::string> history;
+		std::size_t historyPos = 0;
+		bool wasBusy = false; // the pointer or a widget was in use last frame
+
+		void ResetHistory();
+		void Commit(const std::string& text);
+		bool GoTo(std::size_t position);
 		bool movingSelected = false; // a drag that began on an entity is moving it
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
@@ -115,6 +125,14 @@ namespace engine::editor
 		// True if the scene has changes since it was saved or loaded. Checked every few frames while editing.
 		[[nodiscard]] bool IsDirty() const noexcept { return dirty; }
 		void CheckDirty(); // looks now, instead of waiting for the next check
+
+		// ---- undo ----
+		// Each change you finish (not each frame of a drag) is one step; at most 100 are kept, and New and Open start
+		// again. Not while playing.
+		bool Undo();
+		bool Redo();
+		[[nodiscard]] bool CanUndo() const noexcept { return !play && historyPos > 0; }
+		[[nodiscard]] bool CanRedo() const noexcept { return !play && historyPos + 1 < history.size(); }
 
 		// ---- play ----
 		bool StartPlay();

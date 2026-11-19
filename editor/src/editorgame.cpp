@@ -19,6 +19,7 @@ namespace engine::editor
 	namespace
 	{
 		constexpr int kFramesBetweenDirtyChecks = 20;
+		constexpr std::size_t kMaxHistory = 100;
 
 		ecs::TypeRegistry& EnsureTypes(ecs::World& world)
 		{
@@ -63,6 +64,7 @@ namespace engine::editor
 		EnsureTypes(edit->world);
 		ClearWorld(edit->world);
 		savedText = SceneText();
+		ResetHistory();
 
 		panels = AddEntityPanels(editor, [this]() -> ecs::World&
 		{
@@ -101,7 +103,70 @@ namespace engine::editor
 	void EditorGame::CheckDirty()
 	{
 		framesSinceCheck = 0;
-		dirty = SceneText() != savedText;
+		const std::string text = SceneText();
+		dirty = text != savedText;
+		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
+	}
+
+	void EditorGame::ResetHistory()
+	{
+		history.assign(1, SceneText());
+		historyPos = 0;
+	}
+
+	void EditorGame::Commit(const std::string& text)
+	{
+		history.resize(historyPos + 1); // a new change ends the redo line
+		history.push_back(text);
+		++historyPos;
+		if (history.size() > kMaxHistory)
+		{
+			history.erase(history.begin());
+			--historyPos;
+		}
+	}
+
+	bool EditorGame::GoTo(std::size_t position)
+	{
+		if (play || position >= history.size()) return false;
+		const core::JsonResult parsed = core::ParseJson(history[position]);
+		if (!parsed.value) return false;
+		ecs::World& world = edit->world;
+		const std::vector<ecs::Entity> before = world.registry.AllEntities();
+		std::size_t selectedIndex = before.size();
+		for (std::size_t i = 0; i < before.size(); ++i)
+			if (before[i] == panels->selected) selectedIndex = i;
+
+		const ecs::SceneLoadResult loaded = ecs::LoadScene(world.registry, EnsureTypes(world), *parsed.value);
+		if (!loaded.Ok())
+		{
+			message = "can't go back: " + FirstProblem(loaded.issues);
+			return false;
+		}
+		for (const ecs::Entity entity : before)
+			world.registry.Destroy(entity);
+		if (config.afterLoad) config.afterLoad(world);
+
+		panels->selected = ecs::Entity::Null;
+		const std::vector<ecs::Entity> after = world.registry.AllEntities();
+		if (selectedIndex < after.size()) panels->selected = after[selectedIndex];
+
+		historyPos = position;
+		history[position] = SceneText(); // as this world writes it, so the next check sees no change
+		dirty = history[position] != savedText;
+		framesSinceCheck = 0;
+		message.clear();
+		return true;
+	}
+
+	bool EditorGame::Undo()
+	{
+		return historyPos > 0 && GoTo(historyPos - 1);
+	}
+
+	bool EditorGame::Redo()
+	{
+		return GoTo(historyPos + 1);
 	}
 
 	void EditorGame::NewScene()
@@ -111,6 +176,7 @@ namespace engine::editor
 		if (config.afterLoad) config.afterLoad(edit->world);
 		sceneName.clear();
 		savedText = SceneText();
+		ResetHistory();
 		dirty = false;
 		message.clear();
 		panels->selected = ecs::Entity::Null;
@@ -138,6 +204,7 @@ namespace engine::editor
 		if (config.afterLoad) config.afterLoad(world);
 		sceneName = name;
 		savedText = SceneText();
+		ResetHistory();
 		dirty = false;
 		message = loaded.issues.warnings.empty()
 		              ? std::string()
@@ -229,7 +296,21 @@ namespace engine::editor
 	void EditorGame::Render(graphics::Renderer& renderer, double alpha)
 	{
 		application::ScheduledGame& current = play ? *play : *edit;
-		if (!play && ++framesSinceCheck >= kFramesBetweenDirtyChecks) CheckDirty();
+		if (!play)
+		{
+			// Look when nothing is being dragged or typed, so a drag is one step, not one per frame.
+			const bool busy =
+			    ImGui::GetCurrentContext() != nullptr &&
+			    (ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left) ||
+			     ImGui::IsMouseDown(ImGuiMouseButton_Right) || ImGui::IsMouseDown(ImGuiMouseButton_Middle));
+			if (busy)
+				wasBusy = true;
+			else if (wasBusy || ++framesSinceCheck >= kFramesBetweenDirtyChecks)
+			{
+				wasBusy = false;
+				CheckDirty();
+			}
+		}
 
 		// Into a picture the viewport shows (made again only when the game's screen size changes, so a failure is
 		// logged once). If none can be made, the game is drawn straight to the window.
@@ -355,6 +436,21 @@ namespace engine::editor
 
 	void EditorGame::DrawMenuBar()
 	{
+		// Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes; a text box being typed in keeps its own.
+		const ImGuiIO& io = ImGui::GetIO();
+		if (io.KeyCtrl && !io.WantTextInput)
+		{
+			if (ImGui::IsKeyPressed(ImGuiKey_Z) && !io.KeyShift)
+				(void)Undo();
+			else if (ImGui::IsKeyPressed(ImGuiKey_Y) || (ImGui::IsKeyPressed(ImGuiKey_Z) && io.KeyShift))
+				(void)Redo();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, CanUndo())) (void)Undo();
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, CanRedo())) (void)Redo();
+			ImGui::EndMenu();
+		}
 		if (ImGui::BeginMenu("Scene"))
 		{
 			if (ImGui::MenuItem("New")) Request(Action::New, {});
