@@ -52,9 +52,16 @@ namespace engine::editor
 		io.IniFilename = nullptr; // no imgui.ini next to wherever the game was started from
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ImGui::StyleColorsDark();
-		if (!ImGui_ImplSDL3_InitForSDLRenderer(window, sdlRenderer) || !ImGui_ImplSDLRenderer3_Init(sdlRenderer))
+		if (!ImGui_ImplSDL3_InitForSDLRenderer(window, sdlRenderer))
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "the editor's ImGui backends failed to start");
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "the editor's SDL backend failed to start");
+			ImGui::DestroyContext();
+			return;
+		}
+		if (!ImGui_ImplSDLRenderer3_Init(sdlRenderer))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "the editor's renderer backend failed to start");
+			ImGui_ImplSDL3_Shutdown();
 			ImGui::DestroyContext();
 			return;
 		}
