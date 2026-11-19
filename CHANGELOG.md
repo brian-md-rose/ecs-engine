@@ -9,6 +9,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
 ### Added
 
 - `ecs::TypeRegistry` (`ecs/typeregistry.hpp`): component types described at run time, with a name and fields, that save to and load from `core::JsonValue`. One explicit registration block per component; `FieldCodec<T>` says how a field type is written (built in: bool, integers, floats, `std::string`, `Entity`, `std::vector<Entity>`, enums by name, and `Color`, `Position`, `PixelRect`). Entities are written as ids through `IEntityIds`, and problems come back with a JSON path. Opt-in: `Registry` is unchanged.
@@ -160,7 +162,8 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.1.0...v0.3.0
