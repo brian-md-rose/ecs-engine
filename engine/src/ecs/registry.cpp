@@ -43,6 +43,22 @@ namespace engine::ecs
 		freeEntities.push_back(entity.id);
 	}
 
+	std::vector<Entity> Registry::AllEntities() const
+	{
+		std::vector<bool> isFree(generations.size(), false);
+		for (const std::uint32_t id : freeEntities)
+		{
+			isFree[id] = true;
+		}
+		std::vector<Entity> alive;
+		alive.reserve(EntityCount());
+		for (std::uint32_t id = 0; id < generations.size(); ++id)
+		{
+			if (!isFree[id]) alive.push_back({id, generations[id]});
+		}
+		return alive;
+	}
+
 	bool Registry::IsAlive(Entity entity) const
 	{
 		return entity.id < generations.size() && generations[entity.id] == entity.generation;

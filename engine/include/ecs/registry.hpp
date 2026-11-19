@@ -261,6 +261,9 @@ namespace engine::ecs
 		// read-only queries don't create pools.
 		[[nodiscard]] std::size_t PoolCount() const noexcept { return pools.size(); }
 
+		// Every entity that is alive, in order of id.
+		[[nodiscard]] std::vector<Entity> AllEntities() const;
+
 		// How many entities are alive.
 		[[nodiscard]] std::size_t EntityCount() const noexcept { return generations.size() - freeEntities.size(); }
 
