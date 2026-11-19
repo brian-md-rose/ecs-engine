@@ -39,6 +39,8 @@ namespace engine::graphics
 		{
 		case WindowMode::Windowed:
 			check(SDL_SetWindowFullscreen(window, false), "SDL_SetWindowFullscreen(false)");
+			// Leaving fullscreen is asynchronous on some backends: wait, so the size below is not ignored.
+			SDL_SyncWindow(window);
 			check(SDL_SetWindowBordered(window, true), "SDL_SetWindowBordered");
 			check(SDL_SetWindowSize(window, width, height), "SDL_SetWindowSize");
 			break;
@@ -46,6 +48,7 @@ namespace engine::graphics
 			// No mode asked for means the desktop's, which is borderless fullscreen.
 			check(SDL_SetWindowFullscreenMode(window, nullptr), "SDL_SetWindowFullscreenMode(desktop)");
 			check(SDL_SetWindowFullscreen(window, true), "SDL_SetWindowFullscreen(true)");
+			SDL_SyncWindow(window);
 			break;
 		case WindowMode::Fullscreen:
 		{
@@ -60,6 +63,7 @@ namespace engine::graphics
 				check(false, "SDL_GetClosestFullscreenDisplayMode");
 			}
 			check(SDL_SetWindowFullscreen(window, true), "SDL_SetWindowFullscreen(true)");
+			SDL_SyncWindow(window);
 			break;
 		}
 		}
