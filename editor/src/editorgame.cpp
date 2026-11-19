@@ -280,6 +280,7 @@ namespace engine::editor
 			{
 				if (!SaveScene())
 				{
+					saveAsName = sceneName;
 					dialog = Dialog::SaveAs;
 					openDialog = true;
 				}
