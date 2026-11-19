@@ -78,16 +78,16 @@ namespace engine::input
 			std::array<std::string_view, kPadButtonCount> names;
 		};
 		static constexpr Labels kXbox{
-		    {"A", "B", "X", "Y", "MENU", "VIEW", "LB", "RB", "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT"}};
-		static constexpr Labels kPlayStation{{"CROSS", "CIRCLE", "SQUARE", "TRIANGLE", "OPTIONS", "SHARE", "L1", "R1",
-		                                      "L3", "R3", "UP", "DOWN", "LEFT", "RIGHT"}};
+		    {{"A", "B", "X", "Y", "MENU", "VIEW", "LB", "RB", "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT"}}};
+		static constexpr Labels kPlayStation{{{"CROSS", "CIRCLE", "SQUARE", "TRIANGLE", "OPTIONS", "SHARE", "L1", "R1",
+		                                       "L3", "R3", "UP", "DOWN", "LEFT", "RIGHT"}}};
 		// A Switch pad's A is on the right (East) and its B at the bottom (South).
 		static constexpr Labels kSwitch{
-		    {"B", "A", "Y", "X", "+", "-", "L", "R", "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT"}};
+		    {{"B", "A", "Y", "X", "+", "-", "L", "R", "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT"}}};
 		static constexpr Labels kSteamDeck{
-		    {"A", "B", "X", "Y", "MENU", "VIEW", "L1", "R1", "L3", "R3", "UP", "DOWN", "LEFT", "RIGHT"}};
-		static constexpr Labels kGeneric{
-		    {"SOUTH", "EAST", "WEST", "NORTH", "START", "BACK", "L1", "R1", "L3", "R3", "UP", "DOWN", "LEFT", "RIGHT"}};
+		    {{"A", "B", "X", "Y", "MENU", "VIEW", "L1", "R1", "L3", "R3", "UP", "DOWN", "LEFT", "RIGHT"}}};
+		static constexpr Labels kGeneric{{{"SOUTH", "EAST", "WEST", "NORTH", "START", "BACK", "L1", "R1", "L3", "R3",
+		                                   "UP", "DOWN", "LEFT", "RIGHT"}}};
 
 		const auto index = static_cast<std::size_t>(button);
 		if (index >= kPadButtonCount) return {};
