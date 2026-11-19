@@ -39,12 +39,12 @@ namespace engine::graphics
 	bool Renderer::SetScaling(Scaling mode)
 	{
 		if (renderer == nullptr) return false;
-		scaling = mode;
 		if (!SDL_SetRenderLogicalPresentation(renderer, logicalWidth, logicalHeight, PresentationOf(mode)))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderLogicalPresentation failed: %s", SDL_GetError());
 			return false;
 		}
+		scaling = mode;
 		return true;
 	}
 
