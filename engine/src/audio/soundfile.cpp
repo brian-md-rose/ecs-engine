@@ -15,7 +15,7 @@
 extern "C"
 {
 #define STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.c"
+#include "stb_vorbis.c" // NOLINT(bugprone-suspicious-include): declarations only, see HEADER_ONLY above
 }
 
 namespace engine::audio
