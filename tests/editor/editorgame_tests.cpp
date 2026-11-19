@@ -152,3 +152,38 @@ TEST_CASE("Edits made before Play still count as unsaved while playing", "[edito
 	CHECK(game.IsDirty());
 	game.StopPlay();
 }
+
+TEST_CASE("afterLoad runs on Open and Play, and a game that can't be made fails Play", "[editor][game]")
+{
+	const auto folder = TempFolder("afterload");
+	int loads = 0;
+	bool failMake = false;
+	EditorGameConfig config = MakeConfig(folder);
+	config.afterLoad = [&](engine::ecs::World&)
+	{
+		++loads;
+	};
+	config.makeGame = [&]() -> std::unique_ptr<ScheduledGame>
+	{
+		if (failMake) return nullptr;
+		return std::make_unique<TestGame>();
+	};
+
+	engine::editor::Editor editor;
+	EditorGame game(editor, config);
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 0);
+	REQUIRE(game.SaveSceneAs("s"));
+
+	loads = 0;
+	REQUIRE(game.OpenScene("s.json"));
+	CHECK(loads == 1);
+	REQUIRE(game.StartPlay());
+	CHECK(loads == 2);
+	game.StopPlay();
+
+	failMake = true;
+	CHECK_FALSE(game.StartPlay());
+	CHECK_FALSE(game.IsPlaying());
+	CHECK_FALSE(game.Message().empty());
+}
