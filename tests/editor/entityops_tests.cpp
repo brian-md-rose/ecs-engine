@@ -139,3 +139,56 @@ TEST_CASE("Live ids map indexes to the live entities and honour overrides", "[ed
 	registry.Destroy(a);
 	CHECK_FALSE(ids.IdOf(a).has_value());
 }
+
+TEST_CASE("A duplicate that can't be made leaves nothing behind", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity gone = registry.Create();
+	const Entity root = CreateEntity(registry, "root");
+	registry.Add<Target>(root, Target{gone, 1});
+	registry.Destroy(gone); // the reference now points at a dead entity
+	const std::size_t before = registry.EntityCount();
+
+	engine::ecs::Issues issues;
+	const Entity copy = engine::editor::DuplicateTree(registry, types, root, issues);
+	CHECK(copy.IsNull());
+	CHECK_FALSE(issues.Ok());
+	CHECK(registry.EntityCount() == before);
+}
+
+TEST_CASE("The hierarchy tree has a root for every entity, even in a Parent loop", "[editor][ops]")
+{
+	Registry registry;
+	const Entity top = CreateEntity(registry, "top");
+	const Entity child = CreateEntity(registry, "child", top);
+	const Entity a = registry.Create();
+	const Entity b = registry.Create();
+	registry.Add<Parent>(a, Parent{b});
+	registry.Add<Parent>(b, Parent{a}); // a loop, as a bad scene could hold
+
+	const engine::editor::Tree tree = engine::editor::BuildTree(registry);
+	CHECK(tree.all.size() == 4);
+	CHECK(tree.children.at(top).size() == 1);
+	CHECK(tree.children.at(top).front() == child);
+	// top is a root; so is one entity of the loop, which holds the other as its child
+	REQUIRE(tree.roots.size() == 2);
+	CHECK(tree.roots.front() == top);
+	const Entity loopRoot = tree.roots.back();
+	CHECK((loopRoot == a || loopRoot == b));
+}
+
+TEST_CASE("The filter matches names ignoring case, and keeps ancestors of a match", "[editor][ops]")
+{
+	Registry registry;
+	const Entity panel = CreateEntity(registry, "Panel");
+	const Entity button = CreateEntity(registry, "StartButton", panel);
+	const Entity other = CreateEntity(registry, "Cursor");
+	const engine::editor::Tree tree = engine::editor::BuildTree(registry);
+
+	CHECK(engine::editor::MatchesFilter(registry, button, "button"));
+	CHECK_FALSE(engine::editor::MatchesFilter(registry, panel, "button"));
+	CHECK(engine::editor::SubtreeMatches(registry, tree, panel, "button")); // through its child
+	CHECK_FALSE(engine::editor::SubtreeMatches(registry, tree, other, "button"));
+	CHECK(engine::editor::SubtreeMatches(registry, tree, other, "")); // an empty filter keeps everything
+}

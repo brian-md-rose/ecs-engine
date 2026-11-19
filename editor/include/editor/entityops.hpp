@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -54,4 +55,23 @@ namespace engine::editor
 	// with the problems in issues (nothing is kept then).
 	ecs::Entity DuplicateTree(ecs::Registry& registry, const ecs::TypeRegistry& types, ecs::Entity root,
 	                          ecs::Issues& issues);
+
+	// The entities of a registry as a tree for the hierarchy panel.
+	struct Tree
+	{
+		std::vector<ecs::Entity> roots;                                     // shown at the top level
+		std::unordered_map<ecs::Entity, std::vector<ecs::Entity>> children; // by parent
+		std::vector<ecs::Entity> all;                                       // every live entity, by index
+	};
+
+	// Entities with no live parent are roots. An entity that can't be reached from any root, because its Parent
+	// chain loops (from a hand-edited scene, say), is made a root too, so it can still be selected and fixed.
+	[[nodiscard]] Tree BuildTree(const ecs::Registry& registry);
+
+	// True if the entity's label contains filter, ignoring case. An empty filter matches everything.
+	[[nodiscard]] bool MatchesFilter(const ecs::Registry& registry, ecs::Entity entity, const std::string& filter);
+
+	// True if the entity or anything under it matches the filter, so a match is shown with its ancestors.
+	[[nodiscard]] bool SubtreeMatches(const ecs::Registry& registry, const Tree& tree, ecs::Entity entity,
+	                                  const std::string& filter);
 } // namespace engine::editor

@@ -223,12 +223,19 @@ TEST_CASE("The hierarchy and inspector panels draw a world without changing it",
 	engine::ecs::RegisterEngineComponents(world.resources.Emplace<engine::ecs::TypeRegistry>());
 	const engine::ecs::Entity root = engine::editor::CreateEntity(world.registry, "root");
 	engine::editor::CreateEntity(world.registry, "child", root);
-	world.registry.Add<engine::ecs::Parent>(root, engine::ecs::Parent{}); // a component with an entity field
+	world.registry.Add<engine::ecs::Parent>(
+	    root, engine::ecs::Parent{}); // a component with an entity field (still null here)
 
 	Application app(TestConfig());
 	ScriptedGame game;
 	game.pressF1 = false;
 	engine::editor::Editor editor;
+	// two entities that are each other's parent, as a bad scene could hold: drawn once, not forever
+	const engine::ecs::Entity loopA = world.registry.Create();
+	const engine::ecs::Entity loopB = world.registry.Create();
+	world.registry.Add<engine::ecs::Parent>(loopA, engine::ecs::Parent{loopB});
+	world.registry.Add<engine::ecs::Parent>(loopB, engine::ecs::Parent{loopA});
+
 	const auto panels = engine::editor::AddEntityPanels(editor, world);
 	panels->selected = root; // so the inspector draws its fields too
 	editor.SetVisible(true);
@@ -236,5 +243,5 @@ TEST_CASE("The hierarchy and inspector panels draw a world without changing it",
 	if (app.Run(game) != 0) SKIP("no offscreen video driver");
 
 	CHECK(game.renders > 0);
-	CHECK(world.registry.EntityCount() == 2);
+	CHECK(world.registry.EntityCount() == 4);
 }

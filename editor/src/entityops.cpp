@@ -1,6 +1,8 @@
 #include "editor/entityops.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -121,6 +123,7 @@ namespace engine::editor
 		}
 
 		const std::size_t errorsBefore = issues.errors.size();
+		bool failed = false;
 		for (std::size_t i = 0; i < originals.size(); ++i)
 		{
 			for (std::size_t t = 0; t < types.Count(); ++t)
@@ -129,12 +132,16 @@ namespace engine::editor
 				if (type.IsRuntime() || !type.Has(registry, originals[i])) continue;
 				core::JsonValue saved;
 				const std::string path = LabelOf(registry, originals[i]) + "." + type.Name();
-				if (!type.Save(registry, originals[i], ids, saved, issues, path)) continue;
-				(void)type.Load(registry, copies[i], saved, ids, issues, path);
+				if (!type.Save(registry, originals[i], ids, saved, issues, path) ||
+				    !type.Load(registry, copies[i], saved, ids, issues, path))
+				{
+					failed = true;
+					if (issues.errors.size() == errorsBefore) issues.errors.push_back({path, "could not be copied"});
+				}
 			}
 		}
 
-		if (issues.errors.size() != errorsBefore)
+		if (failed || issues.errors.size() != errorsBefore)
 		{
 			for (auto it = copies.rbegin(); it != copies.rend(); ++it)
 				registry.Destroy(*it);
@@ -142,5 +149,82 @@ namespace engine::editor
 		}
 		if (ecs::Name* name = registry.TryGetComponent<ecs::Name>(copies.front())) name->value += " (copy)";
 		return copies.front();
+	}
+
+	Tree BuildTree(const Registry& registry)
+	{
+		Tree tree;
+		tree.all = registry.AllEntities();
+		for (const Entity entity : tree.all)
+		{
+			const ecs::Parent* parent = registry.TryGetComponent<ecs::Parent>(entity);
+			if (parent != nullptr && registry.IsAlive(parent->entity))
+			{
+				tree.children[parent->entity].push_back(entity);
+			}
+			else
+			{
+				tree.roots.push_back(entity);
+			}
+		}
+
+		// Whatever the roots don't reach sits in a Parent loop; take the lowest index of each as a root.
+		std::unordered_set<Entity> reached;
+		const auto reach = [&](Entity start)
+		{
+			std::vector<Entity> pending{start};
+			while (!pending.empty())
+			{
+				const Entity entity = pending.back();
+				pending.pop_back();
+				if (!reached.insert(entity).second) continue;
+				if (const auto found = tree.children.find(entity); found != tree.children.end())
+				{
+					pending.insert(pending.end(), found->second.begin(), found->second.end());
+				}
+			}
+		};
+		for (const Entity root : tree.roots)
+			reach(root);
+		for (const Entity entity : tree.all)
+		{
+			if (reached.contains(entity)) continue;
+			tree.roots.push_back(entity);
+			reach(entity);
+		}
+		return tree;
+	}
+
+	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
+	{
+		if (filter.empty()) return true;
+		const auto lower = [](std::string text)
+		{
+			std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c)
+			{
+				return static_cast<char>(std::tolower(c));
+			});
+			return text;
+		};
+		return lower(LabelOf(registry, entity)).find(lower(filter)) != std::string::npos;
+	}
+
+	bool SubtreeMatches(const Registry& registry, const Tree& tree, Entity entity, const std::string& filter)
+	{
+		if (filter.empty()) return true;
+		std::unordered_set<Entity> seen; // a loop cannot run this forever
+		std::vector<Entity> pending{entity};
+		while (!pending.empty())
+		{
+			const Entity current = pending.back();
+			pending.pop_back();
+			if (!seen.insert(current).second) continue;
+			if (MatchesFilter(registry, current, filter)) return true;
+			if (const auto found = tree.children.find(current); found != tree.children.end())
+			{
+				pending.insert(pending.end(), found->second.begin(), found->second.end());
+			}
+		}
+		return false;
 	}
 } // namespace engine::editor

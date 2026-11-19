@@ -39,64 +39,6 @@ namespace engine::editor
 		constexpr const char* kDragPayload = "ecs-entity";
 		constexpr std::size_t kMaxJsonDepth = 6;
 
-		// The entities of one frame, as a tree.
-		struct Tree
-		{
-			std::vector<Entity> roots;
-			std::unordered_map<Entity, std::vector<Entity>> children;
-			std::vector<Entity> all;
-		};
-
-		Tree BuildTree(const Registry& registry)
-		{
-			Tree tree;
-			tree.all = registry.AllEntities();
-			for (const Entity entity : tree.all)
-			{
-				const ecs::Parent* parent = registry.TryGetComponent<ecs::Parent>(entity);
-				if (parent != nullptr && registry.IsAlive(parent->entity))
-				{
-					tree.children[parent->entity].push_back(entity);
-				}
-				else
-				{
-					tree.roots.push_back(entity);
-				}
-			}
-			return tree;
-		}
-
-		bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
-		{
-			if (filter.empty()) return true;
-			std::string label = LabelOf(registry, entity);
-			std::string needle = filter;
-			const auto lower = [](std::string& text)
-			{
-				std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c)
-				{
-					return static_cast<char>(std::tolower(c));
-				});
-			};
-			lower(label);
-			lower(needle);
-			return label.find(needle) != std::string::npos;
-		}
-
-		// True if the entity or anything under it matches the filter, so a match is shown with its ancestors.
-		bool SubtreeMatches(const Registry& registry, const Tree& tree, Entity entity, const std::string& filter,
-		                    std::size_t depth = 0)
-		{
-			if (MatchesFilter(registry, entity, filter)) return true;
-			if (depth > kMaxJsonDepth * 10) return false;
-			const auto found = tree.children.find(entity);
-			if (found == tree.children.end()) return false;
-			return std::any_of(found->second.begin(), found->second.end(), [&](Entity child)
-			{
-				return SubtreeMatches(registry, tree, child, filter, depth + 1);
-			});
-		}
-
 		// What the hierarchy was asked to do while it was drawing; done once the tree is finished, since drawing
 		// walks the entities it would change.
 		struct Pending
@@ -115,7 +57,7 @@ namespace engine::editor
 		};
 
 		void DrawNode(Registry& registry, const Tree& tree, PanelState& state, Pending& pending, Entity entity,
-		              std::size_t depth)
+		              std::vector<Entity>& path)
 		{
 			if (!SubtreeMatches(registry, tree, entity, state.filter)) return;
 			const auto found = tree.children.find(entity);
@@ -157,10 +99,18 @@ namespace engine::editor
 
 			if (open)
 			{
-				if (hasChildren && depth < 64)
+				if (hasChildren)
 				{
+					// The path stops a Parent loop from drawing the same entities forever.
+					path.push_back(entity);
 					for (const Entity child : found->second)
-						DrawNode(registry, tree, state, pending, child, depth + 1);
+					{
+						if (std::find(path.begin(), path.end(), child) == path.end())
+						{
+							DrawNode(registry, tree, state, pending, child, path);
+						}
+					}
+					path.pop_back();
 				}
 				ImGui::TreePop();
 			}
@@ -227,8 +177,9 @@ namespace engine::editor
 			Pending pending;
 			if (ImGui::BeginChild("tree"))
 			{
+				std::vector<Entity> path;
 				for (const Entity root : tree.roots)
-					DrawNode(registry, tree, state, pending, root, 0);
+					DrawNode(registry, tree, state, pending, root, path);
 				ImGui::Spacing();
 				ImGui::TextDisabled("(drop here for the top level)");
 				if (ImGui::BeginDragDropTarget())
@@ -497,11 +448,10 @@ namespace engine::editor
 
 		// Draws one component's fields and writes back the ones the user changed.
 		void DrawComponent(Registry& registry, const TypeInfo& type, Entity entity, PanelState& state,
-		                   const std::vector<Entity>& all)
+		                   const std::vector<Entity>& all, const LiveIds& ids)
 		{
 			void* component = type.Get(registry, entity);
 			if (component == nullptr) return;
-			const LiveIds ids(registry);
 			for (const FieldInfo& field : type.Fields())
 			{
 				JsonValue value;
@@ -556,6 +506,7 @@ namespace engine::editor
 			ImGui::Separator();
 
 			const std::vector<Entity> all = registry.AllEntities();
+			const LiveIds ids(registry); // once per frame, not per component
 			const TypeInfo* toRemove = nullptr;
 			for (std::size_t i = 0; i < types->Count(); ++i)
 			{
@@ -565,7 +516,7 @@ namespace engine::editor
 				bool keep = true;
 				if (ImGui::CollapsingHeader(type.Name().c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen))
 				{
-					DrawComponent(registry, type, entity, state, all);
+					DrawComponent(registry, type, entity, state, all, ids);
 				}
 				if (!keep) toRemove = &type;
 				ImGui::PopID();
