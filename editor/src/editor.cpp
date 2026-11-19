@@ -140,6 +140,7 @@ namespace engine::editor
 	{
 		if (ImGui::BeginMainMenuBar())
 		{
+			if (menuBar) menuBar();
 			if (ImGui::BeginMenu("Panels"))
 			{
 				for (Panel& panel : panels)
@@ -156,6 +157,7 @@ namespace engine::editor
 			}
 			ImGui::EndMainMenuBar();
 		}
+		if (menuDialogs) menuDialogs();
 
 		// By index, since a panel may add panels (the deque keeps the ones already there in place).
 		for (std::size_t i = 0; i < panels.size(); ++i)

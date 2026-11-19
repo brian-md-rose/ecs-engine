@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -28,4 +29,8 @@ namespace engine::editor
 	};
 
 	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, ecs::World& world);
+
+	// The same, for a world that can change from frame to frame: world is asked for it each time the panels
+	// draw (the standalone editor shows the edit world, and the play world while playing).
+	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, std::function<ecs::World&()> world);
 } // namespace engine::editor

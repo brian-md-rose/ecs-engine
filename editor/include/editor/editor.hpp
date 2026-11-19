@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "application/editorhost.hpp"
 
@@ -31,6 +32,14 @@ namespace engine::editor
 		// Adds a window called name that calls draw each frame while it is open. Panels start closed.
 		// A panel may add more panels while it draws.
 		void AddPanel(std::string name, PanelFunction draw);
+
+		// Content for the main menu bar, drawn before the built-in Panels and Help menus: bar adds menus and items
+		// (inside the bar), and dialogs draws popups, called right after, outside the bar. Either may be empty.
+		void SetMenuBar(std::function<void()> bar, std::function<void()> dialogs = {})
+		{
+			menuBar = std::move(bar);
+			menuDialogs = std::move(dialogs);
+		}
 
 		// Opens or closes the panel called name; false when there is none.
 		bool SetPanelOpen(std::string_view name, bool open);
@@ -61,6 +70,8 @@ namespace engine::editor
 		bool visible = false;
 		bool showAbout = false;
 		bool showImGuiDemo = false;
+		std::function<void()> menuBar;
+		std::function<void()> menuDialogs;
 		std::deque<Panel> panels; // a deque, so a panel adding a panel does not move the one drawing
 	};
 } // namespace engine::editor
