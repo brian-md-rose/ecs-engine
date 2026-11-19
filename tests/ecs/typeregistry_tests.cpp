@@ -320,3 +320,60 @@ TEST_CASE("Loading onto an entity that has the component replaces it", "[ecs][ty
 	CHECK(registry.GetComponent<Brain>(e).level == 5);
 	CHECK(registry.GetComponent<Brain>(e).label.empty());
 }
+
+TEST_CASE("A 64-bit unsigned value too big for JSON is an error, not an abort", "[ecs][typeregistry]")
+{
+	struct Big
+	{
+		std::uint64_t value = 0;
+	};
+	TypeRegistry types;
+	types.Register<Big>("Big").Field("value", &Big::value);
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Big>(e, Big{std::numeric_limits<std::uint64_t>::max()});
+	JsonValue out;
+	Issues issues;
+	CHECK_FALSE(types.Find("Big")->Save(registry, e, FakeIds{}, out, issues, "big"));
+	REQUIRE(issues.errors.size() == 1);
+	CHECK(issues.errors[0].path == "big.value");
+}
+
+TEST_CASE("Malformed engine value types and non-objects are load errors", "[ecs][typeregistry]")
+{
+	TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	RegisterBrain(types);
+	Registry registry;
+	const Entity e = registry.Create();
+	const FakeIds ids;
+
+	const auto fails = [&](const char* component, const char* json)
+	{
+		Issues issues;
+		const bool ok = types.Find(component)->Load(registry, e, Parse(json), ids, issues, "c");
+		return !ok && !issues.errors.empty();
+	};
+	CHECK(fails("Shape", R"({"color": [1, 2]})"));
+	CHECK(fails("Shape", R"({"color": [1, 2, 300]})"));
+	CHECK(fails("Shape", R"({"color": "red"})"));
+	CHECK(fails("Transform", R"({"position": 5})"));
+	CHECK(fails("Transform", R"({"position": {"x": "a"}})"));
+	CHECK(fails("ClipRect", R"({"rect": {"width": 1.5}})"));
+	CHECK(fails("Brain", R"({"friends": 3})"));
+	CHECK(fails("Brain", R"({"friends": [1, 99]})"));
+	CHECK(fails("Brain", "[1, 2]"));
+	CHECK_FALSE(registry.HasComponent<Shape>(e));
+}
+
+TEST_CASE("A failed load leaves the existing component untouched", "[ecs][typeregistry]")
+{
+	TypeRegistry types;
+	RegisterBrain(types);
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Brain>(e, Brain{.level = 4});
+	Issues issues;
+	CHECK_FALSE(types.Find("Brain")->Load(registry, e, Parse(R"({"level": "x"})"), FakeIds{}, issues, "b"));
+	CHECK(registry.GetComponent<Brain>(e).level == 4);
+}

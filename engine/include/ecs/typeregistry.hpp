@@ -144,8 +144,16 @@ namespace engine::ecs
 	struct FieldCodec<T>
 	{
 		static constexpr FieldKind kind = FieldKind::Int;
-		static bool Save(const T& value, const IEntityIds&, core::JsonValue& out, std::string&)
+		static bool Save(const T& value, const IEntityIds&, core::JsonValue& out, std::string& error)
 		{
+			if constexpr (std::is_unsigned_v<T> && sizeof(T) >= sizeof(std::int64_t))
+			{
+				if (value > static_cast<T>(std::numeric_limits<std::int64_t>::max()))
+				{
+					error = "the integer is too big for a JSON integer";
+					return false;
+				}
+			}
 			out = core::JsonValue(value);
 			return true;
 		}
