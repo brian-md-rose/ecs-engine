@@ -75,6 +75,12 @@ namespace engine::audio
 		void SetMasterVolume(float volume);
 		[[nodiscard]] float MasterVolume() const noexcept { return masterVolume; }
 
+		// Call once a frame: removes the tracks that have finished fading out, which would otherwise keep their stream
+		// and decoder until the next PlayMusic or StopMusic.
+		void Update();
+		// How many tracks are still fading out, for tests.
+		[[nodiscard]] std::size_t FadingTrackCount() const noexcept { return leaving.size(); }
+
 		// Starts music from an Ogg Vorbis file, streamed from memory in small pieces on the audio thread, and looped.
 		// Any music already playing fades out over the same time as the new one fades in (a crossfade); with none, the
 		// new one just fades in. Asking for the music that is already playing does nothing. Returns false, with the

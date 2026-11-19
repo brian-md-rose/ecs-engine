@@ -130,3 +130,15 @@ TEST_CASE("An equal-power fade starts and ends exactly and only moves one way", 
 	CHECK_THAT(EqualPowerFade(0.4f, 0.0f, 0, 10), WithinAbs(0.4, 1e-6));
 	CHECK(EqualPowerFade(0.4f, 0.0f, 10, 10) == 0.0f);
 }
+
+TEST_CASE("A voice that could not be made is never chosen", "[audio][mixing]")
+{
+	const std::array<VoiceState, 3> voices{{{.usable = false, .busy = false, .priority = 0, .serial = 0},
+	                                        {.busy = true, .priority = 4, .serial = 1},
+	                                        {.usable = false, .busy = true, .priority = 0, .serial = 2}}};
+	CHECK(ChooseVoice(voices, 9) == 1); // the one usable voice, though it is busy and the others look idle or old
+	CHECK(ChooseVoice(voices, 2) == voices.size());
+
+	const std::array<VoiceState, 2> none{{{.usable = false}, {.usable = false}}};
+	CHECK(ChooseVoice(none, 9) == none.size());
+}

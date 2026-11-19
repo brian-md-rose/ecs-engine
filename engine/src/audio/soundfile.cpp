@@ -122,6 +122,19 @@ namespace engine::audio
 			std::string why;
 			if (!ReadFile(path, bytes, why)) return Failure(path, why);
 
+			// How long it will be, before unpacking it: a small file can hold hours of silence.
+			{
+				int openError = 0;
+				stb_vorbis* probe =
+				    stb_vorbis_open_memory(bytes.data(), static_cast<int>(bytes.size()), &openError, nullptr);
+				if (probe == nullptr) return Failure(path, "not a readable Ogg Vorbis file");
+				const int probeChannels = stb_vorbis_get_info(probe).channels;
+				const unsigned int length = stb_vorbis_stream_length_in_samples(probe);
+				stb_vorbis_close(probe);
+				if (!DecodedSizeAllowed(length, probeChannels))
+					return Failure(path, "the Ogg file is too long to load");
+			}
+
 			int channels = 0;
 			int rate = 0;
 			short* decoded = nullptr;
@@ -146,6 +159,13 @@ namespace engine::audio
 			return result;
 		}
 	} // namespace
+
+	bool DecodedSizeAllowed(std::uint64_t frames, int channels) noexcept
+	{
+		if (channels < 1) return false;
+		const std::uint64_t perFrame = static_cast<std::uint64_t>(channels) * sizeof(float);
+		return frames <= kMaxDecodedSoundBytes / perFrame;
+	}
 
 	SoundResult LoadSound(const std::filesystem::path& path)
 	{

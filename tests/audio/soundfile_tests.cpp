@@ -131,3 +131,16 @@ TEST_CASE("A bad file is an error, not a crash", "[audio][soundfile]")
 		CHECK(result.error.find("unsupported") != std::string::npos);
 	}
 }
+
+TEST_CASE("A sound that would unpack to more than the cap is refused before it is decoded", "[audio][soundfile]")
+{
+	using engine::audio::DecodedSizeAllowed;
+	CHECK(DecodedSizeAllowed(44100ull * 60, 2)); // a minute of stereo
+	CHECK(DecodedSizeAllowed(0, 1));
+	CHECK_FALSE(DecodedSizeAllowed(1, 0));
+	// The cap is on the float samples: 64 Mi of them at most.
+	constexpr std::uint64_t kSamples = engine::audio::kMaxDecodedSoundBytes / sizeof(float);
+	CHECK(DecodedSizeAllowed(kSamples / 2, 2));
+	CHECK_FALSE(DecodedSizeAllowed(kSamples / 2 + 1, 2));
+	CHECK_FALSE(DecodedSizeAllowed(0xffffffffull, 8)); // 4 billion frames of 8 channels
+}

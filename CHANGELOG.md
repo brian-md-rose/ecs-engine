@@ -9,6 +9,19 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `AudioDevice::Update()`, called once a frame by `Application`, releases music tracks that have finished fading out
+  (they were only released by the next `PlayMusic` or `StopMusic`), and `FadingTrackCount()`.
+- `audio::DecodedSizeAllowed` and `kMaxDecodedSoundBytes`: `LoadSound` refuses an Ogg that would unpack to more than
+  256 MB of samples, checking its length before decoding it.
+- `VoiceState::usable`: `ChooseVoice` never picks a voice whose stream could not be made.
+
+### Fixed
+
+- `PlayMusic` with no audio device now says "no audio device" in `error` instead of an empty string.
+- A music fade request is one atomic word, so the audio thread can't read half of one request and half of the next.
+
 ### Changed
 
 - Tangle Run now uses what Phases 10 to 12 added to the engine. Its menus (title, options, pause) are UI panels and

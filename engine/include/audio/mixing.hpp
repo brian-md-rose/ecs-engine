@@ -29,6 +29,7 @@ namespace engine::audio
 	// What the mixer knows of each voice when it has to pick one for a new sound.
 	struct VoiceState
 	{
+		bool usable = true; // false for a voice whose stream could not be made: never chosen
 		bool busy = false;
 		int priority = 0;
 		std::uint64_t serial = 0; // counts up with each sound started, so a smaller one is older
@@ -36,7 +37,7 @@ namespace engine::audio
 
 	// The voice a new sound with this priority should use: a free one, else the oldest of the voices with the lowest
 	// priority, provided that priority is no higher than the new sound's. Returns voices.size() when every voice is
-	// busy with something more important, and the new sound is dropped.
+	// busy with something more important (or unusable), and the new sound is dropped.
 	[[nodiscard]] std::size_t ChooseVoice(std::span<const VoiceState> voices, int priority) noexcept;
 
 	// A volume is kept between 0 and 1; anything else (including NaN) becomes 0 or 1 rather than going on to SDL.

@@ -103,10 +103,9 @@ namespace engine::audio
 		std::array<VoiceState, kVoices> states{};
 		for (std::size_t i = 0; i < kVoices; ++i)
 		{
-			// A voice whose stream could not be made counts as busy at the top priority, so it is never picked.
-			const bool usable = voices[i].stream != nullptr;
-			states[i] = {.busy = !usable || IsBusy(voices[i]),
-			             .priority = usable ? voices[i].priority : std::numeric_limits<int>::max(),
+			states[i] = {.usable = voices[i].stream != nullptr,
+			             .busy = IsBusy(voices[i]),
+			             .priority = voices[i].priority,
 			             .serial = voices[i].serial};
 		}
 		const std::size_t index = ChooseVoice(states, options.priority);
@@ -176,10 +175,19 @@ namespace engine::audio
 		});
 	}
 
+	void AudioDevice::Update()
+	{
+		ReapMusic();
+	}
+
 	bool AudioDevice::PlayMusic(const std::filesystem::path& path, float fadeSeconds, std::string& error)
 	{
 		error.clear();
-		if (device == 0) return false;
+		if (device == 0)
+		{
+			error = "no audio device";
+			return false;
+		}
 		ReapMusic();
 		if (music && !music->IsSilent() && path == musicPath)
 			return true; // already playing (a track that died is restarted)

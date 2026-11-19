@@ -92,10 +92,13 @@ namespace engine::audio
 
 	void MusicTrack::FadeTo(float target, double seconds)
 	{
-		const double frames = std::max(0.0, std::isfinite(seconds) ? seconds : 0.0) * sampleRate;
-		requestTarget.store(ClampVolume(target), std::memory_order_relaxed);
-		requestFrames.store(static_cast<std::uint64_t>(frames), std::memory_order_relaxed);
-		requestSerial.fetch_add(1, std::memory_order_release); // last: it says the rest is ready
+		const double frames = std::min(std::max(0.0, std::isfinite(seconds) ? seconds : 0.0) * sampleRate,
+		                               static_cast<double>(std::numeric_limits<std::uint32_t>::max()));
+		const auto level = static_cast<std::uint64_t>(std::lround(static_cast<double>(ClampVolume(target)) * 65535.0));
+		++requestSerial;
+		request.store((static_cast<std::uint64_t>(requestSerial) << 48) | (level << 32) |
+		                  static_cast<std::uint64_t>(frames),
+		              std::memory_order_release);
 	}
 
 	void MusicTrack::SetVolume(float volume)
@@ -118,13 +121,15 @@ namespace engine::audio
 		while (framesWanted > 0)
 		{
 			// A new fade request starts from wherever the level is now.
-			const std::uint32_t serial = requestSerial.load(std::memory_order_acquire);
+			const std::uint64_t latest = request.load(std::memory_order_acquire);
+			const auto serial = static_cast<std::uint16_t>(latest >> 48);
 			if (serial != seenSerial)
 			{
 				seenSerial = serial;
+				hasFade = true;
 				fadeFrom = gain;
-				fadeTo = requestTarget.load(std::memory_order_relaxed);
-				fadeTotal = requestFrames.load(std::memory_order_relaxed);
+				fadeTo = static_cast<float>((latest >> 32) & 0xffffu) / 65535.0f;
+				fadeTotal = latest & 0xffffffffu;
 				fadeElapsed = 0;
 			}
 
@@ -166,7 +171,7 @@ namespace engine::audio
 			SDL_PutAudioStreamData(stream, chunk.data(), want * frameBytes);
 			framesWanted -= want;
 
-			if (fadeTo == 0.0f && fadeElapsed >= fadeTotal && gain == 0.0f && seenSerial != 0)
+			if (fadeTo == 0.0f && fadeElapsed >= fadeTotal && gain == 0.0f && hasFade)
 			{
 				silent.store(true, std::memory_order_relaxed); // faded out: nothing more to play
 				return;

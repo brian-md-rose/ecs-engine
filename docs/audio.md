@@ -42,6 +42,7 @@ std::string error;
 audio.PlayMusic("music/level1.ogg", 1.5f, error);   // fades in over 1.5 seconds; any music playing fades out
 audio.PlayMusic("music/boss.ogg", 1.5f, error);     // a crossfade
 audio.StopMusic(2.0f);
+audio.Update();                                      // once a frame: lets go of tracks that finished fading
 ```
 
 Music is Ogg Vorbis only. The track reads the compressed file into memory and decodes it a few thousand samples at a time
