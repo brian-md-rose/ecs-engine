@@ -11,6 +11,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- `ecs::TypeRegistry` (`ecs/typeregistry.hpp`): component types described at run time, with a name and fields, that save to and load from `core::JsonValue`. One explicit registration block per component; `FieldCodec<T>` says how a field type is written (built in: bool, integers, floats, `std::string`, `Entity`, `std::vector<Entity>`, enums by name, and `Color`, `Position`, `PixelRect`). Entities are written as ids through `IEntityIds`, and problems come back with a JSON path. Opt-in: `Registry` is unchanged.
+- `ecs::Name`, and `ecs::RegisterEngineComponents` for the engine's own components.
 - `AudioDevice::Update()`, called once a frame by `Application`, releases music tracks that have finished fading out
   (they were only released by the next `PlayMusic` or `StopMusic`), and `FadingTrackCount()`.
 - `audio::DecodedSizeAllowed` and `kMaxDecodedSoundBytes`: `LoadSound` refuses an Ogg that would unpack to more than
