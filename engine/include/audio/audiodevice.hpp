@@ -37,7 +37,7 @@ namespace engine::audio
 		std::array<Voice, kVoices> voices{};
 		std::uint64_t nextSerial = 1;
 		std::uint32_t randomState = 0x9e3779b9u; // for pitch variance
-		std::array<float, kBusCount> busVolumes{1.0f, 1.0f, 1.0f};
+		std::array<float, kBusCount> busVolumes{{1.0f, 1.0f, 1.0f}};
 		float masterVolume = 1.0f;
 		bool subsystemStarted = false;
 
