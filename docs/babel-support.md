@@ -374,20 +374,20 @@ struct DisplayRequest { std::optional<DisplaySettings> pending; };  // a world r
 struct DisplayInfo { DisplaySettings current; std::vector<Resolution> resolutions; }; // resource
 ```
 
-- [ ] `Renderer` takes the scaling mode instead of hardcoding `INTEGER_SCALE` (point 10), and
+- [x] `Renderer` takes the scaling mode instead of hardcoding `INTEGER_SCALE` (point 10), and
       can change it live.
-- [ ] VSync on or off, and a frame cap in the main loop (sleep until the next frame) for when
+- [x] VSync on or off, and a frame cap in the main loop (sleep until the next frame) for when
       VSync is off.
-- [ ] Borderless uses `SDL_SetWindowFullscreen` with the desktop mode. Exclusive fullscreen uses
+- [x] Borderless uses `SDL_SetWindowFullscreen` with the desktop mode. Exclusive fullscreen uses
       `SDL_SetWindowFullscreenMode`. The resolution list comes from `SDL_GetFullscreenDisplayModes`.
-- [ ] The game asks for a change through a resource (Q6). A settings screen sets
+- [x] The game asks for a change through a resource (Q6). A settings screen sets
       `DisplayRequest::pending`. After each frame, `Application` applies it, clears it, and
       refreshes `DisplayInfo`, which the settings screen reads for the current mode and the
       resolution list. `Application` reaches the world through a small hook on `Game` (for
       example `virtual DisplayRequest* Display()`), which `ScheduledGame` implements from its
       resources. The game never calls into `Application` directly, so headless runs simply
       ignore the request.
-- [ ] Check `FixedTimestep`'s 0.25 s stall cap at x2 and x4 time scale. At x2, 0.25 s of real
+- [x] Check `FixedTimestep`'s 0.25 s stall cap at x2 and x4 time scale. At x2, 0.25 s of real
       time is 30 updates a frame. Add a per-frame update limit if a slow frame can spiral.
 
 ### PR 12.2: Gamepads (v0.4.0)

@@ -85,8 +85,16 @@ namespace engine::application
 
 	Application::Application(const ApplicationConfig& config)
 	    : window(config.title, config.windowWidth, config.windowHeight),
-	      renderer(window, config.logicalWidth, config.logicalHeight), updateStep(1.0 / config.updateRate)
+	      renderer(window, config.logicalWidth, config.logicalHeight, config.scaling),
+	      updateStep(1.0 / config.updateRate), maxUpdatesPerFrame(config.maxUpdatesPerFrame),
+	      display(graphics::Sanitized({.mode = graphics::WindowMode::Windowed,
+	                                   .width = config.windowWidth,
+	                                   .height = config.windowHeight,
+	                                   .vsync = config.vsync,
+	                                   .frameCap = config.frameCap,
+	                                   .scaling = config.scaling}))
 	{
+		if (!config.vsync && !renderer.SetVSync(false)) display.vsync = true; // the driver insists on it
 	}
 
 	int Application::Run(Game& game)
@@ -109,8 +117,11 @@ namespace engine::application
 		}
 
 		core::FixedTimestep timestep(updateStep);
+		timestep.SetMaxUpdates(maxUpdatesPerFrame);
 		double previous = clock.Now();
 		bool cursorShown = true;
+
+		UpdateDisplay(game); // so the game sees the display's settings and sizes from its first update
 
 		while (PumpEvents() && !game.WantsToQuit())
 		{
@@ -136,10 +147,56 @@ namespace engine::application
 
 			game.Render(renderer, timestep.Alpha());
 			renderer.Present();
+
+			UpdateDisplay(game);
+			if (!display.vsync)
+			{
+				// Without VSync nothing paces the loop, so wait out the rest of the frame.
+				const double delay = graphics::FrameDelaySeconds(now, clock.Now(), display.frameCap);
+				if (delay > 0.0) SDL_DelayNS(static_cast<Uint64>(delay * 1e9));
+			}
 		}
 
 		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
 		return 0;
+	}
+
+	void Application::ApplyDisplay(const graphics::DisplaySettings& wanted)
+	{
+		using graphics::WindowMode;
+
+		const bool sizeMatters = wanted.mode != WindowMode::Borderless;
+		if (wanted.mode != display.mode ||
+		    (sizeMatters && (wanted.width != display.width || wanted.height != display.height)))
+		{
+			if (window.SetMode(wanted.mode, wanted.width, wanted.height))
+			{
+				display.mode = wanted.mode;
+				display.width = wanted.width;
+				display.height = wanted.height;
+			}
+		}
+		if (wanted.scaling != display.scaling && renderer.SetScaling(wanted.scaling)) display.scaling = wanted.scaling;
+		if (wanted.vsync != display.vsync && renderer.SetVSync(wanted.vsync)) display.vsync = wanted.vsync;
+		display.frameCap = wanted.frameCap;
+	}
+
+	void Application::UpdateDisplay(Game& game)
+	{
+		const DisplayLink link = game.Display();
+		if (link.request != nullptr && link.request->pending)
+		{
+			const graphics::DisplaySettings wanted = graphics::Sanitized(*link.request->pending);
+			link.request->pending.reset();
+			ApplyDisplay(wanted);
+			displayInfoStale = true;
+		}
+		if (link.info != nullptr && displayInfoStale)
+		{
+			link.info->current = display;
+			link.info->resolutions = window.Resolutions();
+			displayInfoStale = false;
+		}
 	}
 
 	void Application::SetMousePosition(float x, float y)
@@ -197,6 +254,15 @@ namespace engine::application
 				break;
 			case SDL_EVENT_WINDOW_MOUSE_LEAVE:
 				input.mouse.inside = false;
+				break;
+			case SDL_EVENT_WINDOW_RESIZED:
+				// A framed window the player resizes by hand is the window size now.
+				if (display.mode == graphics::WindowMode::Windowed)
+				{
+					display.width = event.window.data1;
+					display.height = event.window.data2;
+					displayInfoStale = true;
+				}
 				break;
 			case SDL_EVENT_WINDOW_FOCUS_LOST:
 				// Key-ups for keys released while unfocused never arrive; don't leave them stuck.

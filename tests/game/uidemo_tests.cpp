@@ -168,6 +168,8 @@ TEST_CASE("The demo opens from the Options screen and ESC goes back", "[game][ui
 	tap(Key::Enter); // OPTIONS
 	REQUIRE(gametest::StageOf(maze) == Stage::Options);
 	tap(Key::Down);
+	tap(Key::Down);
+	tap(Key::Down);
 	tap(Key::Down); // UI DEMO
 	tap(Key::Enter);
 	CHECK(gametest::StageOf(maze) == Stage::UiDemo);

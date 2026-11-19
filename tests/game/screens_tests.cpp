@@ -7,6 +7,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/states.hpp"
 #include "gameflow.hpp"
+#include "graphics/display.hpp"
 #include "graphics/font.hpp"
 #include "hud.hpp"
 #include "input/input.hpp"
@@ -229,6 +230,18 @@ TEST_CASE("The options change with left, right and Enter", "[game][screens][opti
 	h.Tap(Key::Enter);
 	h.Tap(Key::Enter);
 	CHECK(h.Settings().lives == game::kStartingLives + 1);
+
+	h.Tap(Key::Down); // DISPLAY: left and right cycle the mode
+	h.Tap(Key::Right);
+	CHECK(h.Settings().display == engine::graphics::WindowMode::Borderless);
+	h.Tap(Key::Left);
+	CHECK(h.Settings().display == engine::graphics::WindowMode::Windowed);
+
+	h.Tap(Key::Down); // SCALING toggles
+	h.Tap(Key::Enter);
+	CHECK(h.Settings().scaling == engine::graphics::Scaling::Fit);
+	h.Tap(Key::Enter);
+	CHECK(h.Settings().scaling == engine::graphics::Scaling::Integer);
 
 	h.Tap(Key::Down); // UI DEMO: left and right do nothing
 	h.Tap(Key::Right);

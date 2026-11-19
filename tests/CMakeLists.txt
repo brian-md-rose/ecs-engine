@@ -15,7 +15,8 @@ list(REMOVE_ITEM ENGINE_TEST_SOURCES ${GAME_TEST_SOURCES})
 set(PLATFORM_TEST_NAMES
     core/paths_tests.cpp
     debug/debugpanel_tests.cpp
-    graphics/sheetmanifest_tests.cpp)
+    graphics/sheetmanifest_tests.cpp
+    graphics/window_tests.cpp)
 set(PLATFORM_TEST_SOURCES ${PLATFORM_TEST_NAMES})
 list(TRANSFORM PLATFORM_TEST_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
 set(CORE_TEST_SOURCES ${ENGINE_TEST_SOURCES})

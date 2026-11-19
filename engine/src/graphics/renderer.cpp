@@ -8,7 +8,17 @@
 
 namespace engine::graphics
 {
-	Renderer::Renderer(Window& window, int renderWidth, int renderHeight)
+	namespace
+	{
+		SDL_RendererLogicalPresentation PresentationOf(Scaling scaling) noexcept
+		{
+			return scaling == Scaling::Fit ? SDL_LOGICAL_PRESENTATION_LETTERBOX
+			                               : SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
+		}
+	} // namespace
+
+	Renderer::Renderer(Window& window, int renderWidth, int renderHeight, Scaling scalingMode)
+	    : logicalWidth(renderWidth), logicalHeight(renderHeight), scaling(scalingMode)
 	{
 		if (!window.IsValid())
 		{
@@ -22,16 +32,31 @@ namespace engine::graphics
 			return;
 		}
 
-		if (!SDL_SetRenderLogicalPresentation(renderer, renderWidth, renderHeight,
-		                                      SDL_LOGICAL_PRESENTATION_INTEGER_SCALE))
+		SetScaling(scaling);
+		SetVSync(true);
+	}
+
+	bool Renderer::SetScaling(Scaling mode)
+	{
+		if (renderer == nullptr) return false;
+		if (!SDL_SetRenderLogicalPresentation(renderer, logicalWidth, logicalHeight, PresentationOf(mode)))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderLogicalPresentation failed: %s", SDL_GetError());
+			return false;
 		}
+		scaling = mode;
+		return true;
+	}
 
-		if (!SDL_SetRenderVSync(renderer, 1))
+	bool Renderer::SetVSync(bool enabled)
+	{
+		if (renderer == nullptr) return false;
+		if (!SDL_SetRenderVSync(renderer, enabled ? 1 : 0))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderVSync failed: %s", SDL_GetError());
+			return false;
 		}
+		return true;
 	}
 
 	Renderer::~Renderer()

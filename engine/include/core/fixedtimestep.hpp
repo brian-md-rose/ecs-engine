@@ -11,6 +11,7 @@ namespace engine::core
 	{
 		double step;
 		double maxFrame;
+		int maxUpdates = 0;
 		double accumulator = 0.0;
 		double timeScale = 1.0;
 		bool paused = false;
@@ -21,6 +22,12 @@ namespace engine::core
 		// drag) the game slows down briefly instead of running hundreds of catch-up updates.
 		explicit FixedTimestep(double stepSeconds = 1.0 / 60.0, double maxFrameSeconds = 0.25);
 
+		// The most updates one Advance() returns, 0 for no limit. A stall is already cut to maxFrameSeconds, but at a
+		// time scale above 1 that is still many updates, and if they take longer than the frame they replace, the next
+		// frame is behind again and the game spirals. With a limit, the time beyond it is dropped (less than one step
+		// is kept), so the game slows down instead.
+		void SetMaxUpdates(int updates) noexcept { maxUpdates = updates > 0 ? updates : 0; }
+		[[nodiscard]] int MaxUpdates() const noexcept { return maxUpdates; }
 		// Adds elapsed real time; returns how many fixed updates to run now.
 		// Negative times (a clock that went backwards) are treated as zero.
 		[[nodiscard]] int Advance(double frameSeconds);

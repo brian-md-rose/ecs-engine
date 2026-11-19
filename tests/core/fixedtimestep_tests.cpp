@@ -152,3 +152,31 @@ TEST_CASE("FixedTimestep pauses without replaying the paused time", "[core][time
 	timestep.SetPaused(false);
 	CHECK(timestep.Advance(kStep * 0.5) == 1);
 }
+
+TEST_CASE("A limit on updates per frame stops a slow frame snowballing", "[fixedtimestep]")
+{
+	FixedTimestep timestep(kStep, 0.25);
+	timestep.SetTimeScale(4.0);
+	CHECK(timestep.MaxUpdates() == 0);
+	CHECK(timestep.Advance(10.0) >= 59); // 0.25 s at x4 is 60 updates (59 with rounding) without a limit
+
+	timestep.SetMaxUpdates(15);
+	CHECK(timestep.Advance(10.0) == 15);
+	// The backlog beyond the limit is dropped, not carried to the next frame.
+	CHECK(timestep.Advance(0.0) == 0);
+	CHECK(timestep.Alpha() < 1.0);
+	CHECK(timestep.Alpha() >= 0.0);
+
+	// Frames within the limit are untouched.
+	CHECK(timestep.Advance(kStep) >= 3); // 4 steps of game time, give or take rounding
+}
+
+TEST_CASE("The update limit leaves normal frames alone", "[fixedtimestep]")
+{
+	FixedTimestep timestep(kStep, 0.25);
+	timestep.SetMaxUpdates(15);
+	CHECK(timestep.Advance(10.0) == 15); // the 0.25 s stall cap gives exactly 15 at x1 anyway
+	CHECK(timestep.Advance(kStep * 3.5) == 3);
+	timestep.SetMaxUpdates(-4); // nonsense means no limit
+	CHECK(timestep.MaxUpdates() == 0);
+}

@@ -1,6 +1,7 @@
 #include "core/fixedtimestep.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "core/assert.hpp"
 
@@ -30,6 +31,11 @@ namespace engine::core
 		int updates = 0;
 		while (accumulator >= step)
 		{
+			if (maxUpdates > 0 && updates >= maxUpdates)
+			{
+				accumulator = std::fmod(accumulator, step); // give up the backlog
+				break;
+			}
 			accumulator -= step;
 			++updates;
 		}
