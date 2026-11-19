@@ -15,11 +15,19 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
   crashes). `.wav` goes through `SDL_LoadWAV` and `.ogg` through the vendored stb_vorbis (`thirdparty/stb_vorbis`, built
   without the engine's warning flags). The `Sound` keeps the file's own sample rate and channel count.
 - `audio::Sound` gains `sampleRate` and `channels` (defaults match `Synthesize`: mono, 44.1 kHz) and `Frames()`.
+- `audio/mixing.hpp` (no SDL): `Bus` (`Music`, `Sfx`, `Ui`), `PlayOptions` (bus, volume, pitch variance, priority) and the
+  mixer's decisions as pure functions: `ChooseVoice` (free voice, else the oldest of the lowest priority), `VoiceGain`,
+  `PitchRatio`, `Crossfade`, `FadeGain` and `EqualPowerFade`.
+- `AudioDevice::Play(sound, PlayOptions)`, `SetBusVolume`, `SetMasterVolume`, and music: `PlayMusic(path, fadeSeconds, error)`
+  and `StopMusic(fadeSeconds)`. Music streams Ogg Vorbis from memory on the audio thread (`audio/music.hpp`, `MusicTrack`),
+  loops without a gap and crossfades on an equal-power curve. See [docs/audio.md](docs/audio.md).
 
 ### Changed
 
 - `AudioDevice` opens a stereo device and gives each voice the sound's own format, so SDL resamples and remixes it. Mono
   sounds play on both sides as before.
+- `AudioDevice` has 32 voices instead of 8, and a new sound when all are busy replaces the oldest of the lowest priority
+  (or is dropped if every voice matters more) instead of the next in turn.
 
 ## [0.4.0] - 2026-11-19
 
