@@ -19,6 +19,7 @@ endif()
 option(ENGINE_BUILD_GAME  "Build the game executable" ${ENGINE_IS_TOP_LEVEL})
 option(ENGINE_BUILD_TESTS "Build the engine tests"    ${ENGINE_IS_TOP_LEVEL})
 option(ENGINE_BUILD_BENCHMARKS "Build the ECS benchmarks" ${ENGINE_IS_TOP_LEVEL})
+option(ENGINE_BUILD_EDITOR "Build the Dear ImGui editor overlay and tangle_run_editor (needs thirdparty/imgui)" OFF)
 
 if(ENGINE_IS_TOP_LEVEL)
     set(CMAKE_CXX_STANDARD 20)
@@ -94,6 +95,10 @@ add_subdirectory(thirdparty/SDL EXCLUDE_FROM_ALL SYSTEM)
 add_subdirectory(thirdparty/stb_vorbis)
 
 add_subdirectory(engine)
+
+if(ENGINE_BUILD_EDITOR)
+    add_subdirectory(editor)
+endif()
 
 if(ENGINE_BUILD_GAME)
     add_subdirectory(game)

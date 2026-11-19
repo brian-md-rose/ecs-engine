@@ -18,7 +18,7 @@ jobs:
           submodules: true
       - name: Configure
         # The preset pins the VS 2026 generator; fall back to whatever VS the runner has.
-        run: cmake -S . -B build/ci -A x64 -DENGINE_BUILD_TESTS=ON
+        run: cmake -S . -B build/ci -A x64 -DENGINE_BUILD_TESTS=ON -DENGINE_BUILD_EDITOR=ON
       - name: Build
         run: cmake --build build/ci --config ${{ matrix.config }}
       - name: Test

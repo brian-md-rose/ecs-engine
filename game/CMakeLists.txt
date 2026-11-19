@@ -33,3 +33,16 @@ set(GAME_TESTABLE_SOURCES ${GAME_SOURCES})
 list(REMOVE_ITEM GAME_TESTABLE_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 set(GAME_TESTABLE_SOURCES ${GAME_TESTABLE_SOURCES} PARENT_SCOPE)
 set(GAME_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include PARENT_SCOPE)
+
+# The reference editor integration (ENGINE_BUILD_EDITOR): the game's sources again, with its own main.
+if(ENGINE_BUILD_EDITOR)
+    add_executable(tangle_run_editor ${GAME_TESTABLE_SOURCES} ${GAME_HEADERS} editor/main.cpp)
+    set_target_properties(tangle_run_editor PROPERTIES WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>>")
+    target_include_directories(tangle_run_editor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(tangle_run_editor PRIVATE engine::editor engine::warnings SDL3::SDL3)
+    add_custom_target(tangle_run_editor_assets
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:tangle_run_editor>/assets
+        VERBATIM)
+    add_dependencies(tangle_run_editor tangle_run_editor_assets)
+endif()

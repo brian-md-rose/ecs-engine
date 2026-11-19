@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "application/editorhost.hpp"
 #include "audio/audiodevice.hpp"
 #include "core/clock.hpp"
 #include "graphics/display.hpp"
@@ -104,6 +105,7 @@ namespace engine::application
 		int maxUpdatesPerFrame;
 		graphics::DisplaySettings display; // what is in force
 		bool displayInfoStale = true;      // DisplayInfo needs refreshing
+		EditorHost* editor = nullptr;      // the overlay, when there is one (not owned)
 
 		// Drains pending SDL events, feeding keyboard, text and mouse events to input. Returns false once the
 		// window has been asked to close.
@@ -127,6 +129,9 @@ namespace engine::application
 		Application& operator=(const Application&) = delete;
 		Application(Application&&) = delete;
 		Application& operator=(Application&&) = delete;
+
+		// Sets the editor overlay (not owned; it must outlive Run), or none with nullptr. See EditorHost.
+		void SetEditorHost(EditorHost* host) noexcept { editor = host; }
 
 		// Runs until the window is closed or the game asks to quit. Returns 0 on a normal exit, 1 if the window or
 		// renderer couldn't be created.
