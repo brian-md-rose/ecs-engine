@@ -9,6 +9,14 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Tangle Run now uses what Phases 10 to 12 added to the engine. Its menus (title, options, pause) are UI panels and
+  buttons that the mouse can hover and click, and a new HOW TO PLAY screen is a scroll view. Sound effects play on the
+  effects bus with priorities (the death wail and level fanfare are never cut off by pellet ticks, which vary a little in
+  pitch), there is looping Ogg music with fades, and the options gain MUSIC and VOLUME. The enemies' random turns come from
+  `engine::core::Random` instead of `std::mt19937`.
+
 ## [0.5.0] - 2026-11-19
 
 ### Added

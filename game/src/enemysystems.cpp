@@ -136,7 +136,7 @@ namespace game
 		const std::optional<House>& house = world.resources.Get<EnemyHouse>().house;
 		const LevelTuning& tuning = LevelTuningOf(world);
 		const ScheduledMode mode = CurrentMode(world.resources.Get<ModeClock>(), tuning.schedule);
-		std::mt19937& dice = world.resources.Get<EnemyDice>().engine;
+		engine::core::Random& dice = world.resources.Get<EnemyDice>().random;
 		const std::optional<GridMover> player = FindPlayer(registry);
 		const Whereabouts where = FindPersonalities(registry);
 
@@ -178,8 +178,7 @@ namespace game
 			const Goal goal = GoalFor(brain, mode);
 			if (goal == Goal::Wander)
 			{
-				turn = SteerRandomly(maze, mover.tile, mover.direction, mover.throughDoor,
-				                     static_cast<std::uint32_t>(dice()));
+				turn = SteerRandomly(maze, mover.tile, mover.direction, mover.throughDoor, dice.Next());
 			}
 			else if (goal != Goal::Stay)
 			{

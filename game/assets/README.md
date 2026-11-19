@@ -7,3 +7,8 @@ folder or anywhere else.
 
 The copy adds and overwrites files but never deletes them: after removing or renaming an asset,
 delete the stale copy from the build folder (or rebuild from clean).
+
+## music/
+
+`theme.ogg` is the looping music (Ogg Vorbis, played by `MusicSystem` on the music bus, `kMusicFile` in `sounds.hpp`). It is
+an original chiptune loop of four chords, eight bars. Without the file the game just runs without music.

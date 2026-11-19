@@ -1,6 +1,7 @@
 #include "sounds.hpp"
 
 #include "audio/audiodevice.hpp"
+#include "core/log.hpp"
 #include "options.hpp"
 
 namespace game
@@ -91,12 +92,60 @@ namespace game
 		return {};
 	}
 
+	engine::audio::PlayOptions PlayOptionsFor(Sfx sfx) noexcept
+	{
+		engine::audio::PlayOptions options;
+		options.bus = engine::audio::Bus::Sfx;
+		switch (sfx)
+		{
+		case Sfx::Eat:
+			options.pitchVariance = 0.04f;
+			break;
+		case Sfx::PowerUp:
+		case Sfx::EnemyEaten:
+			options.priority = 1;
+			break;
+		case Sfx::Death:
+		case Sfx::LevelClear:
+			options.priority = 2;
+			break;
+		case Sfx::Count:
+			break;
+		}
+		return options;
+	}
+
 	SoundBank::SoundBank()
 	{
 		for (std::size_t i = 0; i < kSfxCount; ++i)
 		{
 			sounds[i] = engine::audio::Synthesize(TonesFor(static_cast<Sfx>(i)));
 		}
+	}
+
+	void MusicSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context)
+	{
+		if (context.audio == nullptr) return;
+		MusicState& music = world.resources.Get<MusicState>();
+		const Settings& settings = world.resources.Get<Settings>();
+
+		const float gain = VolumeGain(settings);
+		if (!music.volume || *music.volume != gain)
+		{
+			context.audio->SetMasterVolume(gain);
+			music.volume = gain;
+		}
+
+		const bool wanted = !music.file.empty() && MusicWanted(settings.music, settings.volume);
+		if (music.playing && *music.playing == wanted) return;
+		music.playing = wanted; // asked once, whether or not it works: a missing file is not retried every frame
+		if (!wanted)
+		{
+			context.audio->StopMusic(kMusicFadeSeconds);
+			return;
+		}
+		std::string error;
+		if (!context.audio->PlayMusic(music.file, kMusicFadeSeconds, error)) engine::core::LogError(error);
 	}
 
 	void AudioSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context)
@@ -114,7 +163,7 @@ namespace game
 			const auto index = static_cast<std::size_t>(sfx);
 			if (started[index]) continue; // two enemies catching the player at once is one death
 			started[index] = true;
-			if (context.audio != nullptr) context.audio->Play(bank.Get(sfx));
+			if (context.audio != nullptr) context.audio->Play(bank.Get(sfx), PlayOptionsFor(sfx));
 			++queue.played[index];
 		}
 		queue.pending.clear();

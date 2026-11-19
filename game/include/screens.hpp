@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -14,13 +15,17 @@
 // input systems below apply them, and ScreenTextSystem keeps the changing text up to date.
 namespace game
 {
-	inline constexpr std::uint8_t kMenuLayer = 20; // above the HUD, and left undimmed
+	// Layers, low to high, all above the HUD and left undimmed: a menu's panel, its buttons, and their text.
+	inline constexpr std::uint8_t kMenuLayer = 20;
+	inline constexpr std::uint8_t kMenuButtonLayer = 21;
+	inline constexpr std::uint8_t kMenuTextLayer = 22;
 
 	inline constexpr std::string_view kGameTitle = "TANGLE RUN";
 
 	enum class TitleItem : std::uint8_t
 	{
 		Start,
+		HowToPlay,
 		Options,
 		Quit,
 		Count
@@ -50,11 +55,16 @@ namespace game
 	// A menu line: "> LABEL" when selected, "  LABEL" when not, so items stay in line.
 	[[nodiscard]] std::string MenuLine(std::string_view label, bool selected);
 
+	// The lines of the how-to-play list, in order. Empty strings are gaps, and a few are long
+	// enough to wrap.
+	[[nodiscard]] std::span<const std::string_view> HelpLines() noexcept;
+
 	// What a piece of changing screen text shows.
 	enum class TextKind : std::uint8_t
 	{
 		TitleItem,  // a title menu line, with its cursor
 		PauseItem,  // a pause menu line, with its cursor
+		HelpBack,   // the how-to-play screen's one button, always selected
 		OptionItem, // an options line (OptionText), with its cursor
 		NameSlot    // one character of the name being entered
 	};
@@ -71,6 +81,7 @@ namespace game
 	// Enter systems: spawn what a screen shows. Everything they create is scoped to the state
 	// they are entered for, so leaving it removes it.
 	void SpawnTitleScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+	void SpawnHelpScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 	void SpawnOptionsScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 	void SpawnNameEntryScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 	void SpawnLevelTransitionScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
@@ -78,9 +89,14 @@ namespace game
 
 	// Input systems, each for its own screen (see MazeGame for the run conditions).
 
-	// Title: up and down choose, confirm acts (START begins a game, OPTIONS opens the options,
-	// QUIT asks the game to close).
+	// Title: up and down choose, confirm acts (START begins a game, HOW TO PLAY and OPTIONS open
+	// their screens, QUIT asks the game to close). Hovering a button chooses it, and clicking one
+	// acts on it, as confirm does.
 	void TitleSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	// How to play: a scrolling list (wheel, drag, or the right stick); confirm on BACK, a click on it, or
+	// pause (Escape) goes back to the title.
+	void HelpSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Options: up and down choose; left, right or confirm change the item (UI DEMO: confirm opens
 	// the demo; BACK: confirm goes back); pause (Escape) goes back to the title.

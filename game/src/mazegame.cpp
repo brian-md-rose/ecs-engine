@@ -1,4 +1,5 @@
 #include "mazegame.hpp"
+#include "menuui.hpp"
 
 #include <filesystem>
 #include <optional>
@@ -89,6 +90,7 @@ namespace game
 			return;
 		}
 		Build(*maze, *assets);
+		world.resources.Get<MusicState>().file = folder / kMusicFile;
 
 		SaveFile& save = world.resources.Get<SaveFile>();
 		save.path = DefaultSaveFile();
@@ -144,12 +146,14 @@ namespace game
 		world.resources.Emplace<engine::graphics::DisplayInfo>();
 		world.resources.Emplace<DisplayAsked>();
 		world.resources.Emplace<engine::ui::PointerState>();
+		world.resources.Emplace<MenuPointer>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
 		world.resources.Emplace<HighScore>();
 		world.resources.Emplace<SaveFile>(); // no path: saves nothing until MazeGame() sets one
 		world.resources.Emplace<SoundBank>();
+		world.resources.Emplace<MusicState>(); // no file: MazeGame() points it at assets/music/theme.ogg
 		world.resources.Emplace<SoundQueue>();
 		world.resources.Emplace<DifficultyTable>(assets.difficulty);
 		auto& renderer2D = world.resources.Emplace<engine::graphics::Renderer2D>(
@@ -165,10 +169,15 @@ namespace game
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);
 		scheduler.Add(Phase::Input, "Title", TitleSystem, InState<Screen::Title>);
 		scheduler.Add(Phase::Input, "Options", OptionsSystem, InState<Screen::Options>);
-		// The UI systems only run on the demo screen (the nine-patch one also tidies up after it).
-		scheduler.Add(Phase::Input, "UiPointer", engine::ui::UiPointerSystem, InState<Screen::UiDemo>);
+		// The pointer works on every menu (and the pause menu), and a scroll view on the how-to-play and demo
+		// screens. Focus moving is only the demo's: the menus move their cursor with Controls instead (which
+		// already treats the d-pad and the south button as up, down and confirm), and the selected button holds
+		// the Focused tag. The nine-patch system also tidies up after a screen.
+		scheduler.Add(Phase::Input, "UiPointer", engine::ui::UiPointerSystem, InMenus);
+		scheduler.Add(Phase::Input, "MenuHover", MenuHoverSystem, InMenus);
 		scheduler.Add(Phase::Input, "UiFocus", engine::ui::UiFocusSystem, InState<Screen::UiDemo>);
-		scheduler.Add(Phase::Input, "ScrollView", engine::ui::ScrollViewSystem, InState<Screen::UiDemo>);
+		scheduler.Add(Phase::Input, "ScrollView", engine::ui::ScrollViewSystem, InState<Screen::Help, Screen::UiDemo>);
+		scheduler.Add(Phase::Input, "Help", HelpSystem, InState<Screen::Help>);
 		scheduler.Add(Phase::Input, "UiDemo", UiDemoSystem, InState<Screen::UiDemo>);
 		scheduler.Add(Phase::Input, "NameEntry", NameEntrySystem, InState<Screen::NameEntry>);
 		scheduler.Add(Phase::Input, "GameOver", GameOverSystem, InState<Screen::GameOver>);
@@ -187,8 +196,10 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, "Hud", HudSystem);
 		scheduler.Add(Phase::LateUpdate, "ScreenText", ScreenTextSystem);
 		scheduler.Add(Phase::LateUpdate, "Display", DisplaySystem);
+		scheduler.Add(Phase::LateUpdate, "MenuLook", MenuLookSystem, InMenus);
 		scheduler.Add(Phase::LateUpdate, "UiDemoLook", UiDemoLookSystem, InState<Screen::UiDemo>);
 		scheduler.Add(Phase::LateUpdate, "NinePatch", engine::ui::NinePatchSystem);
+		scheduler.Add(Phase::LateUpdate, "Music", MusicSystem);
 		scheduler.Add(Phase::LateUpdate, "Audio", AudioSystem);
 		// F3 toggles the debug panel; it goes before RenderSystem, so its text is current.
 		engine::debug::AddDebugPanel(world, scheduler);
@@ -211,6 +222,7 @@ namespace game
 		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
+		world.events.Subscribe<engine::ui::Clicked>(OnMenuClick);
 		world.events.Subscribe<engine::ui::Clicked>(OnDemoClick);
 	}
 } // namespace game

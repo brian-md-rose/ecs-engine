@@ -63,6 +63,7 @@ namespace game
 		scheduler.AddOnEnter(Screen::Title, "EnterTitle", EnterTitle);
 		scheduler.AddOnEnter(Screen::Title, "SpawnTitleScreen", SpawnTitleScreen);
 		scheduler.AddOnEnter(Screen::Playing, "SpawnGameWorld", EnterPlaying);
+		scheduler.AddOnEnter(Screen::Help, "SpawnHelpScreen", SpawnHelpScreen);
 		scheduler.AddOnEnter(Screen::Options, "SpawnOptionsScreen", SpawnOptionsScreen);
 		scheduler.AddOnExit(Screen::Options, "SaveSettings", ExitOptions);
 		scheduler.AddOnEnter(Screen::UiDemo, "SpawnUiDemoScreen", SpawnUiDemoScreen);

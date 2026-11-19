@@ -185,12 +185,11 @@ TEST_CASE("The demo opens from the Options screen and ESC goes back", "[game][ui
 	};
 	update(2);
 	tap(Key::Down);
+	tap(Key::Down);
 	tap(Key::Enter); // OPTIONS
 	REQUIRE(gametest::StageOf(maze) == Stage::Options);
-	tap(Key::Down);
-	tap(Key::Down);
-	tap(Key::Down);
-	tap(Key::Down); // UI DEMO
+	for (int i = 0; i < 6; ++i)
+		tap(Key::Down); // UI DEMO
 	tap(Key::Enter);
 	CHECK(gametest::StageOf(maze) == Stage::UiDemo);
 	CHECK_FALSE(maze.ShowSystemCursor());
@@ -316,7 +315,8 @@ TEST_CASE("Leaving the demo takes everything it spawned with it, nine-patch piec
 	CHECK(d.Count<game::DemoButton>() == 0);
 	CHECK(d.Count<game::DemoCursor>() == 0);
 	CHECK(d.Count<engine::ui::ScrollView>() == 0);
-	CHECK(d.Count<engine::ui::NinePatchChild>() == 0);
+	// The Options screen has panels and buttons of its own, but no pieces are left over from the demo's.
+	CHECK(d.Count<engine::ui::NinePatchChild>() == 9 * d.Count<engine::ui::NinePatch>());
 
 	// And it can be entered again from a clean start.
 	d.maze.world.resources.Get<engine::ecs::NextState<game::Screen>>().Set(game::Screen::UiDemo);

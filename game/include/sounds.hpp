@@ -2,9 +2,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <optional>
 #include <span>
 #include <vector>
 
+#include "audio/mixing.hpp"
 #include "audio/sound.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
@@ -53,6 +56,11 @@ namespace game
 	// The tones a sound is made of (see engine::audio::Tone). Our own designs.
 	[[nodiscard]] std::span<const engine::audio::Tone> TonesFor(Sfx sfx) noexcept;
 
+	// How a sound is played on the mixer: always on the effects bus, with a priority so the death wail and the level
+	// fanfare are never cut off by a run of pellet ticks, and a little pitch variance on the pellet tick so
+	// a long run of them doesn't drone.
+	[[nodiscard]] engine::audio::PlayOptions PlayOptionsFor(Sfx sfx) noexcept;
+
 	// Resource: every sound, synthesised once at setup.
 	struct SoundBank
 	{
@@ -81,6 +89,29 @@ namespace game
 	{
 		world.resources.Get<SoundQueue>().pending.push_back(SoundFor(event));
 	}
+
+	// Resource: the music file (empty: no music), and what MusicSystem has asked of the device so far.
+	struct MusicState
+	{
+		std::filesystem::path file;
+		std::optional<bool> playing; // what was last asked for; nothing until the first update
+		std::optional<float> volume; // the master volume last set
+	};
+
+	// What Music wants from the device: started or stopped, from the Settings (music on, and not muted
+	// by turning the volume right down).
+	[[nodiscard]] constexpr bool MusicWanted(bool musicOn, int volume) noexcept
+	{
+		return musicOn && volume > 0;
+	}
+
+	// LateUpdate (just before Audio): sets the master volume from the Settings, and starts or stops the
+	// music (fading in over kMusicFadeSeconds) when MusicWanted changes. A music file that won't play is
+	// logged once, and the game carries on without it.
+	void MusicSystem(engine::ecs::World& world, const engine::ecs::FrameContext& context);
+
+	inline constexpr float kMusicFadeSeconds = 1.5f;
+	inline constexpr const char* kMusicFile = "music/theme.ogg"; // under assets/
 
 	// LateUpdate (last, always): plays every queued sound on context.audio, if there is one and the
 	// Settings have sound on (otherwise the queue is just emptied),

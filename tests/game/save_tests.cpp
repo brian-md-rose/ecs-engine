@@ -157,7 +157,7 @@ TEST_CASE("Saving keeps the other values in the save file", "[game][save]")
 {
 	const TempSave save("ecs_engine_game_save_keep");
 	engine::core::SaveData data;
-	data.Set("volume", "7");
+	data.Set("colour", "7");
 	REQUIRE(engine::core::WriteSaveData(save.file, data));
 
 	game::MazeGame maze{TestMaze()};
@@ -171,7 +171,7 @@ TEST_CASE("Saving keeps the other values in the save file", "[game][save]")
 	CHECK(result.GetInt(game::kHighScoreKey) == 900);
 	CHECK(result.GetInt(game::kSoundKey) == 0);
 	CHECK(result.GetInt(game::kLivesKey) == 2);
-	CHECK(result.Get("volume") == "7");
+	CHECK(result.Get("colour") == "7");
 }
 
 TEST_CASE("A game without a save path never writes", "[game][save]")

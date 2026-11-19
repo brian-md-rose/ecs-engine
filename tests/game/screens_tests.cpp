@@ -58,6 +58,14 @@ namespace
 			}
 		}
 
+		// From the title: down to OPTIONS and into it.
+		void OpenOptions()
+		{
+			Tap(Key::Down);
+			Tap(Key::Down);
+			Tap(Key::Enter);
+		}
+
 		void Tap(Key key)
 		{
 			input.keyboard.OnKeyDown(key);
@@ -78,7 +86,7 @@ namespace
 			std::string shown;
 			maze.world.registry.Each<engine::graphics::Text>([&shown](Entity, const engine::graphics::Text& text)
 			{
-				if (text.layer == game::kMenuLayer && !text.value.empty()) shown += text.value + "\n";
+				if (text.layer == game::kMenuTextLayer && !text.value.empty()) shown += text.value + "\n";
 			});
 			return shown;
 		}
@@ -153,6 +161,7 @@ TEST_CASE("Choosing Quit on the title screen asks the application to close", "[g
 	Harness h;
 	h.Tap(Key::Down);
 	h.Tap(Key::Down);
+	h.Tap(Key::Down);
 	CHECK(h.Shows("> QUIT"));
 	h.Tap(Key::Space);
 	CHECK(h.maze.WantsToQuit());
@@ -192,8 +201,7 @@ TEST_CASE("Pause does nothing on the title screen", "[game][screens]")
 TEST_CASE("OPTIONS opens the options screen, and Escape goes back to the title", "[game][screens][options]")
 {
 	Harness h;
-	h.Tap(Key::Down);
-	h.Tap(Key::Enter);
+	h.OpenOptions();
 	REQUIRE(h.CurrentStage() == Stage::Options);
 	CHECK(h.Shows("OPTIONS"));
 	CHECK(h.Shows("> SOUND: ON"));
@@ -210,8 +218,7 @@ TEST_CASE("OPTIONS opens the options screen, and Escape goes back to the title",
 TEST_CASE("The options change with left, right and Enter", "[game][screens][options]")
 {
 	Harness h;
-	h.Tap(Key::Down);
-	h.Tap(Key::Enter);
+	h.OpenOptions();
 	REQUIRE(h.CurrentStage() == Stage::Options);
 
 	h.Tap(Key::Enter); // SOUND toggles
@@ -219,6 +226,21 @@ TEST_CASE("The options change with left, right and Enter", "[game][screens][opti
 	CHECK(h.Shows("> SOUND: OFF"));
 	h.Tap(Key::Left);
 	CHECK(h.Settings().sound);
+
+	h.Tap(Key::Down); // MUSIC toggles
+	h.Tap(Key::Right);
+	CHECK_FALSE(h.Settings().music);
+	h.Tap(Key::Left);
+	CHECK(h.Settings().music);
+
+	h.Tap(Key::Down); // VOLUME steps, and stops at the ends
+	h.Tap(Key::Left);
+	CHECK(h.Settings().volume == game::kDefaultVolume - 1);
+	h.Tap(Key::Right);
+	h.Tap(Key::Right);
+	h.Tap(Key::Right);
+	CHECK(h.Settings().volume == game::kMaxVolume);
+	CHECK(h.Shows("> VOLUME: 10"));
 
 	h.Tap(Key::Down);
 	h.Tap(Key::Right); // LIVES up
@@ -257,8 +279,7 @@ TEST_CASE("The options change with left, right and Enter", "[game][screens][opti
 TEST_CASE("The options wrap round with up and down", "[game][screens][options]")
 {
 	Harness h;
-	h.Tap(Key::Down);
-	h.Tap(Key::Enter);
+	h.OpenOptions();
 	h.Tap(Key::Up);
 	CHECK(h.Shows("> BACK"));
 	h.Tap(Key::Down);
@@ -272,8 +293,7 @@ TEST_CASE("The options are saved when the options screen is left", "[game][scree
 	Harness h;
 	h.maze.world.resources.Get<game::SaveFile>().path = folder / "save.txt";
 
-	h.Tap(Key::Down);
-	h.Tap(Key::Enter);
+	h.OpenOptions();
 	h.Tap(Key::Enter);                                         // sound off
 	CHECK_FALSE(std::filesystem::exists(folder / "save.txt")); // not until the screen is left
 	h.Tap(Key::Escape);

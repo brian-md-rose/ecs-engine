@@ -1,8 +1,8 @@
 #pragma once
 #include <optional>
-#include <random>
 
 #include "assets.hpp"
+#include "core/random.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
@@ -26,11 +26,11 @@ namespace game
 		std::optional<House> house;
 	};
 
-	// Resource: where frightened enemies' random turns come from. Seeded, so a game plays the
-	// same way each time it gets the same input.
+	// Resource: where frightened enemies' random turns come from. Seeded with the engine's PCG32,
+	// so a game plays the same way each time it gets the same input, on every compiler.
 	struct EnemyDice
 	{
-		std::mt19937 engine{kEnemyRandomSeed};
+		engine::core::Random random{kEnemyRandomSeed};
 	};
 
 	// Setup: creates an enemy on every enemy spawn of map, with the personalities in turn
