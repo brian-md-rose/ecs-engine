@@ -296,10 +296,20 @@ namespace engine::editor
 
 		ecs::World& world = CurrentWorld();
 		const graphics::Camera camera = CurrentCamera();
+		// Press selects what is under the pointer (or nothing); dragging from there moves it, so the selected
+		// entity can be dragged without a separate handle.
 		if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			panels->selected = PickEntity(world.registry, camera, picture);
+			movingSelected = panels->selected != ecs::Entity::Null;
+		}
+		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
+		if (movingSelected && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
+		{
+			// The pointer's movement over the picture, in the picture's pixels.
+			(void)MoveEntity(world.registry, panels->selected, camera,
+			                 {io.MouseDelta.x / view.zoom, io.MouseDelta.y / view.zoom});
 		}
 		if (panels->selected != ecs::Entity::Null && world.registry.IsAlive(panels->selected))
 		{

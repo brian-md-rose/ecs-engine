@@ -157,3 +157,29 @@ TEST_CASE("The editor draws the game into a picture for the viewport", "[editor]
 	if (app.Run(forwarding) != 0) SKIP("no offscreen video driver");
 	CHECK(game.HasViewportPicture());
 }
+
+TEST_CASE("Moving an entity follows the camera zoom and the parent's local position", "[editor][viewport]")
+{
+	Registry registry;
+	Camera camera = MakeCamera();
+	camera.zoom = 2;
+
+	const Entity box = AddBox(registry, 10, 10, 5);
+	REQUIRE(engine::editor::MoveEntity(registry, box, camera, {8, -4}));
+	CHECK(registry.TryGetComponent<Transform>(box)->position.x == 14.0F); // 8 screen pixels is 4 world units
+	CHECK(registry.TryGetComponent<Transform>(box)->position.y == 8.0F);
+
+	const Entity hud = AddBox(registry, 0, 0, 5);
+	registry.Add<engine::graphics::ScreenSpace>(hud);
+	REQUIRE(engine::editor::MoveEntity(registry, hud, camera, {8, 0}));
+	CHECK(registry.TryGetComponent<Transform>(hud)->position.x == 8.0F);
+
+	const Entity child = AddBox(registry, 50, 50, 5);
+	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{box});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{1, 1}});
+	REQUIRE(engine::editor::MoveEntity(registry, child, camera, {2, 2}));
+	CHECK(registry.TryGetComponent<engine::graphics::LocalTransform>(child)->position.x == 2.0F);
+	CHECK(registry.TryGetComponent<Transform>(child)->position.x == 50.0F);
+
+	CHECK_FALSE(engine::editor::MoveEntity(registry, Entity::Null, camera, {1, 1}));
+}

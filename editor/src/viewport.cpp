@@ -83,6 +83,30 @@ namespace engine::editor
 		return best;
 	}
 
+	bool MoveEntity(ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera,
+	                graphics::Position delta)
+	{
+		if (!registry.IsAlive(entity)) return false;
+		const float scale = IsScreenSpace(registry, entity) ? 1.0F : static_cast<float>(camera.EffectiveZoom());
+		const graphics::Position move{delta.x / scale, delta.y / scale};
+		if (registry.HasComponent<ecs::Parent>(entity))
+		{
+			if (auto* local = registry.TryGetComponent<graphics::LocalTransform>(entity))
+			{
+				local->position.x += move.x;
+				local->position.y += move.y;
+				return true;
+			}
+		}
+		if (auto* transform = registry.TryGetComponent<graphics::Transform>(entity))
+		{
+			transform->position.x += move.x;
+			transform->position.y += move.y;
+			return true;
+		}
+		return false;
+	}
+
 	void ViewTransform::ZoomAt(float factor, graphics::Position window, graphics::Position origin) noexcept
 	{
 		const float newZoom = std::clamp(zoom * factor, kMinZoom, kMaxZoom);

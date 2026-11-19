@@ -34,6 +34,13 @@ namespace engine::editor
 	[[nodiscard]] ecs::Entity PickEntity(const ecs::Registry& registry, const graphics::Camera& camera,
 	                                     graphics::Position point);
 
+	// Moves the entity by delta, in logical screen pixels (what the pointer moved over the picture): world-space
+	// entities by delta / the camera's zoom world units, screen-space ones by delta. An entity with a Parent and a
+	// LocalTransform moves its LocalTransform (its Transform is worked out from it each frame), any other its
+	// Transform. False if it has neither.
+	bool MoveEntity(ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera,
+	                graphics::Position delta);
+
 	// How the picture is shown in the viewport window: scaled by zoom and moved by pan (window pixels).
 	struct ViewTransform
 	{

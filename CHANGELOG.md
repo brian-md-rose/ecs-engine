@@ -11,7 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- A Viewport panel in the standalone editor: the game is drawn into a render target and shown with zoom and pan, click-to-pick (`PickEntity`, `EntityScreenRect`) and a selection outline. `Renderer::CreateRenderTarget` and `SetRenderTarget`, and `Editor::SetPanelSize`.
+- A Viewport panel in the standalone editor: the game is drawn into a render target and shown with zoom and pan, click-to-pick (`PickEntity`, `EntityScreenRect`) and a selection outline, and drag to move (`MoveEntity`). `Renderer::CreateRenderTarget` and `SetRenderTarget`, and `Editor::SetPanelSize`.
 - `EditorGame` (`editor/editorgame.hpp`): the standalone editor, with an edit world and a play world, a Scene menu (New, Open, Save, Save as, unsaved-changes prompt) and Play/Stop that runs a copy and discards its changes. `tangle_run_editor` runs it by default; `--overlay` gives the old F1 overlay. `Editor::SetMenuBar` lets a host add to the menu bar, and `AddEntityPanels` can take a function that returns the current world.
 
 ## [0.7.0] - 2026-11-19

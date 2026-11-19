@@ -80,6 +80,7 @@ namespace engine::editor
 		int targetHeight = 0;
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
+		bool movingSelected = false; // a drag that began on an entity is moving it
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
