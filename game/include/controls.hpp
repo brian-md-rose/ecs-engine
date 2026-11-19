@@ -6,6 +6,8 @@
 #include <optional>
 
 #include "grid/direction.hpp"
+#include "input/gamepad.hpp"
+#include "input/input.hpp"
 #include "input/keyboard.hpp"
 
 namespace game
@@ -30,14 +32,18 @@ namespace game
 	class Controls
 	{
 		std::array<std::optional<Action>, engine::input::kKeyCount> bindings{};
+		std::array<std::optional<Action>, engine::input::kPadButtonCount> padBindings{};
 		std::array<bool, kActionCount> held{};
 		std::array<bool, kActionCount> pressed{};
 		std::array<bool, kActionCount> released{};
 		engine::grid::Direction bufferedDirection = engine::grid::Direction::None;
 
+		void Update(const engine::input::Keyboard& keyboard, const engine::input::Input* input);
+
 	public:
 		// Starts with the default bindings: arrows and WASD to move, P or Escape to pause,
-		// Enter or Space to confirm.
+		// Enter or Space to confirm. On a pad: the d-pad or left stick to move, South to confirm,
+		// Start or Back to pause.
 		Controls();
 
 		// Binds key to action, replacing any previous binding of that key. Safe while keys are
@@ -46,7 +52,15 @@ namespace game
 		void Unbind(engine::input::Key key);
 		[[nodiscard]] std::optional<Action> GetBinding(engine::input::Key key) const;
 
+		// Binds a pad button to an action, on any connected pad. The four directions are not bound this way: the d-pad
+		// and the left stick always move.
+		void BindPad(engine::input::PadButton button, Action action);
+		void UnbindPad(engine::input::PadButton button);
+		[[nodiscard]] std::optional<Action> GetPadBinding(engine::input::PadButton button) const;
+
 		void Update(const engine::input::Keyboard& keyboard);
+		// The keyboard, and the pads in the input too.
+		void Update(const engine::input::Input& input);
 
 		// At least one bound key is down.
 		[[nodiscard]] bool IsHeld(Action action) const;

@@ -1,5 +1,7 @@
 #include "controls.hpp"
 
+#include <utility>
+
 #include "core/assert.hpp"
 
 namespace game
@@ -50,6 +52,28 @@ namespace game
 		Bind(Key::Enter, Action::Confirm);
 		Bind(Key::Space, Action::Confirm);
 		Bind(Key::F1, Action::ToggleStressTest);
+		BindPad(engine::input::PadButton::South, Action::Confirm);
+		BindPad(engine::input::PadButton::Start, Action::Pause);
+		BindPad(engine::input::PadButton::Back, Action::Pause);
+	}
+
+	void Controls::BindPad(engine::input::PadButton button, Action action)
+	{
+		ENGINE_ASSERT(static_cast<std::size_t>(action) < kActionCount, "invalid action");
+		ENGINE_ASSERT(static_cast<std::size_t>(button) < engine::input::kPadButtonCount, "invalid pad button");
+		padBindings[static_cast<std::size_t>(button)] = action;
+	}
+
+	void Controls::UnbindPad(engine::input::PadButton button)
+	{
+		ENGINE_ASSERT(static_cast<std::size_t>(button) < engine::input::kPadButtonCount, "invalid pad button");
+		padBindings[static_cast<std::size_t>(button)].reset();
+	}
+
+	std::optional<Action> Controls::GetPadBinding(engine::input::PadButton button) const
+	{
+		ENGINE_ASSERT(static_cast<std::size_t>(button) < engine::input::kPadButtonCount, "invalid pad button");
+		return padBindings[static_cast<std::size_t>(button)];
 	}
 
 	void Controls::Bind(Key key, Action action)
@@ -70,6 +94,16 @@ namespace game
 
 	void Controls::Update(const engine::input::Keyboard& keyboard)
 	{
+		Update(keyboard, nullptr);
+	}
+
+	void Controls::Update(const engine::input::Input& input)
+	{
+		Update(input.keyboard, &input);
+	}
+
+	void Controls::Update(const engine::input::Keyboard& keyboard, const engine::input::Input* input)
+	{
 		std::array<bool, kActionCount> anyDown{};
 		std::array<bool, kActionCount> anyPressed{};
 		for (std::size_t k = 0; k < kKeyCount; ++k)
@@ -79,6 +113,31 @@ namespace game
 			const std::size_t a = Index(*bindings[k]);
 			anyDown[a] = anyDown[a] || keyboard.IsDown(key);
 			anyPressed[a] = anyPressed[a] || keyboard.WasPressed(key);
+		}
+
+		if (input != nullptr)
+		{
+			using engine::input::PadDirection;
+			for (std::size_t b = 0; b < engine::input::kPadButtonCount; ++b)
+			{
+				if (!padBindings[b]) continue;
+				const auto button = static_cast<engine::input::PadButton>(b);
+				const std::size_t a = Index(*padBindings[b]);
+				anyDown[a] = anyDown[a] || input->PadDown(button);
+				anyPressed[a] = anyPressed[a] || input->PadPressed(button);
+			}
+			// The d-pad and the left stick are the same thing to the game: a direction.
+			const std::array<std::pair<PadDirection, Action>, 4> directions = {
+			    {{PadDirection::Up, Action::MoveUp},
+			     {PadDirection::Down, Action::MoveDown},
+			     {PadDirection::Left, Action::MoveLeft},
+			     {PadDirection::Right, Action::MoveRight}}};
+			for (const auto& [direction, action] : directions)
+			{
+				const std::size_t a = Index(action);
+				anyDown[a] = anyDown[a] || input->PadDirectionHeld(direction);
+				anyPressed[a] = anyPressed[a] || input->PadPushed(direction);
+			}
 		}
 
 		for (std::size_t a = 0; a < kActionCount; ++a)

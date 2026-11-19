@@ -1,11 +1,18 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+
 #include "audio/audiodevice.hpp"
 #include "core/clock.hpp"
 #include "graphics/display.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
 #include "input/input.hpp"
+
+// SDL types are only forward-declared here, as in the other platform headers.
+struct SDL_Gamepad;
 
 namespace engine::application
 {
@@ -89,6 +96,10 @@ namespace engine::application
 		graphics::Renderer renderer;
 		audio::AudioDevice audio;
 		input::Input input;
+		// The open controllers: the SDL handle and the joystick instance id of each slot of Input::pads (id 0 for a
+		// free slot). Declared before updateStep so the destructor body can close them with SDL still running.
+		std::array<SDL_Gamepad*, input::kMaxPads> padHandles{};
+		std::array<std::uint32_t, input::kMaxPads> padIds{};
 		double updateStep;
 		int maxUpdatesPerFrame;
 		graphics::DisplaySettings display; // what is in force
@@ -99,12 +110,18 @@ namespace engine::application
 		bool PumpEvents();
 		// Records the pointer at a logical-pixel position, and whether it is over the logical area.
 		void SetMousePosition(float x, float y);
+		// Gamepad hotplug: opens the pad with joystick id into the first free slot, or closes it and frees its slot.
+		void OpenPad(std::uint32_t id);
+		void ClosePad(std::uint32_t id);
+		// The slot of the pad with joystick id, or kMaxPads if it is not open.
+		[[nodiscard]] std::size_t SlotOfPad(std::uint32_t id) const;
 		// Applies a pending DisplayRequest of game, and refreshes its DisplayInfo when something changed.
 		void UpdateDisplay(Game& game);
 		void ApplyDisplay(const graphics::DisplaySettings& wanted);
 
 	public:
 		explicit Application(const ApplicationConfig& config);
+		~Application();
 
 		Application(const Application&) = delete;
 		Application& operator=(const Application&) = delete;

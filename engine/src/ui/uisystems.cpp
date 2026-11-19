@@ -3,12 +3,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 #include "ecs/entity.hpp"
 #include "ecs/hierarchy.hpp"
 #include "graphics/sprite.hpp"
 #include "input/input.hpp"
+#include "ui/focusnav.hpp"
 #include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 
@@ -123,7 +125,17 @@ namespace engine::ui
 
 	void UiFocusSystem(ecs::World& world, const ecs::FrameContext& context)
 	{
-		if (context.input == nullptr || !context.input->keyboard.WasPressed(input::Key::Tab)) return;
+		if (context.input == nullptr) return;
+		const input::Input& in = *context.input;
+		const bool tab = in.keyboard.WasPressed(input::Key::Tab);
+		std::optional<input::PadDirection> pushed;
+		for (const input::PadDirection direction : {input::PadDirection::Up, input::PadDirection::Down,
+		                                            input::PadDirection::Left, input::PadDirection::Right})
+		{
+			if (!pushed && in.PadPushed(direction)) pushed = direction;
+		}
+		const bool confirm = in.PadPressed(input::PadButton::South);
+		if (!tab && !pushed && !confirm) return;
 		ecs::Registry& registry = world.registry;
 
 		struct Stop
@@ -148,19 +160,64 @@ namespace engine::ui
 		{
 			current.push_back(entity);
 		});
+
+		// South presses the focused thing, as a click.
+		if (confirm && !current.empty() && registry.IsAlive(current.front()) &&
+		    registry.TryGetComponent<Interactable>(current.front()) != nullptr &&
+		    registry.TryGetComponent<Interactable>(current.front())->enabled)
+		{
+			world.events.Publish(Clicked{.entity = current.front(), .button = input::MouseButton::Left});
+		}
+		if (!tab && !pushed) return;
+
+		if (stops.empty())
+		{
+			for (const ecs::Entity entity : current)
+				registry.Remove<Focused>(entity);
+			return;
+		}
+		const auto count = static_cast<std::ptrdiff_t>(stops.size());
+		std::ptrdiff_t index = 0;
+		const auto position = [&]() -> std::optional<std::ptrdiff_t>
+		{
+			for (std::ptrdiff_t i = 0; i < count && !current.empty(); ++i)
+			{
+				if (stops[static_cast<std::size_t>(i)].entity == current.front()) return i;
+			}
+			return std::nullopt;
+		}();
+
+		if (tab)
+		{
+			const bool backwards = in.keyboard.IsDown(input::Key::Shift);
+			index = position ? (*position + (backwards ? count - 1 : 1)) % count : (backwards ? count - 1 : 0);
+		}
+		else if (position)
+		{
+			// Toward the nearest stop in the direction pushed; stay put if there is none that way.
+			std::vector<FocusCandidate> candidates;
+			for (const Stop& stop : stops)
+			{
+				graphics::Position centre{};
+				if (const auto* transform = registry.TryGetComponent<graphics::Transform>(stop.entity))
+				{
+					centre = transform->position;
+					if (const Hitbox* hitbox = registry.TryGetComponent<Hitbox>(stop.entity))
+					{
+						centre.x += hitbox->width / 2.0f;
+						centre.y += hitbox->height / 2.0f;
+					}
+				}
+				candidates.push_back({.entity = stop.entity, .centre = centre});
+			}
+			const std::optional<std::size_t> next =
+			    PickFocusNeighbour(candidates, static_cast<std::size_t>(*position), *pushed);
+			index = next ? static_cast<std::ptrdiff_t>(*next) : *position;
+		}
+		// else: nothing focused yet, so the first stop gets it.
+
 		for (const ecs::Entity entity : current)
 			registry.Remove<Focused>(entity);
-		if (stops.empty()) return;
-
-		const bool backwards = context.input->keyboard.IsDown(input::Key::Shift);
-		const auto count = static_cast<std::ptrdiff_t>(stops.size());
-		std::ptrdiff_t index = backwards ? count - 1 : 0; // nothing focused yet: start at the end it came from
-		for (std::ptrdiff_t i = 0; i < count && !current.empty(); ++i)
-		{
-			if (stops[static_cast<std::size_t>(i)].entity != current.front()) continue;
-			index = (i + (backwards ? count - 1 : 1)) % count;
-			break;
-		}
 		registry.Add<Focused>(stops[static_cast<std::size_t>(index)].entity);
 	}
 
@@ -170,12 +227,18 @@ namespace engine::ui
 		ecs::Registry& registry = world.registry;
 		const input::Mouse& mouse = context.input->mouse;
 		const graphics::Camera camera = CameraOf(world);
+		const float padPush = context.input->PadRightStick().y; // positive is down the list
 
 		registry.Each<graphics::Transform, Hitbox, ScrollView>(
 		    [&](ecs::Entity entity, graphics::Transform& transform, Hitbox& hitbox, ScrollView& view)
 		{
 			const bool over = PointerHits(registry, entity, transform, hitbox, mouse, camera);
 			if (over && mouse.wheel != 0.0f) view.offset -= mouse.wheel * view.wheelStep;
+			// A pad's right stick scrolls the view that has focus, at a speed that follows how far it is pushed.
+			if (padPush != 0.0f && registry.TryGetComponent<Focused>(entity) != nullptr)
+			{
+				view.offset += padPush * view.padSpeed * static_cast<float>(context.dt);
+			}
 
 			// Drag: the content follows the pointer once it has moved past the threshold.
 			const float pointerY = PointerInSpaceOf(registry, entity, mouse, camera).position.y;

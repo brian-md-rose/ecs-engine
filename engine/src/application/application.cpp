@@ -1,6 +1,7 @@
 #include "application/application.hpp"
 
 #include <SDL3/SDL.h>
+#include <algorithm>
 #include <optional>
 
 #include "core/fixedtimestep.hpp"
@@ -51,6 +52,92 @@ namespace engine::application
 			return std::nullopt;
 		}
 
+		// The family a pad belongs to, from SDL's own idea of its type and, for the Steam Deck (which SDL calls
+		// generic), its name and USB ids.
+		input::PadFamily FamilyOf(SDL_Gamepad* pad)
+		{
+			const char* name = SDL_GetGamepadName(pad);
+			if (input::IsSteamDeck(name != nullptr ? name : "", SDL_GetGamepadVendor(pad), SDL_GetGamepadProduct(pad)))
+			{
+				return input::PadFamily::SteamDeck;
+			}
+			switch (SDL_GetGamepadType(pad))
+			{
+			case SDL_GAMEPAD_TYPE_XBOX360:
+			case SDL_GAMEPAD_TYPE_XBOXONE:
+				return input::PadFamily::Xbox;
+			case SDL_GAMEPAD_TYPE_PS3:
+			case SDL_GAMEPAD_TYPE_PS4:
+			case SDL_GAMEPAD_TYPE_PS5:
+				return input::PadFamily::PlayStation;
+			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
+			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+				return input::PadFamily::Switch;
+			default:
+				return input::PadFamily::Generic;
+			}
+		}
+
+		std::optional<input::PadButton> ToPadButton(Uint8 button)
+		{
+			switch (button)
+			{
+			case SDL_GAMEPAD_BUTTON_SOUTH:
+				return input::PadButton::South;
+			case SDL_GAMEPAD_BUTTON_EAST:
+				return input::PadButton::East;
+			case SDL_GAMEPAD_BUTTON_WEST:
+				return input::PadButton::West;
+			case SDL_GAMEPAD_BUTTON_NORTH:
+				return input::PadButton::North;
+			case SDL_GAMEPAD_BUTTON_START:
+				return input::PadButton::Start;
+			case SDL_GAMEPAD_BUTTON_BACK:
+				return input::PadButton::Back;
+			case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+				return input::PadButton::L1;
+			case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+				return input::PadButton::R1;
+			case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+				return input::PadButton::LStick;
+			case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+				return input::PadButton::RStick;
+			case SDL_GAMEPAD_BUTTON_DPAD_UP:
+				return input::PadButton::DUp;
+			case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+				return input::PadButton::DDown;
+			case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+				return input::PadButton::DLeft;
+			case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+				return input::PadButton::DRight;
+			default:
+				return std::nullopt; // the Guide button and the extras are the system's
+			}
+		}
+
+		std::optional<input::PadAxis> ToPadAxis(Uint8 axis)
+		{
+			switch (axis)
+			{
+			case SDL_GAMEPAD_AXIS_LEFTX:
+				return input::PadAxis::LeftX;
+			case SDL_GAMEPAD_AXIS_LEFTY:
+				return input::PadAxis::LeftY;
+			case SDL_GAMEPAD_AXIS_RIGHTX:
+				return input::PadAxis::RightX;
+			case SDL_GAMEPAD_AXIS_RIGHTY:
+				return input::PadAxis::RightY;
+			case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+				return input::PadAxis::LeftTrigger;
+			case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
+				return input::PadAxis::RightTrigger;
+			default:
+				return std::nullopt;
+			}
+		}
+
 		std::optional<input::MouseButton> ToMouseButton(Uint8 button)
 		{
 			switch (button)
@@ -95,6 +182,65 @@ namespace engine::application
 	                                   .scaling = config.scaling}))
 	{
 		if (!config.vsync && !renderer.SetVSync(false)) display.vsync = true; // the driver insists on it
+
+		// Controllers already plugged in arrive as events once this is on.
+		if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
+		{
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SDL_InitSubSystem(GAMEPAD) failed, no controllers: %s",
+			            SDL_GetError());
+		}
+	}
+
+	Application::~Application()
+	{
+		for (SDL_Gamepad* handle : padHandles)
+		{
+			if (handle != nullptr) SDL_CloseGamepad(handle);
+		}
+		SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
+	}
+
+	std::size_t Application::SlotOfPad(std::uint32_t id) const
+	{
+		for (std::size_t i = 0; i < input::kMaxPads; ++i)
+		{
+			if (padIds[i] == id && padHandles[i] != nullptr) return i;
+		}
+		return input::kMaxPads;
+	}
+
+	void Application::OpenPad(std::uint32_t id)
+	{
+		if (SlotOfPad(id) != input::kMaxPads) return; // already open
+		std::size_t slot = 0;
+		while (slot < input::kMaxPads && padHandles[slot] != nullptr)
+		{
+			++slot;
+		}
+		if (slot == input::kMaxPads) return; // all slots busy: this one is ignored
+
+		SDL_Gamepad* handle = SDL_OpenGamepad(id);
+		if (handle == nullptr)
+		{
+			SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SDL_OpenGamepad failed: %s", SDL_GetError());
+			return;
+		}
+		padHandles[slot] = handle;
+		padIds[slot] = id;
+		const char* name = SDL_GetGamepadName(handle);
+		input.pads[slot].Connect(FamilyOf(handle));
+		SDL_Log("controller %zu connected: %s", slot, name != nullptr ? name : "(unnamed)");
+	}
+
+	void Application::ClosePad(std::uint32_t id)
+	{
+		const std::size_t slot = SlotOfPad(id);
+		if (slot == input::kMaxPads) return;
+		SDL_CloseGamepad(padHandles[slot]);
+		padHandles[slot] = nullptr;
+		padIds[slot] = 0;
+		input.pads[slot].Disconnect();
+		SDL_Log("controller %zu disconnected", slot);
 	}
 
 	int Application::Run(Game& game)
@@ -223,6 +369,7 @@ namespace engine::application
 				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
 					input.keyboard.OnKeyDown(*key);
+					input.lastUsed = input::Device::Keyboard;
 				}
 				break;
 			case SDL_EVENT_KEY_UP:
@@ -238,6 +385,7 @@ namespace engine::application
 				// Window pixels to logical pixels, so letterboxing and scaling are handled.
 				SDL_ConvertEventToRenderCoordinates(renderer.GetRendererHandle(), &event);
 				SetMousePosition(event.motion.x, event.motion.y);
+				input.lastUsed = input::Device::Mouse;
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -246,12 +394,40 @@ namespace engine::application
 				if (const std::optional<input::MouseButton> button = ToMouseButton(event.button.button))
 				{
 					input.mouse.OnButton(*button, event.button.down);
+					if (event.button.down) input.lastUsed = input::Device::Mouse;
 				}
 				break;
 			case SDL_EVENT_MOUSE_WHEEL:
 				// Notches, positive away from the user, whatever the OS's "natural scrolling" says.
 				input.mouse.OnWheel(event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y);
+				input.lastUsed = input::Device::Mouse;
 				break;
+			case SDL_EVENT_GAMEPAD_ADDED:
+				OpenPad(event.gdevice.which);
+				break;
+			case SDL_EVENT_GAMEPAD_REMOVED:
+				ClosePad(event.gdevice.which);
+				break;
+			case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+			case SDL_EVENT_GAMEPAD_BUTTON_UP:
+			{
+				const std::size_t slot = SlotOfPad(event.gbutton.which);
+				const std::optional<input::PadButton> button = ToPadButton(event.gbutton.button);
+				if (slot == input::kMaxPads || !button) break;
+				input.pads[slot].OnButton(*button, event.gbutton.down);
+				if (event.gbutton.down) input.lastUsed = input::Device::Pad;
+				break;
+			}
+			case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+			{
+				const std::size_t slot = SlotOfPad(event.gaxis.which);
+				const std::optional<input::PadAxis> axis = ToPadAxis(event.gaxis.axis);
+				if (slot == input::kMaxPads || !axis) break;
+				// Sticks run -32768 to 32767, triggers 0 to 32767; both to -1..1 and 0..1.
+				const float value = std::clamp(static_cast<float>(event.gaxis.value) / 32767.0f, -1.0f, 1.0f);
+				if (input.pads[slot].OnAxis(*axis, value)) input.lastUsed = input::Device::Pad;
+				break;
+			}
 			case SDL_EVENT_WINDOW_MOUSE_LEAVE:
 				input.mouse.inside = false;
 				break;

@@ -21,6 +21,13 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 - `core::FixedTimestep::SetMaxUpdates`: limits the updates one frame runs and drops the backlog beyond it, so a slow frame at a time
   scale above 1 can't spiral. `Application` sets it to 15 by default (what a stall gets at normal speed).
 - Tangle Run: DISPLAY and SCALING options, saved with the other settings.
+- `input/gamepad.hpp`: gamepads. `PadButton` named by position, `PadFamily`, `Gamepad` with latched edges, circular deadzones and
+  stick-as-direction helpers, and `Input::pads` (four slots), `Input::lastUsed` and `Device`. `Application` handles hotplug.
+  See [docs/gamepad.md](docs/gamepad.md).
+- `ui::PickFocusNeighbour`: `UiFocusSystem` moves `Focused` by d-pad or left stick and clicks on South;
+  `ScrollView::padSpeed` lets the right stick scroll a focused view.
+- Tangle Run: pad bindings in `Controls` (South confirms, Start and Back pause, d-pad and left stick move), and a UI demo
+  screen that is fully navigable by pad with hints for the pad family in use.
 
 ## [0.3.0] - 2026-11-19
 

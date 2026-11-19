@@ -75,6 +75,26 @@ namespace
 			Update();
 		}
 
+		void PadTap(engine::input::PadButton button)
+		{
+			input.pads[0].OnButton(button, true);
+			input.lastUsed = engine::input::Device::Pad;
+			Update();
+			input.pads[0].OnButton(button, false);
+			Update();
+		}
+
+		[[nodiscard]] bool Focused(const engine::ui::ScrollView* /*unused*/ = nullptr)
+		{
+			bool found = false;
+			maze.world.registry.Each<engine::ui::ScrollView, engine::ui::Focused>(
+			    [&found](Entity, const engine::ui::ScrollView&, const engine::ui::Focused&)
+			{
+				found = true;
+			});
+			return found;
+		}
+
 		void MoveTo(engine::graphics::Position where)
 		{
 			input.mouse.OnMove(where, true);
@@ -303,4 +323,104 @@ TEST_CASE("Leaving the demo takes everything it spawned with it, nine-patch piec
 	d.Update(2);
 	CHECK(d.Count<game::DemoButton>() == 3);
 	CHECK(d.Clicks() == 0);
+}
+
+TEST_CASE("The demo is fully navigable by pad", "[game][uidemo][pad]")
+{
+	using engine::input::PadAxis;
+	using engine::input::PadButton;
+	Demo d;
+	d.input.pads[0].Connect(engine::input::PadFamily::Xbox);
+
+	d.PadTap(PadButton::DRight); // focus lands on COUNT
+	d.PadTap(PadButton::South);
+	CHECK(d.Clicks() == 1);
+	d.PadTap(PadButton::South);
+	CHECK(d.Clicks() == 2);
+
+	d.PadTap(PadButton::DRight); // RESET
+	d.PadTap(PadButton::South);
+	CHECK(d.Clicks() == 0);
+
+	d.PadTap(PadButton::DDown); // down to the list
+	CHECK(d.Focused());
+	CHECK(d.List().offset == 0.0f);
+	d.input.pads[0].OnAxis(PadAxis::RightY, 1.0f);
+	d.Update(30);
+	CHECK(d.List().offset > 0.0f); // the right stick scrolls it
+	d.input.pads[0].OnAxis(PadAxis::RightY, 0.0f);
+	d.Update();
+
+	d.PadTap(PadButton::DUp); // back to a button
+	CHECK_FALSE(d.Focused());
+	d.PadTap(PadButton::DRight); // BACK
+	d.PadTap(PadButton::South);
+	d.Update(2);
+	CHECK(d.CurrentStage() == Stage::Options);
+}
+
+TEST_CASE("The left stick works the demo like the d-pad, and Start goes back", "[game][uidemo][pad]")
+{
+	using engine::input::PadAxis;
+	using engine::input::PadButton;
+	Demo d;
+	d.input.pads[0].Connect(engine::input::PadFamily::PlayStation);
+	d.input.lastUsed = engine::input::Device::Pad;
+
+	d.input.pads[0].OnAxis(PadAxis::LeftX, 1.0f);
+	d.Update();
+	d.input.pads[0].OnAxis(PadAxis::LeftX, 0.0f);
+	d.Update();
+	d.PadTap(PadButton::South);
+	CHECK(d.Clicks() == 1);
+
+	d.PadTap(PadButton::Start);
+	d.Update(2);
+	CHECK(d.CurrentStage() == Stage::Options);
+}
+
+TEST_CASE("The help text names the device in use, with the pad's own button labels", "[game][uidemo][pad]")
+{
+	using engine::input::Device;
+	using engine::input::PadFamily;
+	CHECK(game::DemoHintText(0, Device::Keyboard, PadFamily::Xbox) == "WHEEL OR DRAG: SCROLL");
+	CHECK(game::DemoHintText(1, Device::Mouse, PadFamily::Xbox) == "ESC: BACK");
+	CHECK(game::DemoHintText(0, Device::Pad, PadFamily::Xbox) == "D-PAD: MOVE   A: PRESS");
+	CHECK(game::DemoHintText(0, Device::Pad, PadFamily::PlayStation) == "D-PAD: MOVE   CROSS: PRESS");
+	CHECK(game::DemoHintText(1, Device::Pad, PadFamily::PlayStation) == "R STICK: SCROLL   OPTIONS: BACK");
+
+	Demo d;
+	const auto hint = [&d](int line)
+	{
+		std::string text;
+		d.maze.world.registry.Each<game::DemoHint, engine::graphics::Text>(
+		    [&](Entity, const game::DemoHint& which, const engine::graphics::Text& shown)
+		{
+			if (which.line == line) text = shown.value;
+		});
+		return text;
+	};
+	CHECK(hint(0) == "WHEEL OR DRAG: SCROLL");
+	d.input.pads[0].Connect(PadFamily::Switch);
+	d.input.lastUsed = Device::Pad;
+	d.Update();
+	CHECK(hint(0) == "D-PAD: MOVE   B: PRESS"); // a Switch pad's bottom button is B
+	d.input.lastUsed = Device::Keyboard;
+	d.Update();
+	CHECK(hint(1) == "ESC: BACK");
+}
+
+TEST_CASE("The cursor sprite steps aside once the player picks up a pad", "[game][uidemo][pad]")
+{
+	Demo d;
+	d.MoveTo({90.0f, 120.0f});
+	d.input.lastUsed = engine::input::Device::Pad;
+	d.Update();
+	float x = 0.0f;
+	d.maze.world.registry.Each<game::DemoCursor, engine::graphics::Transform>(
+	    [&x](Entity, const game::DemoCursor&, const engine::graphics::Transform& transform)
+	{
+		x = transform.position.x;
+	});
+	CHECK(x < 0.0f);
 }

@@ -176,7 +176,7 @@ namespace game
 	void ControlsSystem(World& world, const FrameContext& context)
 	{
 		ENGINE_VERIFY(context.input != nullptr, "ControlsSystem must run in a fixed-rate phase");
-		world.resources.Get<Controls>().Update(context.input->keyboard);
+		world.resources.Get<Controls>().Update(*context.input);
 	}
 
 	void GameStateSystem(World& world, const FrameContext&)
