@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -7,17 +8,28 @@
 // have original sound effects without any sound files. Pure: no SDL, so the tests can check it.
 namespace engine::audio
 {
-	// Every Sound is mono, 32-bit float in [-1, 1], at this many samples per second. The
-	// AudioDevice plays it at this rate whatever the hardware's.
+	// What Synthesize makes: mono, at this many samples per second. A Sound loaded from a file keeps
+	// the file's own rate and channels instead.
 	inline constexpr int kSampleRate = 44100;
 
+	// Samples are 32-bit float in [-1, 1], interleaved by channel (left, right, left, right for
+	// stereo). The AudioDevice plays a Sound at its own sampleRate and channel count and SDL converts to
+	// the hardware's, so a file is never resampled ahead of time.
 	struct Sound
 	{
 		std::vector<float> samples;
+		int sampleRate = kSampleRate;
+		int channels = 1;
+
+		// Samples per channel.
+		[[nodiscard]] std::size_t Frames() const noexcept
+		{
+			return channels > 0 ? samples.size() / static_cast<std::size_t>(channels) : 0;
+		}
 
 		[[nodiscard]] double Seconds() const noexcept
 		{
-			return static_cast<double>(samples.size()) / static_cast<double>(kSampleRate);
+			return sampleRate > 0 ? static_cast<double>(Frames()) / static_cast<double>(sampleRate) : 0.0;
 		}
 	};
 

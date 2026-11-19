@@ -87,6 +87,9 @@ set(SDL_STATIC ON)
 set(SDL_TEST_LIBRARY OFF)
 add_subdirectory(thirdparty/SDL EXCLUDE_FROM_ALL SYSTEM)
 
+# Ogg Vorbis decoding (one vendored C file, built without the engine's warning flags).
+add_subdirectory(thirdparty/stb_vorbis)
+
 add_subdirectory(engine)
 
 if(ENGINE_BUILD_GAME)

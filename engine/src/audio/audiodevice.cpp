@@ -16,7 +16,8 @@ namespace engine::audio
 		}
 		subsystemStarted = true;
 
-		const SDL_AudioSpec spec{SDL_AUDIO_F32, 1, kSampleRate};
+		// Stereo, so a stereo file keeps its sides; a mono sound is played on both.
+		const SDL_AudioSpec spec{SDL_AUDIO_F32, 2, kSampleRate};
 		device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
 		if (device == 0)
 		{
@@ -25,11 +26,12 @@ namespace engine::audio
 			return;
 		}
 
-		// One stream per voice, all bound to the device, which mixes them. Each converts our
-		// format to the device's.
+		// One stream per voice, all bound to the device, which mixes them. Each converts what it is
+		// given (see Play) to the device's format.
+		const SDL_AudioSpec input{SDL_AUDIO_F32, 1, kSampleRate};
 		for (SDL_AudioStream*& voice : voices)
 		{
-			voice = SDL_CreateAudioStream(&spec, &spec);
+			voice = SDL_CreateAudioStream(&input, &spec);
 			if (voice == nullptr)
 			{
 				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateAudioStream failed: %s", SDL_GetError());
@@ -56,7 +58,7 @@ namespace engine::audio
 
 	void AudioDevice::Play(const Sound& sound)
 	{
-		if (device == 0 || sound.samples.empty()) return;
+		if (device == 0 || sound.samples.empty() || sound.sampleRate < 1 || sound.channels < 1) return;
 
 		// A voice that has finished, or else the next in turn (the one started longest ago).
 		SDL_AudioStream* chosen = nullptr;
@@ -76,6 +78,13 @@ namespace engine::audio
 			SDL_ClearAudioStream(chosen);
 		}
 
+		// The stream takes the sound's own format and SDL resamples and remixes it for the device.
+		const SDL_AudioSpec input{SDL_AUDIO_F32, sound.channels, sound.sampleRate};
+		if (!SDL_SetAudioStreamFormat(chosen, &input, nullptr))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetAudioStreamFormat failed: %s", SDL_GetError());
+			return;
+		}
 		const auto bytes = static_cast<int>(sound.samples.size() * sizeof(float));
 		if (!SDL_PutAudioStreamData(chosen, sound.samples.data(), bytes))
 		{
