@@ -103,13 +103,13 @@ namespace engine::audio
 		if (stream != nullptr) SDL_SetAudioStreamGain(stream, ClampVolume(volume));
 	}
 
-	void MusicTrack::OnStreamNeedsData(void* userdata, SDL_AudioStream*, int additional, int)
+	void MusicTrack::OnStreamNeedsData(void* userdata, SDL_AudioStream*, int additional, int) noexcept
 	{
 		static_cast<MusicTrack*>(userdata)->Fill(additional);
 	}
 
 	// Runs on SDL's audio thread. It touches only the audio thread's own members and the atomics.
-	void MusicTrack::Fill(int additionalBytes)
+	void MusicTrack::Fill(int additionalBytes) noexcept
 	{
 		if (silent.load(std::memory_order_relaxed) || additionalBytes <= 0) return;
 

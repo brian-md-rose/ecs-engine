@@ -181,7 +181,8 @@ namespace engine::audio
 		error.clear();
 		if (device == 0) return false;
 		ReapMusic();
-		if (music && path == musicPath) return true; // already playing
+		if (music && !music->IsSilent() && path == musicPath)
+			return true; // already playing (a track that died is restarted)
 
 		std::unique_ptr<MusicTrack> next = MusicTrack::Open(device, path, error);
 		if (!next) return false;
@@ -197,6 +198,11 @@ namespace engine::audio
 		ApplyMusicVolume();
 		music->FadeTo(1.0f, fadeSeconds);
 		return true;
+	}
+
+	bool AudioDevice::IsMusicPlaying() const noexcept
+	{
+		return music != nullptr && !music->IsSilent();
 	}
 
 	void AudioDevice::StopMusic(float fadeSeconds)

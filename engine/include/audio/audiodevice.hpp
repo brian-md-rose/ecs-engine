@@ -82,6 +82,6 @@ namespace engine::audio
 		bool PlayMusic(const std::filesystem::path& path, float fadeSeconds, std::string& error);
 		// Fades the music out and stops it. A fade of 0 seconds stops it at once.
 		void StopMusic(float fadeSeconds);
-		[[nodiscard]] bool IsMusicPlaying() const noexcept { return music != nullptr; }
+		[[nodiscard]] bool IsMusicPlaying() const noexcept;
 	};
 } // namespace engine::audio

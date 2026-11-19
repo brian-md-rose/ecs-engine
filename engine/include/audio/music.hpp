@@ -45,8 +45,8 @@ namespace engine::audio
 		std::atomic<bool> silent{false}; // faded all the way out, or the file ended with an error
 
 		MusicTrack() = default;
-		void Fill(int additionalBytes);
-		static void OnStreamNeedsData(void* userdata, SDL_AudioStream* audioStream, int additional, int total);
+		void Fill(int additionalBytes) noexcept;
+		static void OnStreamNeedsData(void* userdata, SDL_AudioStream* audioStream, int additional, int total) noexcept;
 
 	public:
 		// Opens the file and starts a stream bound to `device` that plays, from silence, once SetFade raises the gain.
