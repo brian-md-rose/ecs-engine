@@ -403,14 +403,14 @@ struct Gamepad { buttons + edges, sticks (deadzoned), triggers, PadFamily family
 struct Input { ...; std::array<Gamepad, 4> pads; Device lastUsed; };  // Keyboard/Mouse/Pad
 ```
 
-- [ ] Hotplug through `SDL_EVENT_GAMEPAD_ADDED` and `REMOVED`.
-- [ ] Positional button names (South and so on), so the game maps glyphs by family. The family
+- [x] Hotplug through `SDL_EVENT_GAMEPAD_ADDED` and `REMOVED`.
+- [x] Positional button names (South and so on), so the game maps glyphs by family. The family
       comes from `SDL_GetGamepadType`, plus a Steam Deck check by name or VID/PID.
-- [ ] `Input::lastUsed` changes on real input only (past the deadzone), for switching button
+- [x] `Input::lastUsed` changes on real input only (past the deadzone), for switching button
       icons.
-- [ ] UI focus navigation: the d-pad or stick moves `Focused` to the nearest `FocusOrder`
+- [x] UI focus navigation: the d-pad or stick moves `Focused` to the nearest `FocusOrder`
       neighbour in that direction, and South clicks it.
-- [ ] Tests: deadzones, edges, `lastUsed` switching, and directional focus picking.
+- [x] Tests: deadzones, edges, `lastUsed` switching, and directional focus picking.
 
 **Done when (v0.4.0):** the demo screen is fully navigable by pad, the window modes switch live,
 and 960 x 540 fills a 1280 x 800 window in fit mode.

@@ -53,7 +53,9 @@ namespace engine::ui
 	{
 	};
 
-	// Component: where an entity is in the Tab order (lower first, ties in the registry's order). Needs
+	// Component: where an entity is in the focus order: Tab goes through them lower first, ties in the registry's
+	// order. A pad's d-pad or left stick moves Focused toward the nearest one in that direction (by the middle of
+	// its Transform and Hitbox, all in the one space), and South presses an Interactable one, as a click. Needs
 	// to be Interactable and enabled, or have no Interactable, to be reached.
 	struct FocusOrder
 	{
@@ -109,6 +111,7 @@ namespace engine::ui
 		float offset = 0;        // how far down the content is scrolled, 0 to contentHeight - viewHeight
 		float wheelStep = 12;    // per wheel notch, in the view's units
 		float dragThreshold = 4; // a drag shorter than this doesn't scroll
+		float padSpeed = 120;    // units a second with a pad's right stick fully down; only while the view has Focused
 
 		// Drag state, kept by the system.
 		bool dragging = false;

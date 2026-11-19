@@ -21,7 +21,8 @@ namespace engine::ui
 	// PointerState. Needs context.input.
 	void UiPointerSystem(ecs::World& world, const ecs::FrameContext& context);
 
-	// Tab moves Focused to the next FocusOrder entity, Shift+Tab to the previous, wrapping at the ends.
+	// Tab moves Focused to the next FocusOrder entity, Shift+Tab to the previous, wrapping at the ends. A pad's d-pad or
+	// left stick moves it to the nearest one in that direction, and South clicks the focused Interactable.
 	void UiFocusSystem(ecs::World& world, const ecs::FrameContext& context);
 
 	// Scrolls ScrollViews with the wheel and by dragging, clamps them, and positions their content.

@@ -139,7 +139,8 @@ scale)` gives the size the text will take, which is how the demo works out each 
 
 Give things a `FocusOrder{order}` and Tab moves the `Focused` tag to the next, Shift+Tab to the previous, wrapping at
 the ends. An `Interactable` is reached only while it is enabled. The system sets the tag and nothing else: draw a focus
-frame by reading `Focused`, and decide what Enter does on a focused entity.
+frame by reading `Focused`, and decide what Enter does on a focused entity. A pad's d-pad or left stick moves focus to the
+nearest stop in that direction and South clicks it; see [gamepad.md](gamepad.md).
 
 ## Testing
 

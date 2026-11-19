@@ -72,6 +72,7 @@ namespace game
 		constexpr Color kTextColor{255, 255, 255};
 		constexpr Color kHintColor{170, 215, 255};
 		constexpr Color kListTint{150, 150, 150};
+		constexpr Color kListFocusTint{225, 225, 255};
 
 		constexpr std::array<std::string_view, kDemoButtons> kButtonLabels = {{"COUNT", "RESET", "BACK"}};
 
@@ -162,6 +163,7 @@ namespace game
 				    text, Text{.value = value, .color = kTextColor, .layer = kDemoRowLayer, .wrapWidth = kRowWrap});
 				y += static_cast<float>(engine::graphics::MeasureText(metrics, value, kRowWrap).height + kRowGap);
 			}
+			registry.Add<engine::ui::FocusOrder>(view, engine::ui::FocusOrder{.order = kDemoButtons});
 			registry.Add<ScrollView>(
 			    view,
 			    ScrollView{.content = content, .viewHeight = static_cast<float>(kListHeight), .contentHeight = y});
@@ -180,6 +182,17 @@ namespace game
 		default:
 			return "ROW " + number + ": THE LONGEST KIND, WHICH WRAPS ONTO A SECOND LINE AND THEN ONTO A THIRD ONE TOO";
 		}
+	}
+
+	std::string DemoHintText(int line, engine::input::Device device, engine::input::PadFamily family)
+	{
+		using engine::input::PadButton;
+		if (device != engine::input::Device::Pad) return line == 0 ? "WHEEL OR DRAG: SCROLL" : "ESC: BACK";
+		if (line == 0)
+		{
+			return "D-PAD: MOVE   " + std::string(engine::input::PadButtonLabel(family, PadButton::South)) + ": PRESS";
+		}
+		return "R STICK: SCROLL   " + std::string(engine::input::PadButtonLabel(family, PadButton::Start)) + ": BACK";
 	}
 
 	std::string DemoCounterText(int clicks)
@@ -209,12 +222,17 @@ namespace game
 			SpawnButton(registry, clips, i, kButtonLabels[static_cast<std::size_t>(i)]);
 		}
 
-		SpawnPatch(registry, {kListX - 4.0f, kListY - 4.0f}, clips.panel, kListWidth + 8, kListHeight + 8, kListTint,
-		           kDemoListLayer);
+		const Entity frame = SpawnPatch(registry, {kListX - 4.0f, kListY - 4.0f}, clips.panel, kListWidth + 8,
+		                                kListHeight + 8, kListTint, kDemoListLayer);
+		registry.Add<DemoListFrame>(frame);
 		SpawnList(registry);
 
-		SpawnLabel(registry, "WHEEL OR DRAG: SCROLL", centre, kPanelY + 232.0f, kHintColor);
-		SpawnLabel(registry, "ESC: BACK", centre, kPanelY + 242.0f, kHintColor);
+		for (int line = 0; line < 2; ++line)
+		{
+			const Entity hint = SpawnLabel(registry, DemoHintText(line, engine::input::Device::Keyboard, {}), centre,
+			                               kPanelY + 232.0f + static_cast<float>(line) * 10.0f, kHintColor);
+			registry.Add<DemoHint>(hint, DemoHint{.line = line});
+		}
 
 		const Entity cursor = SpawnScoped(registry, {-32.0f, -32.0f});
 		registry.Add<DemoCursor>(cursor);
@@ -239,7 +257,9 @@ namespace game
 		registry.Each<DemoButton, NinePatch>([&](Entity entity, const DemoButton&, NinePatch& patch)
 		{
 			const bool pressed = registry.TryGetComponent<Pressed>(entity) != nullptr;
-			const bool hovered = registry.TryGetComponent<Hovered>(entity) != nullptr;
+			// Focus (the pad's or Tab's) looks like hovering.
+			const bool hovered = registry.TryGetComponent<Hovered>(entity) != nullptr ||
+			                     registry.TryGetComponent<engine::ui::Focused>(entity) != nullptr;
 			const engine::graphics::Clip& clip =
 			    pressed ? clips.buttonPressed : (hovered ? clips.buttonHover : clips.button);
 			patch.source = clip.firstFrame;
@@ -250,12 +270,32 @@ namespace game
 			text.value = DemoCounterText(clicks);
 		});
 
+		bool listFocused = false;
+		registry.Each<ScrollView>([&](Entity entity, const ScrollView&)
+		{
+			listFocused = listFocused || registry.TryGetComponent<engine::ui::Focused>(entity) != nullptr;
+		});
+		registry.Each<DemoListFrame, NinePatch>([&](Entity, const DemoListFrame&, NinePatch& patch)
+		{
+			patch.tint = listFocused ? kListFocusTint : kListTint;
+		});
+
 		if (context.input == nullptr) return;
+		const engine::input::Input& in = *context.input;
+		const float centre = kPanelX + static_cast<float>(kPanelWidth) / 2.0f;
+		registry.Each<DemoHint, Text, Transform>([&](Entity, const DemoHint& hint, Text& text, Transform& transform)
+		{
+			text.value = DemoHintText(hint.line, in.lastUsed, in.PadFamilyInUse());
+			const int width = static_cast<int>(text.value.size()) * kGlyphAdvance;
+			transform.position.x = AlignedX(centre, Align::Centre, width);
+		});
+
 		const engine::input::Mouse& mouse = context.input->mouse;
 		registry.Each<DemoCursor, Transform>([&](Entity, const DemoCursor&, Transform& transform)
 		{
-			// Off the screen when the pointer is outside the window, where nothing should be drawn.
-			transform.position = mouse.inside ? mouse.position : Position{-32.0f, -32.0f};
+			// Off the screen when the pointer is outside the window, or the player has moved on to a pad.
+			transform.position =
+			    mouse.inside && in.lastUsed != engine::input::Device::Pad ? mouse.position : Position{-32.0f, -32.0f};
 		});
 	}
 

@@ -144,3 +144,75 @@ TEST_CASE("Controls bindings can be changed, even while keys are held", "[game][
 	CHECK_FALSE(h.controls.IsHeld(Action::Confirm));
 	CHECK_FALSE(h.controls.WasPressed(Action::Confirm));
 }
+
+TEST_CASE("A pad's d-pad, left stick and buttons drive the same actions", "[game][controls][pad]")
+{
+	using engine::input::Input;
+	using engine::input::PadAxis;
+	using engine::input::PadButton;
+	using engine::input::PadFamily;
+
+	game::Controls controls;
+	Input input;
+	input.pads[0].Connect(PadFamily::Xbox);
+
+	input.pads[0].OnButton(PadButton::DUp, true);
+	controls.Update(input);
+	CHECK(controls.WasPressed(game::Action::MoveUp));
+	CHECK(controls.IsHeld(game::Action::MoveUp));
+	CHECK(controls.BufferedDirection() == engine::grid::Direction::Up);
+	input.EndUpdate();
+	controls.Update(input);
+	CHECK_FALSE(controls.WasPressed(game::Action::MoveUp));
+	CHECK(controls.IsHeld(game::Action::MoveUp));
+	input.pads[0].OnButton(PadButton::DUp, false);
+	input.EndUpdate();
+	controls.Update(input);
+	CHECK_FALSE(controls.IsHeld(game::Action::MoveUp));
+	CHECK(controls.WasReleased(game::Action::MoveUp));
+
+	input.pads[0].OnAxis(PadAxis::LeftX, -1.0f); // the stick, to the left
+	controls.Update(input);
+	CHECK(controls.WasPressed(game::Action::MoveLeft));
+	CHECK(controls.IsHeld(game::Action::MoveLeft));
+	input.pads[0].OnAxis(PadAxis::LeftX, 0.0f);
+	input.EndUpdate();
+
+	input.pads[0].OnButton(PadButton::South, true);
+	input.pads[0].OnButton(PadButton::Start, true);
+	controls.Update(input);
+	CHECK(controls.WasPressed(game::Action::Confirm));
+	CHECK(controls.WasPressed(game::Action::Pause));
+}
+
+TEST_CASE("Pad buttons can be rebound, and the keyboard alone ignores pads", "[game][controls][pad]")
+{
+	using engine::input::Input;
+	using engine::input::PadButton;
+	using engine::input::PadFamily;
+
+	game::Controls controls;
+	CHECK(controls.GetPadBinding(PadButton::South) == game::Action::Confirm);
+	controls.BindPad(PadButton::East, game::Action::Pause);
+	controls.UnbindPad(PadButton::Start);
+	CHECK(controls.GetPadBinding(PadButton::East) == game::Action::Pause);
+	CHECK_FALSE(controls.GetPadBinding(PadButton::Start).has_value());
+
+	Input input;
+	input.pads[0].Connect(PadFamily::Xbox);
+	input.pads[0].OnButton(PadButton::East, true);
+	input.pads[0].OnButton(PadButton::Start, true);
+	controls.Update(input);
+	CHECK(controls.WasPressed(game::Action::Pause)); // East, not Start
+
+	game::Controls keyboardOnly;
+	keyboardOnly.Update(input.keyboard); // the old call: no pads
+	CHECK_FALSE(keyboardOnly.IsHeld(game::Action::Confirm));
+
+	// A pad that is not connected does nothing.
+	game::Controls other;
+	Input empty;
+	empty.pads[2].OnButton(PadButton::South, true);
+	other.Update(empty);
+	CHECK_FALSE(other.IsHeld(game::Action::Confirm));
+}

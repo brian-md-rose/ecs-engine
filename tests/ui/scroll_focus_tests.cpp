@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <vector>
+
 #include "ecs/hierarchy.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/world.hpp"
@@ -213,4 +215,166 @@ TEST_CASE("Tab moves on from a focused entity that has since been disabled", "[u
 	engine::ui::UiFocusSystem(world, context);
 	CHECK_FALSE(world.registry.HasComponent<engine::ui::Focused>(a));
 	CHECK(world.registry.HasComponent<engine::ui::Focused>(b));
+}
+
+namespace
+{
+	using engine::input::PadAxis;
+	using engine::input::PadButton;
+	using engine::input::PadFamily;
+
+	// Three buttons in a row, 100 apart, with focus order 0, 1, 2; a pad is connected.
+	struct PadFocusFixture
+	{
+		World world;
+		Input input;
+		std::vector<Entity> buttons;
+		std::vector<engine::ui::Clicked> clicks;
+
+		PadFocusFixture()
+		{
+			input.pads[0].Connect(PadFamily::Xbox);
+			for (int i = 0; i < 3; ++i)
+			{
+				const Entity button = world.registry.Create();
+				world.registry.Add<engine::graphics::Transform>(
+				    button, engine::graphics::Position{static_cast<float>(i) * 100.0f, 0.0f});
+				world.registry.Add<engine::ui::Hitbox>(button, engine::ui::Hitbox{.width = 50.0f, .height = 20.0f});
+				world.registry.Add<engine::ui::Interactable>(button);
+				world.registry.Add<engine::ui::FocusOrder>(button, engine::ui::FocusOrder{.order = i});
+				buttons.push_back(button);
+			}
+			world.events.Subscribe<engine::ui::Clicked>(Record);
+			recorded = &clicks;
+		}
+
+		static inline std::vector<engine::ui::Clicked>* recorded = nullptr;
+		static void Record(World&, const engine::ui::Clicked& click) { recorded->push_back(click); }
+
+		void Update()
+		{
+			FrameContext context;
+			context.input = &input;
+			engine::ui::UiFocusSystem(world, context);
+			world.events.Deliver(world);
+			input.EndUpdate();
+		}
+
+		void Tap(PadButton button)
+		{
+			input.pads[0].OnButton(button, true);
+			Update();
+			input.pads[0].OnButton(button, false);
+			Update();
+		}
+
+		[[nodiscard]] int FocusedIndex()
+		{
+			for (std::size_t i = 0; i < buttons.size(); ++i)
+			{
+				if (world.registry.TryGetComponent<engine::ui::Focused>(buttons[i]) != nullptr)
+					return static_cast<int>(i);
+			}
+			return -1;
+		}
+	};
+} // namespace
+
+TEST_CASE("The d-pad focuses the first button, then moves along the row", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	CHECK(f.FocusedIndex() == -1);
+	f.Tap(PadButton::DRight); // nothing focused yet: the first one gets it
+	CHECK(f.FocusedIndex() == 0);
+	f.Tap(PadButton::DRight);
+	CHECK(f.FocusedIndex() == 1);
+	f.Tap(PadButton::DRight);
+	f.Tap(PadButton::DRight); // the end: stays
+	CHECK(f.FocusedIndex() == 2);
+	f.Tap(PadButton::DLeft);
+	CHECK(f.FocusedIndex() == 1);
+	f.Tap(PadButton::DDown); // nothing below
+	CHECK(f.FocusedIndex() == 1);
+}
+
+TEST_CASE("The left stick moves focus once per push", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	f.Tap(PadButton::DRight);
+	REQUIRE(f.FocusedIndex() == 0);
+
+	f.input.pads[0].OnAxis(PadAxis::LeftX, 1.0f);
+	f.Update();
+	CHECK(f.FocusedIndex() == 1);
+	f.Update(); // still held: no second step
+	CHECK(f.FocusedIndex() == 1);
+	f.input.pads[0].OnAxis(PadAxis::LeftX, 0.0f);
+	f.Update();
+	f.input.pads[0].OnAxis(PadAxis::LeftX, 1.0f);
+	f.Update();
+	CHECK(f.FocusedIndex() == 2);
+}
+
+TEST_CASE("Focus moves on from a button that has since been disabled", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	f.Tap(PadButton::DRight);
+	f.Tap(PadButton::DRight);
+	REQUIRE(f.FocusedIndex() == 1);
+	f.world.registry.GetComponent<engine::ui::Interactable>(f.buttons[1]).enabled = false;
+	f.Tap(PadButton::DRight); // from where the disabled one is, not back to the first
+	CHECK(f.FocusedIndex() == 2);
+}
+
+TEST_CASE("South clicks the focused button, and only an enabled one", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	f.Tap(PadButton::South); // nothing focused: nothing to click
+	CHECK(f.clicks.empty());
+
+	f.Tap(PadButton::DRight);
+	f.Tap(PadButton::DRight);
+	REQUIRE(f.FocusedIndex() == 1);
+	f.Tap(PadButton::South);
+	REQUIRE(f.clicks.size() == 1);
+	CHECK(f.clicks.front().entity == f.buttons[1]);
+	CHECK(f.clicks.front().button == MouseButton::Left);
+
+	f.world.registry.GetComponent<engine::ui::Interactable>(f.buttons[1]).enabled = false;
+	f.Tap(PadButton::South);
+	CHECK(f.clicks.size() == 1);
+}
+
+TEST_CASE("The d-pad is ignored with no pad connected, and Tab still works", "[ui][focus][pad]")
+{
+	PadFocusFixture f;
+	f.input.pads[0].Disconnect();
+	f.input.pads[0].OnButton(PadButton::DRight, true);
+	f.Update();
+	CHECK(f.FocusedIndex() == -1);
+
+	f.input.keyboard.OnKeyDown(Key::Tab);
+	f.Update();
+	CHECK(f.FocusedIndex() == 0);
+}
+
+TEST_CASE("The right stick scrolls a focused scroll view only", "[ui][scroll][pad]")
+{
+	ScrollFixture f;
+	f.input.pads[0].Connect(PadFamily::Xbox);
+	f.input.pads[0].OnAxis(PadAxis::RightY, 1.0f);
+
+	FrameContext context;
+	context.dt = 0.5;
+	context.input = &f.input;
+	engine::ui::ScrollViewSystem(f.world, context);
+	CHECK(f.View().offset == 0.0f); // not focused
+
+	f.world.registry.Add<engine::ui::Focused>(f.view);
+	engine::ui::ScrollViewSystem(f.world, context);
+	CHECK(f.View().offset == 60.0f); // padSpeed 120 a second, for half a second
+
+	f.input.pads[0].OnAxis(PadAxis::RightY, -1.0f);
+	engine::ui::ScrollViewSystem(f.world, context);
+	CHECK(f.View().offset == 0.0f); // back up, clamped
 }
