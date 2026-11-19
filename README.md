@@ -12,15 +12,31 @@ thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
 ## Status
 
-All eight roadmap phases are done. The game is playable from title screen to game over, with
-enemies, scoring, a HUD, sound, sprites and levels that get harder as you go.
+Every roadmap phase is done, up to **v0.5.0**. The game is playable from title screen to game over,
+with enemies, scoring, a HUD, sound effects and music, sprites, mouse, keyboard and gamepad menus, and
+levels that get harder as you go. Phases 0 to 9 built the engine and the game; Phases 10 to 12 added what a
+second game (Project Babel, see [docs/babel-support.md](docs/babel-support.md)) needs: JSON and a
+seeded random number generator, mouse and text, camera zoom and clipping, UI building blocks, display
+settings, gamepads and audio files with a mixer and music.
 
 ## Versions and releases
 
 The engine uses [Semantic Versioning](https://semver.org/) and is released as `vX.Y.Z` git tags.
 See [CHANGELOG.md](CHANGELOG.md) for what changed, and [docs/releasing.md](docs/releasing.md) for how
 to pin a release from another project (`FetchContent` by tag) and how to cut one.
-The version is available in code as `<core/version.hpp>`.
+The version is available in code as `<core/version.hpp>`. To use the engine from your own game:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(ecs_engine
+    GIT_REPOSITORY https://github.com/brian-md-rose/ecs-engine.git
+    GIT_TAG        v0.5.0
+    GIT_SUBMODULES thirdparty/SDL   # the engine builds its vendored SDL3
+    GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(ecs_engine)
+
+target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for a tool with no window or audio
+```
 
 ## Features
 
@@ -43,15 +59,22 @@ The version is available in code as `<core/version.hpp>`.
   ([ADR 0003](docs/decisions/0003-game-states.md)).
 - **Events**: a typed event bus so scoring, audio and UI don't depend on each other
   ([ADR 0002](docs/decisions/0002-events.md)).
-- **Platform**: SDL3 window, keyboard input and an application loop with a fixed 60 Hz update
-  and variable-rate rendering. SDL types stay out of the public headers.
+- **Platform**: an SDL3 window and an application loop with a fixed 60 Hz update and variable-rate
+  rendering. SDL types stay out of the public headers.
+- **Input**: one `Input` aggregate per update holding the keyboard (a full PC key set, plus the UTF-8 text typed
+  for name fields), the mouse (position in logical pixels, wheel and three buttons, with edges) and up to four gamepads.
+  `Input::lastUsed` says which device the player touched last.
+- **Data and randomness**: a JSON reader and writer (`core/json.hpp`: ordered objects, line and column in parse
+  errors), atomic file writes, save data, a levelled log file, and `Random`, a PCG32 generator that gives the same
+  numbers on MSVC, GCC and Clang, with named streams and a saveable state.
 - **Graphics**: shapes, animated sprites and bitmap-font text drawn in batches from one atlas
-  texture, with a camera that scales a fixed logical resolution to the window. Sprites and the
-  font are PNG files named by a small manifest, with the original text format as a fallback
-  ([pixel sheets](docs/pixel-sheets.md)).
+  texture, with a camera that scales a fixed logical resolution to the window and can zoom, shake and follow a point.
+  A `ScreenSpace` tag makes an entity (and its children) ignore the camera, and a `ClipRect` confines one to a
+  rectangle. Text wraps and aligns, and a character with no glyph draws as a placeholder. Sprites and the font are
+  PNG files named by a small manifest, with the original text format as a fallback ([pixel sheets](docs/pixel-sheets.md)).
 - **UI**: a mouse pointer, hit-testing with layers, buttons that report hover, press and click, nine-slice panels,
   clipped scrolling lists, Tab focus and wrapped text, all as plain components and systems with no look of their own
-  ([UI guide](docs/ui.md)). Tangle Run has a demo screen under OPTIONS.
+  ([UI guide](docs/ui.md)). Tangle Run's menus are built from these, and it also has a demo screen under OPTIONS.
 - **Display**: windowed, borderless or exclusive fullscreen, VSync and frame cap, and integer or fit scaling, all changed
   while running through a resource ([display](docs/display.md)).
 - **Gamepads**: up to four pads with hotplug, deadzones, button names by position and focus navigation in the UI
@@ -85,26 +108,30 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 
 ## Controls
 
-| Key               | Action                                       |
-|-------------------|----------------------------------------------|
-| Arrow keys / WASD | Move; pick a menu item; change an option or a name letter (up/down), move between name slots or change an option (left/right) |
-| Enter / Space     | Choose a menu item or change an option; confirm a name; leave GAME OVER |
-| P / Esc           | Pause; go back from the options screen       |
-| F1                | Toggle the rendering stress test             |
-| F3                | Toggle the debug panel                       |
+| Keyboard          | Gamepad               | Action                                       |
+|-------------------|-----------------------|----------------------------------------------|
+| Arrow keys / WASD | D-pad or left stick   | Move; pick a menu item; change an option or a name letter (up/down), move between name slots or change an option (left/right) |
+| Enter / Space     | South button (A, Cross) | Choose a menu item or change an option; confirm a name; leave GAME OVER |
+| P / Esc           | Start or Back         | Pause; go back from the options and how-to-play screens |
+| F1                |                       | Toggle the rendering stress test             |
+| F3                |                       | Toggle the debug panel                       |
+
+The mouse works in every menu: hover a button to select it and click to act on it (on an option, a click steps it
+forward). The how-to-play list scrolls with the wheel, by dragging, or with the right stick. The UI demo's hints name
+the keys or pad buttons of whichever device you used last.
 
 ## Layout
 
 ```
 engine/   static libraries (engine::core, engine::platform)
-  include/  application/ audio/ core/ ecs/ graphics/ grid/ input/
+  include/  application/ audio/ core/ debug/ ecs/ graphics/ grid/ input/ ui/
   src/
 game/     Tangle Run, the game executable
   assets/   mazes, levels, sprites and font, copied next to the executable on every build
   include/ src/
 tests/    Catch2 unit tests for the engine and the game's SDL-free logic
 benchmarks/  Catch2 benchmarks for Registry iteration and component add/remove churn
-docs/     roadmap, style guide, file formats, enemy design and decision records
+docs/     roadmap, style guide, file formats, guides (UI, display, gamepads, audio), enemy design and decision records
 thirdparty/SDL   SDL3, as a git submodule
 thirdparty/stb_vorbis   the stb_vorbis Ogg Vorbis decoder (public domain / MIT), vendored
 ```
