@@ -9,6 +9,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-19
+
 ### Added
 
 - `graphics/display.hpp`: display settings. `DisplaySettings` (window mode `Windowed`, `Borderless` or `Fullscreen`, size, VSync,
@@ -111,6 +113,7 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/brian-md-rose/ecs-engine/releases/tag/v0.1.0
