@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -286,4 +287,36 @@ TEST_CASE("Every engine component round-trips through JSON", "[ecs][typeregistry
 	}
 	CHECK(registry.GetComponent<Sprite>(copy).source == PixelRect{1, 2, 3, 4});
 	CHECK(registry.GetComponent<Shape>(copy).color.g == 220);
+}
+
+TEST_CASE("Float fields reject out-of-range and non-finite values", "[ecs][typeregistry]")
+{
+	TypeRegistry types;
+	RegisterBrain(types);
+	Registry registry;
+	const Entity e = registry.Create();
+	const FakeIds ids;
+	Issues issues;
+	CHECK_FALSE(types.Find("Brain")->Load(registry, e, Parse(R"({"speed": 1e300})"), ids, issues, "b"));
+	CHECK(issues.errors.size() == 1);
+
+	registry.Add<Brain>(e, Brain{.speed = std::numeric_limits<float>::infinity()});
+	JsonValue out;
+	Issues saveIssues;
+	CHECK_FALSE(types.Find("Brain")->Save(registry, e, ids, out, saveIssues, "b"));
+	REQUIRE(saveIssues.errors.size() == 1);
+	CHECK(saveIssues.errors[0].path == "b.speed");
+}
+
+TEST_CASE("Loading onto an entity that has the component replaces it", "[ecs][typeregistry]")
+{
+	TypeRegistry types;
+	RegisterBrain(types);
+	Registry registry;
+	const Entity e = registry.Create();
+	registry.Add<Brain>(e, Brain{.level = 1, .label = "old"});
+	Issues issues;
+	REQUIRE(types.Find("Brain")->Load(registry, e, Parse(R"({"level": 5})"), FakeIds{}, issues, "b"));
+	CHECK(registry.GetComponent<Brain>(e).level == 5);
+	CHECK(registry.GetComponent<Brain>(e).label.empty());
 }

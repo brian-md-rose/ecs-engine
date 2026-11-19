@@ -1,8 +1,10 @@
 #pragma once
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -168,8 +170,13 @@ namespace engine::ecs
 	template <std::floating_point T> struct FieldCodec<T>
 	{
 		static constexpr FieldKind kind = FieldKind::Float;
-		static bool Save(const T& value, const IEntityIds&, core::JsonValue& out, std::string&)
+		static bool Save(const T& value, const IEntityIds&, core::JsonValue& out, std::string& error)
 		{
+			if (!std::isfinite(value))
+			{
+				error = "NaN and infinity have no JSON form";
+				return false;
+			}
 			if constexpr (std::same_as<T, float>)
 			{
 				out = core::JsonValue(detail::FloatToJsonDouble(value));
@@ -186,6 +193,11 @@ namespace engine::ecs
 			if (!parsed)
 			{
 				error = detail::Expected("a number", in);
+				return false;
+			}
+			if (std::fabs(*parsed) > static_cast<double>(std::numeric_limits<T>::max()))
+			{
+				error = "the number is too large";
 				return false;
 			}
 			value = static_cast<T>(*parsed);
@@ -288,7 +300,8 @@ namespace engine::ecs
 
 		// Adds the component to the entity from a JSON object. A field that is missing keeps its
 		// default; a field that is not registered is a warning. If any field is wrong the component
-		// is not added, every problem is reported, and the result is false.
+		// is not added, every problem is reported, and the result is false. A component the entity
+		// already has is replaced by the loaded one.
 		bool Load(Registry& registry, Entity entity, const core::JsonValue& in, const IEntityIds& ids, Issues& issues,
 		          const std::string& path) const;
 	};
@@ -433,6 +446,11 @@ namespace engine::ecs
 			{
 				T value{};
 				if (!fill(&value)) return false;
+				if (T* existing = registry.TryGetComponent<T>(entity))
+				{
+					*existing = std::move(value); // replaced in place; no OnAdd hook, it was already there
+					return true;
+				}
 				registry.Add<T>(entity, std::move(value));
 				return true;
 			};
