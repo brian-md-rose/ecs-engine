@@ -152,6 +152,9 @@ TEST_CASE("Disconnecting or releasing everything clears a pad", "[input][gamepad
 	CHECK_FALSE(pad.connected);
 	CHECK_FALSE(pad.IsDown(PadButton::West));
 	CHECK(pad.family == PadFamily::Generic);
+	CHECK(pad.WasReleased(PadButton::West)); // unplugged mid-hold: the release is still seen once
+	pad.EndUpdate();
+	CHECK_FALSE(pad.WasReleased(PadButton::West));
 }
 
 TEST_CASE("Button labels follow the pad's family", "[input][gamepad]")

@@ -116,14 +116,22 @@ namespace engine::input
 
 	void Gamepad::Connect(PadFamily padFamily)
 	{
-		*this = Gamepad{};
+		// Held buttons are let go with a release edge (seen until the next EndUpdate), so the game isn't left holding.
+		ReleaseAll();
+		leftPushed.fill(false);
+		connected = false;
+		family = PadFamily::Generic;
 		connected = true;
 		family = padFamily;
 	}
 
 	void Gamepad::Disconnect()
 	{
-		*this = Gamepad{};
+		// Held buttons are let go with a release edge (seen until the next EndUpdate), so the game isn't left holding.
+		ReleaseAll();
+		leftPushed.fill(false);
+		connected = false;
+		family = PadFamily::Generic;
 	}
 
 	void Gamepad::OnButton(PadButton button, bool isDown)

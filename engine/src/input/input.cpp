@@ -47,7 +47,7 @@ namespace engine::input
 	{
 		return std::ranges::any_of(pads, [button](const Gamepad& pad)
 		{
-			return pad.connected && pad.WasReleased(button);
+			return pad.WasReleased(button); // also a pad that has just been unplugged
 		});
 	}
 
