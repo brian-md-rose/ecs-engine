@@ -79,7 +79,7 @@ namespace engine::graphics
 		{
 			sizes.push_back({.width = modes[i]->w, .height = modes[i]->h});
 		}
-		SDL_free(modes);
+		SDL_free(static_cast<void*>(modes));
 		return NormalizeResolutions(std::move(sizes));
 	}
 
