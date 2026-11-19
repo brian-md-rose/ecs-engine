@@ -17,6 +17,12 @@ namespace game
 		case OptionItem::Sound:
 			settings.sound = !settings.sound;
 			break;
+		case OptionItem::Music:
+			settings.music = !settings.music;
+			break;
+		case OptionItem::Volume:
+			settings.volume = std::clamp(settings.volume + (direction < 0 ? -1 : 1), kMinVolume, kMaxVolume);
+			break;
 		case OptionItem::Lives:
 			settings.lives = std::clamp(settings.lives + (direction < 0 ? -1 : 1), kMinLives, kMaxLives);
 			break;
@@ -44,6 +50,10 @@ namespace game
 		{
 		case OptionItem::Sound:
 			return settings.sound ? "SOUND: ON" : "SOUND: OFF";
+		case OptionItem::Music:
+			return settings.music ? "MUSIC: ON" : "MUSIC: OFF";
+		case OptionItem::Volume:
+			return "VOLUME: " + std::to_string(settings.volume);
 		case OptionItem::Lives:
 			return "LIVES: " + std::to_string(settings.lives);
 		case OptionItem::Display:
@@ -73,6 +83,11 @@ namespace game
 	{
 		Settings settings;
 		if (const std::optional<int> sound = data.GetInt(kSoundKey)) settings.sound = *sound != 0;
+		if (const std::optional<int> music = data.GetInt(kMusicKey)) settings.music = *music != 0;
+		if (const std::optional<int> volume = data.GetInt(kVolumeKey))
+		{
+			if (*volume >= kMinVolume && *volume <= kMaxVolume) settings.volume = *volume;
+		}
 		if (const std::optional<int> lives = data.GetInt(kLivesKey))
 		{
 			if (*lives >= kMinLives && *lives <= kMaxLives) settings.lives = *lives;
@@ -95,6 +110,8 @@ namespace game
 	void StoreSettings(engine::core::SaveData& data, const Settings& settings)
 	{
 		data.SetInt(kSoundKey, settings.sound ? 1 : 0);
+		data.SetInt(kMusicKey, settings.music ? 1 : 0);
+		data.SetInt(kVolumeKey, settings.volume);
 		data.SetInt(kLivesKey, settings.lives);
 		data.SetInt(kDisplayKey, static_cast<int>(settings.display));
 		data.SetInt(kScalingKey, static_cast<int>(settings.scaling));

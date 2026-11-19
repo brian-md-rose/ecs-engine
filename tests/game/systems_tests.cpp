@@ -170,9 +170,9 @@ TEST_CASE("MazeGame adds its resources, systems, the maze and the player at its 
 	CHECK(h.maze.world.resources.Get<game::TileMap>().Width() == 7);
 
 	using engine::ecs::Phase;
-	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 12); // with the debug panel's toggle and the demo's UI systems
+	CHECK(h.maze.scheduler.SystemCount(Phase::Input) == 14); // with the debug panel's toggle and the UI systems
 	CHECK(h.maze.scheduler.SystemCount(Phase::Update) == 6);
-	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 10);
+	CHECK(h.maze.scheduler.SystemCount(Phase::LateUpdate) == 12);
 	CHECK(h.maze.scheduler.SystemCount(Phase::Render) == 2); // the debug panel, then Render
 
 	const Transform start = h.PlayerTransform();

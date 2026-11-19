@@ -10,6 +10,7 @@ Title ──START──► Playing ──(no lives, new high score)──► Nam
   │                │  └──(no lives)────────────────────────────────────► GameOver
   │                ├──(level cleared)──► LevelTransition ──(2.5 s)──► Playing
   │                └──(quit from pause, new high score)──► NameEntry
+  ├──HOW TO PLAY──► Help ──Esc / BACK──► Title
   └──OPTIONS──► Options ──Esc / BACK──► Title
                    └──UI DEMO──► UiDemo ──Esc / BACK──► Options
 ```
@@ -29,19 +30,43 @@ carries `DespawnOnEnter<Screen>{Title}`, so entering the title removes them, and
 clears the flag. NameEntry and GameOver keep the world, dimmed, behind them. The maze file and
 assets are still loaded and checked at launch, so a broken maze is reported before the title.
 
+## The menus
+
+The title, options and pause menus and the how-to-play screen are built from the engine's UI pieces
+([ui.md](ui.md)): a nine-patch panel, a nine-patch button for each item (`MenuButton`, with a `Hitbox`,
+`Interactable` and `FocusOrder`) and its label as a child, so it moves with the button. `game/include/menuui.hpp` and
+`game/src/menuui.cpp` hold the glue.
+
+- **Pointer:** moving onto a button selects it, and clicking acts on it exactly as Enter would (on the options, a click
+  steps the setting forward). `UiPointerSystem` runs on every menu screen and on the pause menu.
+- **Keys and pad:** up, down and confirm move the same `MenuCursor`. `Controls` already turns the d-pad, the left stick
+  and the south button into those actions, so the menus don't also run the engine's focus-moving system (that would
+  step twice). The selected button holds the engine's `Focused` tag and looks hovered; moving the pointer onto another
+  button hands the selection over, and the keys carry on from there.
+- A click is published by the pointer system and delivered at the end of the Input phase, so it is acted on in the next
+  frame's menu system (`TakeMenuClick`), which takes it and ignores the confirm key that frame.
+
+## How to play
+
+TITLE, then HOW TO PLAY: the controls and rules in a scroll view (wheel, drag, or the right stick, since the view holds
+`Focused`) and a BACK button. Esc, Start, Enter or a click on BACK return to the title. The text is `HelpLines()` in
+`game/src/screens.cpp`.
+
 ## Options
 
-Up and down choose, left and right (or Enter) change, Esc or BACK goes back.
+Up and down choose, left and right (or Enter, or a click) change, Esc or BACK goes back.
 
 | Item  | Values             | Effect                                          |
 |-------|--------------------|-------------------------------------------------|
 | SOUND | ON, OFF            | OFF mutes every sound effect (`AudioSystem`)    |
+| MUSIC | ON, OFF            | OFF fades the music out (`MusicSystem`)         |
+| VOLUME | 0 to 10 (default 8) | The master volume; 0 also stops the music    |
 | LIVES | 1 to 9 (default 3) | Tries at the start of each new game             |
 | DISPLAY | WINDOWED, BORDERLESS, FULLSCREEN | Applies at once (see [display.md](display.md)) |
 | SCALING | INTEGER, FIT | Whole-number scale with bars, or any scale letterboxed |
 | UI DEMO | (opens a screen) | The mouse UI demo, see below                  |
 
-Saved to `save.txt` when the screen is left (and when the game closes) as `sound 0|1` and
+Saved to `save.txt` when the screen is left (and when the game closes) as `sound 0|1`, `music 0|1`, `volume N` and
 `lives N`, `display 0|1|2` and `scaling 0|1`, and loaded at start-up. A missing or out-of-range value keeps its default.
 
 ## UI demo
@@ -50,8 +75,8 @@ OPTIONS, then UI DEMO. A panel with a click counter, three buttons (COUNT adds o
 to Options) and a list of 30 rows, some wrapped onto several lines, that scrolls with the wheel or by dragging.
 Esc also goes back. The pointer is drawn as a sprite (the system pointer is hidden by `MazeGame::ShowSystemCursor`).
 It is built entirely from the engine's `ui/` module, see [ui.md](ui.md); the code is `game/src/uidemo.cpp`.
-Nothing of it exists outside the screen: the UI systems run only in `UiDemo`, and everything it spawns goes when it
-ends.
+Nothing of it exists outside the screen: its buttons and list are removed when it ends. It is the one screen that uses
+the engine's focus-moving system (`UiFocusSystem`, for Tab and the pad); the real menus use the cursor, see above.
 
 ## Name entry
 

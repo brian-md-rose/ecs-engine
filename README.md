@@ -70,12 +70,14 @@ The version is available in code as `<core/version.hpp>`.
   between patrol, chase, frightened and returning home on a per-level schedule
   ([enemies](docs/enemies.md)).
 - Pellets, power pellets, score, high score and lives, driven by engine states
-  (screens: Title, Options, NameEntry, Playing, LevelTransition, GameOver; the round and pause
+  (screens: Title, Help, Options, NameEntry, Playing, LevelTransition, GameOver; the round and pause
   are sub-states of Playing; see [screens](docs/screens.md)).
 - A difficulty curve read from `game/assets/levels.txt`, editable without rebuilding
   ([difficulty](docs/difficulty.md)).
-- Title screen, pause menu and HUD.
-- Options screen (sound on or off, starting lives), saved with the high score.
+- Title screen, pause menu and HUD, with mouse-clickable buttons, and a scrolling how-to-play screen, all built from
+  the engine's UI module.
+- Options screen (sound, music, volume, starting lives, display), saved with the high score. Looping music
+  (`game/assets/music/theme.ogg`) on the mixer's music bus, effects on the effects bus.
 - Arcade-style name entry for a new high score, shown on the title screen.
 - A level-transition screen between levels.
 

@@ -1,12 +1,12 @@
 #include "systems.hpp"
 
 #include <cstdint>
-#include <random>
 
 #include "assets.hpp"
 #include "components.hpp"
 #include "controls.hpp"
 #include "core/assert.hpp"
+#include "core/random.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/states.hpp"
@@ -52,30 +52,32 @@ namespace game
 		void SpawnStressShapes(World& world)
 		{
 			engine::ecs::Registry& registry = world.registry;
-			std::mt19937 random(12345u);
-			std::uniform_real_distribution<float> x(0.0f, static_cast<float>(kLogicalWidth) - 8.0f);
-			std::uniform_real_distribution<float> y(0.0f, static_cast<float>(kLogicalHeight) - 8.0f);
-			std::uniform_real_distribution<float> size(2.0f, 8.0f);
-			std::uniform_int_distribution<int> channel(40, 255);
-			std::uniform_int_distribution<int> layer(0, kPlayerLayer - 1);
-			std::bernoulli_distribution circle(0.5);
+			engine::core::Random random(12345u);
+			const auto between = [&random](float low, float high)
+			{
+				return low + random.Unit() * (high - low);
+			};
+			const auto channel = [&random]()
+			{
+				return static_cast<std::uint8_t>(random.Range(40, 255));
+			};
 
 			for (int i = 0; i < kStressShapeCount; ++i)
 			{
-				const Color color{static_cast<std::uint8_t>(channel(random)),
-				                  static_cast<std::uint8_t>(channel(random)),
-				                  static_cast<std::uint8_t>(channel(random))};
-				const auto shapeLayer = static_cast<std::uint8_t>(layer(random));
-				const float extent = size(random);
+				const Color color{channel(), channel(), channel()};
+				const auto shapeLayer = static_cast<std::uint8_t>(random.Range(0, kPlayerLayer - 1));
+				const float extent = between(2.0f, 8.0f);
 				const Shape shape =
-				    circle(random)
+				    random.Chance(0.5f)
 				        ? Shape{.kind = ShapeKind::Circle, .radius = extent / 2.0f, .color = color, .layer = shapeLayer}
 				        : Shape{.width = extent, .height = extent, .color = color, .layer = shapeLayer};
 
 				// Queued, like every structural change a system makes; the scheduler applies
 				// them at the end of the phase.
 				const Entity entity = registry.Create();
-				world.commands.Add<Transform>(entity, Position{x(random), y(random)});
+				world.commands.Add<Transform>(entity,
+				                              Position{between(0.0f, static_cast<float>(kLogicalWidth) - 8.0f),
+				                                       between(0.0f, static_cast<float>(kLogicalHeight) - 8.0f)});
 				world.commands.Add<Shape>(entity, shape);
 				world.commands.Add<StressShape>(entity);
 			}

@@ -28,6 +28,7 @@ namespace game
 	{
 		Title,
 		Options,
+		Help,            // how to play: the controls and the rules, in a scrolling list, opened from the title
 		UiDemo,          // the mouse UI demo, opened from Options
 		NameEntry,       // after a game that beat the high score
 		Playing,         // a round is under way (see Round and Pause)
