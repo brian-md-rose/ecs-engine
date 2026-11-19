@@ -142,6 +142,7 @@ namespace engine::input
 		case PadAxis::LeftY:
 			(axis == PadAxis::LeftX ? rawLeft.x : rawLeft.y) = value;
 			left = ApplyDeadzone(rawLeft.x, rawLeft.y, deadzone);
+			LatchPushes();
 			return left != Stick{};
 		case PadAxis::RightX:
 		case PadAxis::RightY:
@@ -166,6 +167,7 @@ namespace engine::input
 		}
 		down.fill(false);
 		rawLeft = rawRight = left = right = Stick{};
+		leftPast.fill(false);
 		leftTrigger = rightTrigger = 0.0f;
 	}
 
@@ -173,7 +175,7 @@ namespace engine::input
 	{
 		pressed.fill(false);
 		released.fill(false);
-		leftPrevious = left;
+		leftPushed.fill(false);
 	}
 
 	bool Gamepad::IsDown(PadButton button) const
@@ -196,9 +198,19 @@ namespace engine::input
 		return Past(left, direction, threshold);
 	}
 
-	bool Gamepad::StickWasPushed(PadDirection direction, float threshold) const noexcept
+	void Gamepad::LatchPushes() noexcept
 	{
-		return Past(left, direction, threshold) && !Past(leftPrevious, direction, threshold);
+		for (std::size_t d = 0; d < leftPast.size(); ++d)
+		{
+			const bool past = Past(left, static_cast<PadDirection>(d), kPushThreshold);
+			if (past && !leftPast[d]) leftPushed[d] = true;
+			leftPast[d] = past;
+		}
+	}
+
+	bool Gamepad::StickWasPushed(PadDirection direction) const noexcept
+	{
+		return leftPushed[static_cast<std::size_t>(direction)];
 	}
 
 	bool Gamepad::DirectionHeld(PadDirection direction) const

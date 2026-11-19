@@ -98,7 +98,9 @@ namespace engine::input
 		Stick rawRight{};
 		Stick left{};
 		Stick right{};
-		Stick leftPrevious{}; // as of the last EndUpdate, for StickWasPushed
+		std::array<bool, 4> leftPast{};   // whether the left stick is past kPushThreshold in each PadDirection
+		std::array<bool, 4> leftPushed{}; // latched until EndUpdate, for StickWasPushed
+		void LatchPushes() noexcept;
 		float leftTrigger = 0;
 		float rightTrigger = 0;
 
@@ -134,7 +136,7 @@ namespace engine::input
 		// The left stick is pushed past threshold in direction.
 		[[nodiscard]] bool StickHeld(PadDirection direction, float threshold = kPushThreshold) const noexcept;
 		// It went past threshold since the last update (it was not past it then).
-		[[nodiscard]] bool StickWasPushed(PadDirection direction, float threshold = kPushThreshold) const noexcept;
+		[[nodiscard]] bool StickWasPushed(PadDirection direction) const noexcept;
 
 		// The d-pad or the left stick, whichever: held, and went down since the last update.
 		[[nodiscard]] bool DirectionHeld(PadDirection direction) const;

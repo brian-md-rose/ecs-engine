@@ -120,6 +120,18 @@ TEST_CASE("A stick pushed past the threshold acts like a d-pad press, once", "[i
 	CHECK_FALSE(pad.StickHeld(PadDirection::Down));
 }
 
+TEST_CASE("A stick flick between two updates is still a push", "[input][gamepad]")
+{
+	Gamepad pad;
+	pad.Connect(PadFamily::Xbox);
+	pad.OnAxis(PadAxis::LeftX, 1.0f);
+	pad.OnAxis(PadAxis::LeftX, 0.0f); // back to centre before the update runs
+	CHECK_FALSE(pad.StickHeld(PadDirection::Right));
+	CHECK(pad.StickWasPushed(PadDirection::Right));
+	pad.EndUpdate();
+	CHECK_FALSE(pad.StickWasPushed(PadDirection::Right));
+}
+
 TEST_CASE("Disconnecting or releasing everything clears a pad", "[input][gamepad]")
 {
 	Gamepad pad;
