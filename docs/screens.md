@@ -37,10 +37,12 @@ Up and down choose, left and right (or Enter) change, Esc or BACK goes back.
 |-------|--------------------|-------------------------------------------------|
 | SOUND | ON, OFF            | OFF mutes every sound effect (`AudioSystem`)    |
 | LIVES | 1 to 9 (default 3) | Tries at the start of each new game             |
+| DISPLAY | WINDOWED, BORDERLESS, FULLSCREEN | Applies at once (see [display.md](display.md)) |
+| SCALING | INTEGER, FIT | Whole-number scale with bars, or any scale letterboxed |
 | UI DEMO | (opens a screen) | The mouse UI demo, see below                  |
 
 Saved to `save.txt` when the screen is left (and when the game closes) as `sound 0|1` and
-`lives N`, and loaded at start-up. A missing or out-of-range value keeps its default.
+`lives N`, `display 0|1|2` and `scaling 0|1`, and loaded at start-up. A missing or out-of-range value keeps its default.
 
 ## UI demo
 

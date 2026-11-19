@@ -25,4 +25,10 @@ namespace engine::application
 		graphics::UpdateWorldTransforms(world.registry);
 		scheduler.Run(ecs::Phase::Render, world, context);
 	}
+
+	DisplayLink ScheduledGame::Display()
+	{
+		return {.request = world.resources.TryGet<graphics::DisplayRequest>(),
+		        .info = world.resources.TryGet<graphics::DisplayInfo>()};
+	}
 } // namespace engine::application

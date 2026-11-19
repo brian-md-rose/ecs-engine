@@ -2,6 +2,7 @@
 
 #include "audio/audiodevice.hpp"
 #include "core/clock.hpp"
+#include "graphics/display.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
 #include "input/input.hpp"
@@ -16,6 +17,22 @@ namespace engine::application
 		int logicalWidth = 320; // the game's fixed resolution, integer-scaled to the window
 		int logicalHeight = 180;
 		double updateRate = 60.0; // fixed game-logic updates per second
+		// How the picture is scaled to the window, and the VSync and frame cap to start with; the game can
+		// change them while it runs through DisplayRequest (graphics/display.hpp).
+		graphics::Scaling scaling = graphics::Scaling::Integer;
+		bool vsync = true;
+		int frameCap = 0; // frames per second when vsync is off, 0 for no cap
+		// The most fixed updates run in one frame, so a slow frame can't snowball into ever more catch-up
+		// updates (see core::FixedTimestep::SetMaxUpdates). The default is what a stalled frame gets at normal
+		// speed (the 0.25 s cap at 60 Hz), so it only matters if the game runs faster than real time. 0 for no limit.
+		int maxUpdatesPerFrame = 15;
+	};
+
+	// The two resources Application reads and writes to change how the game is shown. Either can be null.
+	struct DisplayLink
+	{
+		graphics::DisplayRequest* request = nullptr; // read, then cleared, after each frame
+		graphics::DisplayInfo* info = nullptr;       // written: the settings in force and the supported sizes
 	};
 
 	// What the game provides. Application calls these from its main loop.
@@ -43,6 +60,11 @@ namespace engine::application
 		// Asked each frame: false hides the operating system's mouse pointer over the window, for a game
 		// that draws its own. Games that don't draw one needn't override it.
 		[[nodiscard]] virtual bool ShowSystemCursor() const { return true; }
+
+		// Asked after each frame: where the game keeps its DisplayRequest and DisplayInfo. Application applies a
+		// pending request (window mode and size, VSync, frame cap, scaling), clears it and refreshes the info. A
+		// game that never changes these needn't override it.
+		[[nodiscard]] virtual DisplayLink Display() { return {}; }
 	};
 
 	// Owns the platform (SDL, window, renderer, audio) and runs the main loop.
@@ -68,12 +90,18 @@ namespace engine::application
 		audio::AudioDevice audio;
 		input::Input input;
 		double updateStep;
+		int maxUpdatesPerFrame;
+		graphics::DisplaySettings display; // what is in force
+		bool displayInfoStale = true;      // DisplayInfo needs refreshing
 
 		// Drains pending SDL events, feeding keyboard, text and mouse events to input. Returns false once the
 		// window has been asked to close.
 		bool PumpEvents();
 		// Records the pointer at a logical-pixel position, and whether it is over the logical area.
 		void SetMousePosition(float x, float y);
+		// Applies a pending DisplayRequest of game, and refreshes its DisplayInfo when something changed.
+		void UpdateDisplay(Game& game);
+		void ApplyDisplay(const graphics::DisplaySettings& wanted);
 
 	public:
 		explicit Application(const ApplicationConfig& config);

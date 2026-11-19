@@ -9,6 +9,19 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `graphics/display.hpp`: display settings. `DisplaySettings` (window mode `Windowed`, `Borderless` or `Fullscreen`, size, VSync,
+  frame cap, `Scaling::Integer` or `Fit`), asked for through the `DisplayRequest` resource and reported in `DisplayInfo`,
+  which `Application` applies and refreshes after each frame through the new `Game::Display()` hook (`ScheduledGame`
+  implements it from the world's resources). `Window::SetMode` and `Resolutions`, `Renderer::SetScaling` and `SetVSync`, and a
+  frame cap in the main loop for when VSync is off. `ApplicationConfig` gains `scaling`, `vsync`, `frameCap` and
+  `maxUpdatesPerFrame`; `Renderer`'s constructor takes an optional `Scaling`. Pure helpers `Presentation`,
+  `NormalizeResolutions`, `FrameDelaySeconds` and `Sanitized`. See [docs/display.md](docs/display.md).
+- `core::FixedTimestep::SetMaxUpdates`: limits the updates one frame runs and drops the backlog beyond it, so a slow frame at a time
+  scale above 1 can't spiral. `Application` sets it to 15 by default (what a stall gets at normal speed).
+- Tangle Run: DISPLAY and SCALING options, saved with the other settings.
+
 ## [0.3.0] - 2026-11-19
 
 The JSON and random number work (Phase 10) and the UI work (Phase 11) of [docs/babel-support.md](docs/babel-support.md) in one release: there is no 0.2.0. Games moving from 0.1.0 should read the **Breaking** entries under Changed first.

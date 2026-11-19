@@ -154,9 +154,10 @@ namespace game
 		SpawnCentred(registry, kScope, "OPTIONS", 72.0f, kTitleColor, 2);
 
 		// The labels are placeholders: ScreenTextSystem writes each line from the settings.
-		constexpr std::string_view kLabels[] = {"SOUND: OFF", "LIVES: 3", "UI DEMO", "BACK"};
+		constexpr std::string_view kLabels[] = {"SOUND: OFF",       "LIVES: 3", "DISPLAY: WINDOWED",
+		                                        "SCALING: INTEGER", "UI DEMO",  "BACK"};
 		static_assert(std::size(kLabels) == kOptionItems);
-		SpawnMenu(registry, kScope, TextKind::OptionItem, kLabels, std::size(kLabels), 120.0f);
+		SpawnMenu(registry, kScope, TextKind::OptionItem, kLabels, std::size(kLabels), 100.0f);
 
 		SpawnCentred(registry, kScope, "UP DOWN: CHOOSE", 188.0f, kHintColor);
 		SpawnCentred(registry, kScope, "LEFT RIGHT OR ENTER: CHANGE", 200.0f, kHintColor);

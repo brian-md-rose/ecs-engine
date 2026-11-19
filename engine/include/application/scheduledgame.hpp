@@ -29,5 +29,8 @@ namespace engine::application
 		// An update with no sound, for tests.
 		void Update(double dt, const input::Input& input) { Update(dt, input, nullptr); }
 		void Render(graphics::Renderer& renderer, double alpha) override;
+
+		// The world's DisplayRequest and DisplayInfo resources, if it has them (nullptr for each it lacks).
+		[[nodiscard]] DisplayLink Display() override;
 	};
 } // namespace engine::application

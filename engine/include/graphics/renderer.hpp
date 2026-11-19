@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "graphics/display.hpp"
+
 // SDL types are only forward-declared here: SDL is linked PRIVATE to the engine, so its headers
 // are not visible to the game or tests. Only engine .cpp files include <SDL3/...>.
 struct SDL_Renderer;
@@ -22,11 +24,15 @@ namespace engine::graphics
 	{
 		SDL_Renderer* renderer = nullptr;
 		std::vector<SDL_Texture*> textures; // TextureId i is textures[i - 1]; null once destroyed
+		int logicalWidth = 0;
+		int logicalHeight = 0;
+		Scaling scaling = Scaling::Integer;
 
 	public:
-		// renderWidth/renderHeight is the game's fixed logical resolution. It is scaled up by
-		// the largest whole number that fits the window, with black bars around the rest.
-		Renderer(Window& window, int renderWidth, int renderHeight);
+		// renderWidth/renderHeight is the game's fixed logical resolution. With Scaling::Integer (the default) it
+		// is scaled up by the largest whole number that fits the window, with black bars around the rest; with
+		// Scaling::Fit by any amount, letterboxed. VSync starts on.
+		Renderer(Window& window, int renderWidth, int renderHeight, Scaling scaling = Scaling::Integer);
 		~Renderer();
 
 		Renderer(const Renderer&) = delete;
@@ -36,6 +42,14 @@ namespace engine::graphics
 
 		// False if the renderer couldn't be created (the reason is logged).
 		[[nodiscard]] bool IsValid() const noexcept { return renderer != nullptr; }
+
+		// Changes how the logical picture is scaled to the window, from the next frame. Returns false (the reason
+		// logged) if SDL refused.
+		bool SetScaling(Scaling mode);
+		[[nodiscard]] Scaling GetScaling() const noexcept { return scaling; }
+
+		// VSync on or off. Returns false (logged) if SDL refused, as some drivers do for off.
+		bool SetVSync(bool enabled);
 
 		void Clear(std::uint8_t r, std::uint8_t g, std::uint8_t b);
 

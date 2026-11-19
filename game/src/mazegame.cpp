@@ -16,6 +16,7 @@
 #include "core/text.hpp"
 #include "debug/debugpanel.hpp"
 #include "difficulty.hpp"
+#include "displaysettings.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
@@ -139,6 +140,9 @@ namespace game
 		world.resources.Emplace<NameEntry>();
 		world.resources.Emplace<MenuCursor>();
 		world.resources.Emplace<UiDemoState>();
+		world.resources.Emplace<engine::graphics::DisplayRequest>();
+		world.resources.Emplace<engine::graphics::DisplayInfo>();
+		world.resources.Emplace<DisplayAsked>();
 		world.resources.Emplace<engine::ui::PointerState>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ModeClock>();
@@ -182,6 +186,7 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, "Animation", engine::graphics::AnimationSystem, NotInState<Pause::Paused>);
 		scheduler.Add(Phase::LateUpdate, "Hud", HudSystem);
 		scheduler.Add(Phase::LateUpdate, "ScreenText", ScreenTextSystem);
+		scheduler.Add(Phase::LateUpdate, "Display", DisplaySystem);
 		scheduler.Add(Phase::LateUpdate, "UiDemoLook", UiDemoLookSystem, InState<Screen::UiDemo>);
 		scheduler.Add(Phase::LateUpdate, "NinePatch", engine::ui::NinePatchSystem);
 		scheduler.Add(Phase::LateUpdate, "Audio", AudioSystem);
