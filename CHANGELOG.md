@@ -9,6 +9,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-19
+
 ### Added
 
 - Undo and redo in the standalone editor (Edit menu, Ctrl+Z, Ctrl+Y): each finished change is a step, kept as the scene text; `EditorGame::Undo`, `Redo`, `CanUndo` and `CanRedo`.
@@ -180,7 +182,8 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.4.0...v0.5.0
