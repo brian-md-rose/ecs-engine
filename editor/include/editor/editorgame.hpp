@@ -11,6 +11,8 @@
 #include "ecs/entity.hpp"
 #include "editor/editor.hpp"
 #include "editor/entitypanels.hpp"
+#include "editor/viewport.hpp"
+#include "graphics/renderer.hpp"
 
 namespace engine::editor
 {
@@ -71,6 +73,17 @@ namespace engine::editor
 		bool openDialog = false; // the popup still has to be opened
 		std::string saveAsName;
 
+		// The viewport: the game is drawn into target (as big as the game's logical screen) and the Viewport panel
+		// shows it, panned and zoomed. The renderer owns the texture, so it is never freed here.
+		graphics::TextureId target = graphics::kNoTexture;
+		int targetWidth = 0;
+		int targetHeight = 0;
+		SDL_Texture* targetHandle = nullptr;
+		ViewTransform view;
+
+		[[nodiscard]] graphics::Camera CurrentCamera();
+		void DrawViewport();
+
 		[[nodiscard]] ecs::World& CurrentWorld() { return play ? play->world : edit->world; }
 		[[nodiscard]] std::string SceneText();
 		void ClearWorld(ecs::World& world);
@@ -110,6 +123,9 @@ namespace engine::editor
 		[[nodiscard]] ecs::World& EditWorld() { return edit->world; }
 		[[nodiscard]] ecs::World* PlayWorld() { return play ? &play->world : nullptr; }
 		[[nodiscard]] const std::string& Message() const noexcept { return message; }
+		// True once the game has been drawn into the viewport's picture (false if the renderer couldn't make one).
+		[[nodiscard]] bool HasViewportPicture() const noexcept { return targetHandle != nullptr; }
+		[[nodiscard]] ViewTransform& View() noexcept { return view; }
 
 		// Game:
 		void Update(double dt, const input::Input& input, audio::AudioDevice* audio) override;

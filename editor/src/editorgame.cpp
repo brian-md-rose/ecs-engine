@@ -4,6 +4,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
+#include <cmath>
 #include <system_error>
 #include <utility>
 
@@ -11,6 +12,7 @@
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
+#include "graphics/renderer2d.hpp"
 
 namespace engine::editor
 {
@@ -74,6 +76,12 @@ namespace engine::editor
 		{
 			DrawDialogs();
 		});
+		editor.AddPanel("Viewport", [this]
+		{
+			DrawViewport();
+		});
+		editor.SetPanelSize("Viewport", 700, 480);
+		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
 	}
 
@@ -212,15 +220,98 @@ namespace engine::editor
 		if (play->WantsToQuit()) StopPlay(); // the game's Quit ends the run, not the editor
 	}
 
+	graphics::Camera EditorGame::CurrentCamera()
+	{
+		if (const auto* renderer2D = CurrentWorld().resources.TryGet<graphics::Renderer2D>()) return renderer2D->camera;
+		return {};
+	}
+
 	void EditorGame::Render(graphics::Renderer& renderer, double alpha)
 	{
-		if (play)
+		application::ScheduledGame& current = play ? *play : *edit;
+		if (!play && ++framesSinceCheck >= kFramesBetweenDirtyChecks) CheckDirty();
+
+		// Into a picture the viewport shows. If one can't be made, the game is drawn straight to the window.
+		const graphics::Camera camera = CurrentCamera();
+		if (camera.logicalWidth > 0 && camera.logicalHeight > 0 &&
+		    (target == graphics::kNoTexture || camera.logicalWidth != targetWidth ||
+		     camera.logicalHeight != targetHeight))
 		{
-			play->Render(renderer, alpha);
+			renderer.DestroyTexture(target);
+			target = renderer.CreateRenderTarget(camera.logicalWidth, camera.logicalHeight);
+			targetWidth = camera.logicalWidth;
+			targetHeight = camera.logicalHeight;
+			targetHandle = renderer.GetTextureHandle(target);
+		}
+		if (target != graphics::kNoTexture && renderer.SetRenderTarget(target))
+		{
+			current.Render(renderer, alpha);
+			(void)renderer.SetRenderTarget(graphics::kNoTexture);
+			renderer.Clear(30, 30, 34); // behind the panels
 			return;
 		}
-		if (++framesSinceCheck >= kFramesBetweenDirtyChecks) CheckDirty();
-		edit->Render(renderer, alpha);
+		current.Render(renderer, alpha);
+	}
+
+	void EditorGame::DrawViewport()
+	{
+		if (targetHandle == nullptr || target == graphics::kNoTexture)
+		{
+			ImGui::TextDisabled("The game has not drawn a picture yet.");
+			return;
+		}
+		if (ImGui::Button("Reset view")) view = ViewTransform{};
+		ImGui::SameLine();
+		ImGui::Text("%.0f%%   wheel zooms, middle or right drag pans, click selects",
+		            static_cast<double>(view.zoom) * 100.0);
+
+		ImVec2 size = ImGui::GetContentRegionAvail();
+		size.x = std::max(size.x, 16.0F);
+		size.y = std::max(size.y, 16.0F);
+		ImGui::InvisibleButton("##viewport", size, ImGuiButtonFlags_MouseButtonLeft);
+		const bool hovered = ImGui::IsItemHovered();
+		const ImVec2 min = ImGui::GetItemRectMin();
+		const ImVec2 max = ImGui::GetItemRectMax();
+		const graphics::Position origin{min.x, min.y};
+		const ImGuiIO& io = ImGui::GetIO();
+
+		if (hovered && io.MouseWheel != 0.0F)
+			view.ZoomAt(std::pow(1.15F, io.MouseWheel), {io.MousePos.x, io.MousePos.y}, origin);
+		if (hovered && (ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F) ||
+		                ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0F)))
+		{
+			view.panX += io.MouseDelta.x;
+			view.panY += io.MouseDelta.y;
+		}
+
+		ImDrawList* const draw = ImGui::GetWindowDrawList();
+		draw->PushClipRect(min, max, true);
+		draw->AddRectFilled(min, max, IM_COL32(20, 20, 24, 255));
+		const graphics::Position topLeft = view.ToWindow({0, 0}, origin);
+		const graphics::Position bottomRight =
+		    view.ToWindow({static_cast<float>(targetWidth), static_cast<float>(targetHeight)}, origin);
+		draw->AddImage(ImTextureRef(reinterpret_cast<ImTextureID>(targetHandle)), ImVec2(topLeft.x, topLeft.y),
+		               ImVec2(bottomRight.x, bottomRight.y));
+		draw->AddRect(ImVec2(topLeft.x, topLeft.y), ImVec2(bottomRight.x, bottomRight.y), IM_COL32(90, 90, 100, 255));
+
+		ecs::World& world = CurrentWorld();
+		const graphics::Camera camera = CurrentCamera();
+		if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		{
+			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
+			panels->selected = PickEntity(world.registry, camera, picture);
+		}
+		if (panels->selected != ecs::Entity::Null && world.registry.IsAlive(panels->selected))
+		{
+			if (const auto rect = EntityScreenRect(world.registry, panels->selected, camera))
+			{
+				const graphics::Position a = view.ToWindow({rect->x, rect->y}, origin);
+				const graphics::Position b = view.ToWindow({rect->x + rect->width, rect->y + rect->height}, origin);
+				draw->AddRect(ImVec2(a.x - 1, a.y - 1), ImVec2(b.x + 1, b.y + 1), IM_COL32(255, 200, 40, 255), 0.0F,
+				              2.0F);
+			}
+		}
+		draw->PopClipRect();
 	}
 
 	bool EditorGame::ShowSystemCursor() const

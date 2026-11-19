@@ -60,6 +60,15 @@ namespace engine::graphics
 		[[nodiscard]] TextureId CreateTexture(const Image& image);
 		void DestroyTexture(TextureId texture);
 
+		// A texture that can be drawn into, width by height pixels, for drawing a picture off screen (the editor's
+		// viewport). Draw into it between SetRenderTarget(it) and SetRenderTarget(kNoTexture); then it is drawn like
+		// any texture. While it is the target, positions are in its pixels, not the window's logical size. Returns
+		// kNoTexture if it couldn't be made (logged). Destroyed like any texture.
+		[[nodiscard]] TextureId CreateRenderTarget(int width, int height);
+		// Draws into texture from now on, or into the window again for kNoTexture. False (logged) if SDL refused or the
+		// texture is not a render target.
+		bool SetRenderTarget(TextureId texture);
+
 		// For engine code that draws with SDL directly, such as Renderer2D.
 		[[nodiscard]] SDL_Renderer* GetRendererHandle() const noexcept { return renderer; }
 		// nullptr for kNoTexture or a texture that no longer exists.

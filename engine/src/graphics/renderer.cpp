@@ -106,6 +106,41 @@ namespace engine::graphics
 		return static_cast<TextureId>(textures.size());
 	}
 
+	TextureId Renderer::CreateRenderTarget(int width, int height)
+	{
+		if (renderer == nullptr || width <= 0 || height <= 0) return kNoTexture;
+		SDL_Texture* texture =
+		    SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, width, height);
+		if (texture == nullptr)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateTexture (render target) failed: %s", SDL_GetError());
+			return kNoTexture;
+		}
+		if (!SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetTextureScaleMode failed: %s", SDL_GetError());
+		}
+		textures.push_back(texture);
+		return static_cast<TextureId>(textures.size());
+	}
+
+	bool Renderer::SetRenderTarget(TextureId texture)
+	{
+		if (renderer == nullptr) return false;
+		SDL_Texture* handle = nullptr;
+		if (texture != kNoTexture)
+		{
+			handle = GetTextureHandle(texture);
+			if (handle == nullptr) return false;
+		}
+		if (!SDL_SetRenderTarget(renderer, handle))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetRenderTarget failed: %s", SDL_GetError());
+			return false;
+		}
+		return true;
+	}
+
 	void Renderer::DestroyTexture(TextureId texture)
 	{
 		if (texture == kNoTexture || texture > textures.size()) return;
