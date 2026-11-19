@@ -81,7 +81,7 @@ if (!result.Ok())
 - Problems are collected, not thrown, each with a path such as `entities[3].components.Follow.target`.
   A component name that isn't registered, a field that isn't known and a `Runtime` component in a file are
   **warnings** (an old scene survives a removed component). Anything else is an error.
-- If there is any error the load is undone: every entity it created is destroyed again, and none is returned.
+- If there is any error the load is undone: every entity it created is destroyed again, and none is returned. (Side effects of `OnAdd` hooks are not undone.) A `parent` chain that loops is an error.
 - `SaveScene` can also take a list of entities (a selection). A reference from one of them to an entity outside
   the list is an error.
 - A component the entity already has is replaced when loaded onto it by `TypeInfo::Load`; a scene load always

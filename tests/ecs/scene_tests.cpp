@@ -246,3 +246,27 @@ TEST_CASE("A scene file round-trips and a missing file is an error", "[ecs][scen
 	CHECK_FALSE(LoadSceneFile(other, types, dir / "missing.json").Ok());
 	std::filesystem::remove_all(dir);
 }
+
+TEST_CASE("A parent loop is a load error", "[ecs][scene]")
+{
+	const TypeRegistry types = MakeTypes();
+	Registry registry;
+	const auto result =
+	    LoadScene(registry, types, Parse(R"({"format": 1, "entities": [{"id": 1, "parent": 2}, {"id": 2, "parent": 1},
+	    {"id": 3, "parent": 3}, {"id": 4, "parent": 1}]})"));
+	CHECK_FALSE(result.Ok());
+	CHECK(registry.EntityCount() == 0);
+	CHECK(result.issues.errors.size() >= 3);
+}
+
+TEST_CASE("SaveSceneFile ignores errors the caller already had", "[ecs][scene]")
+{
+	const TypeRegistry types = MakeTypes();
+	const auto dir = std::filesystem::temp_directory_path() / "ecs-engine-scene-tests-2";
+	std::filesystem::create_directories(dir);
+	Registry registry;
+	Issues issues;
+	issues.errors.push_back({"old", "from before"});
+	CHECK(SaveSceneFile(registry, types, dir / "empty.json", issues));
+	std::filesystem::remove_all(dir);
+}

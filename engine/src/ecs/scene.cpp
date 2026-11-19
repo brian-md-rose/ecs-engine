@@ -249,6 +249,25 @@ namespace engine::ecs
 			}
 		}
 
+		// A parent chain that comes back to its start would make anything that walks the hierarchy loop.
+		if (issues.Ok())
+		{
+			for (std::size_t i = 0; i < created.size(); ++i)
+			{
+				Entity current = created[i];
+				for (std::size_t step = 0; step <= created.size(); ++step)
+				{
+					const Parent* parent = registry.TryGetComponent<Parent>(current);
+					if (parent == nullptr || parent->entity.IsNull()) break;
+					current = parent->entity;
+					if (step == created.size())
+					{
+						issues.errors.push_back({Join(Index("entities", i), "parent"), "the parents form a loop"});
+					}
+				}
+			}
+		}
+
 		if (!issues.Ok())
 		{
 			for (const Entity entity : created)
@@ -276,8 +295,9 @@ namespace engine::ecs
 	bool SaveSceneFile(const Registry& registry, const TypeRegistry& types, const std::filesystem::path& file,
 	                   Issues& issues)
 	{
+		const std::size_t errorsBefore = issues.errors.size();
 		const core::JsonValue scene = SaveScene(registry, types, issues);
-		if (!issues.Ok()) return false;
+		if (issues.errors.size() != errorsBefore) return false;
 		if (!core::WriteJson(file, scene))
 		{
 			issues.errors.push_back({"", "could not write " + file.string()});
