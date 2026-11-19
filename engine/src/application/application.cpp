@@ -61,23 +61,16 @@ namespace engine::application
 			{
 				return input::PadFamily::SteamDeck;
 			}
-			switch (SDL_GetGamepadType(pad))
-			{
-			case SDL_GAMEPAD_TYPE_XBOX360:
-			case SDL_GAMEPAD_TYPE_XBOXONE:
-				return input::PadFamily::Xbox;
-			case SDL_GAMEPAD_TYPE_PS3:
-			case SDL_GAMEPAD_TYPE_PS4:
-			case SDL_GAMEPAD_TYPE_PS5:
+			// Compared one by one rather than switched on: MSVC wants every enumerator listed, even with a default.
+			const SDL_GamepadType type = SDL_GetGamepadType(pad);
+			if (type == SDL_GAMEPAD_TYPE_XBOX360 || type == SDL_GAMEPAD_TYPE_XBOXONE) return input::PadFamily::Xbox;
+			if (type == SDL_GAMEPAD_TYPE_PS3 || type == SDL_GAMEPAD_TYPE_PS4 || type == SDL_GAMEPAD_TYPE_PS5)
 				return input::PadFamily::PlayStation;
-			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
-			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
-			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
-			case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+			if (type == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO || type == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT ||
+			    type == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT ||
+			    type == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR)
 				return input::PadFamily::Switch;
-			default:
-				return input::PadFamily::Generic;
-			}
+			return input::PadFamily::Generic;
 		}
 
 		std::optional<input::PadButton> ToPadButton(Uint8 button)
