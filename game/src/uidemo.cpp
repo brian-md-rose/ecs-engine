@@ -151,6 +151,10 @@ namespace game
 		{
 			engine::core::LogError("uidemo scene: " + issue.path + ": " + issue.message);
 		}
+		for (const engine::ecs::Issue& issue : loaded.issues.warnings)
+		{
+			engine::core::LogWarning("uidemo scene: " + issue.path + ": " + issue.message);
+		}
 		if (!loaded.Ok()) return;
 
 		// Everything the screen spawns goes when the state does.

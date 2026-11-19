@@ -62,6 +62,8 @@ target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for 
 - **Scenes**: components described at run time by a type registry, and entities saved to and loaded from JSON with
   ids remapped on load, in `engine::core` with no editor needed ([scenes](docs/scenes.md),
   [ADR 0004](docs/decisions/0004-reflection-and-scenes.md)).
+- **Editor overlay** (optional, off by default): a Dear ImGui overlay on a running game behind `ENGINE_BUILD_EDITOR`
+  ([editor](docs/editor.md)).
 - **Platform**: an SDL3 window and an application loop with a fixed 60 Hz update and variable-rate
   rendering. SDL types stay out of the public headers.
 - **Input**: one `Input` aggregate per update holding the keyboard (a full PC key set, plus the UTF-8 text typed

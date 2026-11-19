@@ -260,6 +260,8 @@ namespace engine::application
 		double previous = clock.Now();
 		bool cursorShown = true;
 
+		if (editor != nullptr) editor->Attach({window.GetWindowHandle(), renderer.GetRendererHandle()});
+
 		UpdateDisplay(game); // so the game sees the display's settings and sizes from its first update
 
 		while (PumpEvents() && !game.WantsToQuit())
@@ -275,7 +277,7 @@ namespace engine::application
 			}
 			audio.Update();
 
-			const bool wantCursor = game.ShowSystemCursor();
+			const bool wantCursor = game.ShowSystemCursor() || (editor != nullptr && editor->WantsSystemCursor());
 			if (wantCursor != cursorShown)
 			{
 				cursorShown = wantCursor;
@@ -286,6 +288,7 @@ namespace engine::application
 			}
 
 			game.Render(renderer, timestep.Alpha());
+			if (editor != nullptr) editor->Draw();
 			renderer.Present();
 
 			UpdateDisplay(game);
@@ -297,6 +300,7 @@ namespace engine::application
 			}
 		}
 
+		if (editor != nullptr) editor->Detach();
 		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
 		return 0;
 	}
@@ -354,6 +358,7 @@ namespace engine::application
 		SDL_Event event{};
 		while (SDL_PollEvent(&event))
 		{
+			if (editor != nullptr && editor->OnEvent(&event)) continue;
 			switch (event.type)
 			{
 			case SDL_EVENT_QUIT:

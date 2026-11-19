@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <set>
 #include <string>
 
@@ -24,7 +25,6 @@
 #include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 #include "uidemo.hpp"
-#include <filesystem>
 
 namespace
 {

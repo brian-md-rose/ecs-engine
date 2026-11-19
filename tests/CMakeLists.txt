@@ -9,6 +9,8 @@ file(GLOB_RECURSE TEST_HEADERS CONFIGURE_DEPENDS *.hpp)
 file(GLOB_RECURSE ENGINE_TEST_SOURCES CONFIGURE_DEPENDS *_tests.cpp)
 file(GLOB_RECURSE GAME_TEST_SOURCES CONFIGURE_DEPENDS game/*_tests.cpp)
 list(REMOVE_ITEM ENGINE_TEST_SOURCES ${GAME_TEST_SOURCES})
+file(GLOB_RECURSE EDITOR_TEST_SOURCES CONFIGURE_DEPENDS editor/*_tests.cpp)
+list(REMOVE_ITEM ENGINE_TEST_SOURCES ${EDITOR_TEST_SOURCES})
 
 # Tests of the platform library (paths: SDL_GetBasePath; debug panel: the renderer; sheet
 # manifests: image files).
@@ -45,6 +47,16 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_TEST_SOURCES} ${TES
 include(Catch)
 catch_discover_tests(engine_core_tests)
 catch_discover_tests(engine_tests)
+
+# The editor overlay's smoke tests, only when the editor is built (ENGINE_BUILD_EDITOR).
+if(TARGET engine_editor)
+    add_executable(editor_tests ${EDITOR_TEST_SOURCES})
+    target_link_libraries(editor_tests PRIVATE engine::editor engine::warnings SDL3::SDL3 Catch2::Catch2WithMain)
+    if(MSVC)
+        target_compile_options(editor_tests PRIVATE /wd4868)
+    endif()
+    catch_discover_tests(editor_tests)
+endif()
 
 # Tests for the game's own logic, kept apart from the engine tests. The game is an
 # executable, so its sources (all but main.cpp) are compiled in here directly.
