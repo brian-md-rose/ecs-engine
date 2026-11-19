@@ -421,10 +421,10 @@ Files: `thirdparty/stb_vorbis/` (one vendored `.c` file and its licence), a `stb
 target **without** `engine::warnings` (point 9), `audio/sound.hpp/.cpp`, new
 `audio/soundfile.hpp/.cpp`.
 
-- [ ] `LoadSound(path)` returns a `SoundResult`. WAV goes through `SDL_LoadWAV` and OGG through
+- [x] `LoadSound(path)` returns a `SoundResult`. WAV goes through `SDL_LoadWAV` and OGG through
       `stb_vorbis`. `Sound` keeps the file's own sample rate and channel count, and the voice
       stream is given that format, so SDL does the resampling. Don't pre-convert to 44.1 kHz.
-- [ ] Tests: decode a tiny committed WAV and OGG, and report a bad file as an error, not a crash.
+- [x] Tests: decode a tiny committed WAV and OGG, and report a bad file as an error, not a crash.
 
 ### PR 12.4: Mixer, channels and music (v0.5.0)
 

@@ -13,6 +13,7 @@ list(REMOVE_ITEM ENGINE_TEST_SOURCES ${GAME_TEST_SOURCES})
 # Tests of the platform library (paths: SDL_GetBasePath; debug panel: the renderer; sheet
 # manifests: image files).
 set(PLATFORM_TEST_NAMES
+    audio/soundfile_tests.cpp
     core/paths_tests.cpp
     debug/debugpanel_tests.cpp
     graphics/sheetmanifest_tests.cpp
@@ -35,6 +36,8 @@ if(MSVC)
     target_compile_options(engine_core_tests PRIVATE /wd4868)
     target_compile_options(engine_tests PRIVATE /wd4868)
 endif()
+# The sound file tests read small files from tests/data.
+target_compile_definitions(engine_tests PRIVATE ENGINE_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 # Mirror the folder layout as IDE filters: core/, ecs/, graphics/, input/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_TEST_SOURCES} ${TEST_HEADERS})
 

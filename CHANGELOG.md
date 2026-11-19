@@ -9,6 +9,18 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `audio/soundfile.hpp`: `LoadSound(path)` returns a `SoundResult` (the `Sound`, or an error message; a bad file never
+  crashes). `.wav` goes through `SDL_LoadWAV` and `.ogg` through the vendored stb_vorbis (`thirdparty/stb_vorbis`, built
+  without the engine's warning flags). The `Sound` keeps the file's own sample rate and channel count.
+- `audio::Sound` gains `sampleRate` and `channels` (defaults match `Synthesize`: mono, 44.1 kHz) and `Frames()`.
+
+### Changed
+
+- `AudioDevice` opens a stereo device and gives each voice the sound's own format, so SDL resamples and remixes it. Mono
+  sounds play on both sides as before.
+
 ## [0.4.0] - 2026-11-19
 
 ### Added

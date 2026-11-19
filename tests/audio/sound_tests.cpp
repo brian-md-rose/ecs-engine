@@ -79,3 +79,18 @@ TEST_CASE("Noise is the same every time", "[audio][synth]")
 	const std::array tones = {Tone{.wave = Waveform::Noise, .startHz = 4000.0f, .endHz = 4000.0f}};
 	CHECK(engine::audio::Synthesize(tones).samples == engine::audio::Synthesize(tones).samples);
 }
+
+TEST_CASE("A Sound counts frames and seconds per channel, at its own rate", "[audio]")
+{
+	engine::audio::Sound stereo;
+	stereo.sampleRate = 22050;
+	stereo.channels = 2;
+	stereo.samples.assign(22050 * 2, 0.0f); // one second of two channels
+	CHECK(stereo.Frames() == 22050);
+	CHECK(stereo.Seconds() > 0.999);
+	CHECK(stereo.Seconds() < 1.001);
+
+	const engine::audio::Sound plain; // what Synthesize makes
+	CHECK(plain.sampleRate == kSampleRate);
+	CHECK(plain.channels == 1);
+}

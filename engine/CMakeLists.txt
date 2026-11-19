@@ -16,6 +16,7 @@ file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS include/*.hpp)
 set(ENGINE_PLATFORM_SOURCE_NAMES
     application/application.cpp
     audio/audiodevice.cpp
+    audio/soundfile.cpp
     core/paths.cpp
     core/sdllog.cpp
     debug/debugpanel.cpp
@@ -65,7 +66,7 @@ target_link_libraries(engine_platform PUBLIC engine::core)
 # SDL3 is PRIVATE: only the platform .cpp files may include SDL headers (the game links SDL3 itself
 # just for SDL_main.h in main.cpp). The game still links SDL through the platform library, since it is a
 # static library.
-target_link_libraries(engine_platform PRIVATE engine::warnings SDL3::SDL3)
+target_link_libraries(engine_platform PRIVATE engine::warnings SDL3::SDL3 stb_vorbis::stb_vorbis)
 set_target_properties(engine_platform PROPERTIES VERSION ${PROJECT_VERSION})
 
 # Mirror the folder layout as IDE filters: include/ and src/.

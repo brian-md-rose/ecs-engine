@@ -6,3 +6,5 @@
 *.json text
 *.md  text
 *.bat text eol=crlf
+*.wav binary
+*.ogg binary
