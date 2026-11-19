@@ -39,21 +39,33 @@ namespace engine::audio
 			return extension;
 		}
 
-		bool ReadFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes, std::string& why)
+		// The file's size, if it is a sound we are willing to read: not empty and not too big.
+		bool CheckSize(const std::filesystem::path& path, std::uintmax_t& size, std::string& why)
 		{
 			std::error_code ec;
-			const std::uintmax_t size = std::filesystem::file_size(path, ec);
+			size = std::filesystem::file_size(path, ec);
 			if (ec)
 			{
 				why = "can't read the file (" + ec.message() + ")";
 				return false;
 			}
-			if (size == 0 || size > kMaxSoundFileBytes ||
-			    size > static_cast<std::uintmax_t>(std::numeric_limits<int>::max()))
+			if (size == 0)
 			{
-				why = size == 0 ? "the file is empty" : "the file is too big";
+				why = "the file is empty";
 				return false;
 			}
+			if (size > kMaxSoundFileBytes || size > static_cast<std::uintmax_t>(std::numeric_limits<int>::max()))
+			{
+				why = "the file is too big";
+				return false;
+			}
+			return true;
+		}
+
+		bool ReadFile(const std::filesystem::path& path, std::vector<unsigned char>& bytes, std::string& why)
+		{
+			std::uintmax_t size = 0;
+			if (!CheckSize(path, size, why)) return false;
 			std::ifstream in(path, std::ios::binary);
 			bytes.resize(static_cast<std::size_t>(size));
 			if (!in.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())))
@@ -66,6 +78,10 @@ namespace engine::audio
 
 		SoundResult LoadWav(const std::filesystem::path& path)
 		{
+			std::uintmax_t size = 0;
+			std::string why;
+			if (!CheckSize(path, size, why)) return Failure(path, why);
+
 			const auto utf8 = path.u8string();
 			SDL_AudioSpec spec{};
 			Uint8* data = nullptr;
@@ -76,6 +92,11 @@ namespace engine::audio
 			}
 
 			// To float, keeping the file's rate and channels.
+			if (length == 0 || length > static_cast<Uint32>(std::numeric_limits<int>::max() / 2))
+			{
+				SDL_free(data);
+				return Failure(path, length == 0 ? "the WAV file has no sound in it" : "the WAV file is too big");
+			}
 			SDL_AudioSpec wanted = spec;
 			wanted.format = SDL_AUDIO_F32;
 			Uint8* converted = nullptr;

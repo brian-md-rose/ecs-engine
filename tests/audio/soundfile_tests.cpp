@@ -103,6 +103,18 @@ TEST_CASE("A bad file is an error, not a crash", "[audio][soundfile]")
 		CHECK_FALSE(LoadSound(wav.path).Ok());
 		CHECK_FALSE(LoadSound(ogg.path).Ok());
 	}
+	SECTION("a WAV with a good header and no sound")
+	{
+		// RIFF header, 16-bit mono at 8 kHz, and a data chunk of zero bytes.
+		const std::string header("RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x40\x1f\x00\x00"
+		                         "\x80\x3e\x00\x00\x02\x00\x10\x00"
+		                         "data\x00\x00\x00\x00",
+		                         44);
+		const TempFile silent("nodata.wav", header);
+		const auto result = LoadSound(silent.path);
+		CHECK_FALSE(result.Ok());
+		CHECK(result.sound.samples.empty());
+	}
 	SECTION("a real file cut short")
 	{
 		std::ifstream in(kData / "audio" / "tone_mono_44100.ogg", std::ios::binary);

@@ -2,6 +2,9 @@
 
 #include <SDL3/SDL.h>
 
+#include <cstddef>
+#include <limits>
+
 #include "audio/sound.hpp"
 
 namespace engine::audio
@@ -85,7 +88,10 @@ namespace engine::audio
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_SetAudioStreamFormat failed: %s", SDL_GetError());
 			return;
 		}
-		const auto bytes = static_cast<int>(sound.samples.size() * sizeof(float));
+		const std::size_t byteCount = sound.samples.size() * sizeof(float);
+		if (byteCount > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+			return; // too big for SDL to take at once
+		const auto bytes = static_cast<int>(byteCount);
 		if (!SDL_PutAudioStreamData(chosen, sound.samples.data(), bytes))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_PutAudioStreamData failed: %s", SDL_GetError());
