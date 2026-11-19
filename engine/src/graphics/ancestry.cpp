@@ -24,7 +24,7 @@ namespace engine::graphics
 		for (int depth = 0; depth < 256 && entity != ecs::Entity::Null; ++depth)
 		{
 			if (registry.HasComponent<ScreenSpace>(entity)) result.screenSpace = true;
-			if (const Clip* clip = registry.TryGetComponent<Clip>(entity))
+			if (const ClipRect* clip = registry.TryGetComponent<ClipRect>(entity))
 			{
 				result.clip = result.clipped ? Intersect(result.clip, clip->rect) : clip->rect;
 				result.clipped = true;

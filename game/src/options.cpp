@@ -14,6 +14,7 @@ namespace game
 		case OptionItem::Lives:
 			settings.lives = std::clamp(settings.lives + (direction < 0 ? -1 : 1), kMinLives, kMaxLives);
 			break;
+		case OptionItem::UiDemo:
 		case OptionItem::Back:
 		case OptionItem::Count:
 			break;
@@ -29,6 +30,8 @@ namespace game
 			return settings.sound ? "SOUND: ON" : "SOUND: OFF";
 		case OptionItem::Lives:
 			return "LIVES: " + std::to_string(settings.lives);
+		case OptionItem::UiDemo:
+			return "UI DEMO";
 		case OptionItem::Back:
 			return "BACK";
 		case OptionItem::Count:

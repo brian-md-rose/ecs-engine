@@ -110,6 +110,7 @@ namespace engine::application
 
 		core::FixedTimestep timestep(updateStep);
 		double previous = clock.Now();
+		bool cursorShown = true;
 
 		while (PumpEvents() && !game.WantsToQuit())
 		{
@@ -123,10 +124,21 @@ namespace engine::application
 				input.EndUpdate();
 			}
 
+			const bool wantCursor = game.ShowSystemCursor();
+			if (wantCursor != cursorShown)
+			{
+				cursorShown = wantCursor;
+				if (!(wantCursor ? SDL_ShowCursor() : SDL_HideCursor()))
+				{
+					SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "changing the mouse pointer failed: %s", SDL_GetError());
+				}
+			}
+
 			game.Render(renderer, timestep.Alpha());
 			renderer.Present();
 		}
 
+		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
 		return 0;
 	}
 

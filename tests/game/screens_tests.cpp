@@ -230,6 +230,10 @@ TEST_CASE("The options change with left, right and Enter", "[game][screens][opti
 	h.Tap(Key::Enter);
 	CHECK(h.Settings().lives == game::kStartingLives + 1);
 
+	h.Tap(Key::Down); // UI DEMO: left and right do nothing
+	h.Tap(Key::Right);
+	CHECK(h.CurrentStage() == Stage::Options);
+
 	h.Tap(Key::Down); // BACK: left and right do nothing, Enter goes back
 	h.Tap(Key::Right);
 	CHECK(h.CurrentStage() == Stage::Options);

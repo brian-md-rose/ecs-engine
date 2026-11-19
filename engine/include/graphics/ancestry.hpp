@@ -11,7 +11,7 @@ namespace engine::ecs
 namespace engine::graphics
 {
 	// What an entity inherits from itself and its ancestors (through ecs::Parent): ScreenSpace if any
-	// of them has it, and every Clip among them, intersected.
+	// of them has it, and every ClipRect among them, intersected.
 	struct Ancestry
 	{
 		bool screenSpace = false;

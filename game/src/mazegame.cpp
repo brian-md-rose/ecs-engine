@@ -43,6 +43,9 @@
 #include "sounds.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
+#include "ui/ui.hpp"
+#include "ui/uisystems.hpp"
+#include "uidemo.hpp"
 
 namespace game
 {
@@ -106,6 +109,13 @@ namespace game
 		SaveSettings(world);
 	}
 
+	bool MazeGame::ShowSystemCursor() const
+	{
+		// The UI demo draws its own cursor.
+		const auto* screen = world.resources.TryGet<engine::ecs::State<Screen>>();
+		return screen == nullptr || !screen->Is(Screen::UiDemo);
+	}
+
 	bool MazeGame::WantsToQuit() const
 	{
 		const GameState* state = world.resources.TryGet<GameState>();
@@ -128,6 +138,8 @@ namespace game
 		world.resources.Emplace<Settings>();
 		world.resources.Emplace<NameEntry>();
 		world.resources.Emplace<MenuCursor>();
+		world.resources.Emplace<UiDemoState>();
+		world.resources.Emplace<engine::ui::PointerState>();
 		world.resources.Emplace<Score>();
 		world.resources.Emplace<ModeClock>();
 		world.resources.Emplace<EnemyDice>();
@@ -149,6 +161,11 @@ namespace game
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);
 		scheduler.Add(Phase::Input, "Title", TitleSystem, InState<Screen::Title>);
 		scheduler.Add(Phase::Input, "Options", OptionsSystem, InState<Screen::Options>);
+		// The UI systems only run on the demo screen (the nine-patch one also tidies up after it).
+		scheduler.Add(Phase::Input, "UiPointer", engine::ui::UiPointerSystem, InState<Screen::UiDemo>);
+		scheduler.Add(Phase::Input, "UiFocus", engine::ui::UiFocusSystem, InState<Screen::UiDemo>);
+		scheduler.Add(Phase::Input, "ScrollView", engine::ui::ScrollViewSystem, InState<Screen::UiDemo>);
+		scheduler.Add(Phase::Input, "UiDemo", UiDemoSystem, InState<Screen::UiDemo>);
 		scheduler.Add(Phase::Input, "NameEntry", NameEntrySystem, InState<Screen::NameEntry>);
 		scheduler.Add(Phase::Input, "GameOver", GameOverSystem, InState<Screen::GameOver>);
 		scheduler.Add(Phase::Input, "Pause", PauseSystem, InState<Screen::Playing>);
@@ -165,6 +182,8 @@ namespace game
 		scheduler.Add(Phase::LateUpdate, "Animation", engine::graphics::AnimationSystem, NotInState<Pause::Paused>);
 		scheduler.Add(Phase::LateUpdate, "Hud", HudSystem);
 		scheduler.Add(Phase::LateUpdate, "ScreenText", ScreenTextSystem);
+		scheduler.Add(Phase::LateUpdate, "UiDemoLook", UiDemoLookSystem, InState<Screen::UiDemo>);
+		scheduler.Add(Phase::LateUpdate, "NinePatch", engine::ui::NinePatchSystem);
 		scheduler.Add(Phase::LateUpdate, "Audio", AudioSystem);
 		// F3 toggles the debug panel; it goes before RenderSystem, so its text is current.
 		engine::debug::AddDebugPanel(world, scheduler);
@@ -187,5 +206,6 @@ namespace game
 		world.events.Subscribe<PlayerCaught>(QueueSound<PlayerCaught>);
 		world.events.Subscribe<LevelCleared>(CompleteLevel);
 		world.events.Subscribe<LevelCleared>(QueueSound<LevelCleared>);
+		world.events.Subscribe<engine::ui::Clicked>(OnDemoClick);
 	}
 } // namespace game

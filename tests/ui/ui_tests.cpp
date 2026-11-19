@@ -241,14 +241,14 @@ TEST_CASE("Hitboxes outside their clip don't count", "[ui]")
 {
 	Fixture f;
 	const Entity row = f.Button({0.0f, 40.0f}, 100.0f, 10.0f); // a row scrolled below the list's view
-	f.world.registry.Add<engine::graphics::Clip>(
-	    row, engine::graphics::Clip{.rect = {.x = 0, .y = 0, .width = 100, .height = 30}});
+	f.world.registry.Add<engine::graphics::ClipRect>(
+	    row, engine::graphics::ClipRect{.rect = {.x = 0, .y = 0, .width = 100, .height = 30}});
 	f.Move(10.0f, 45.0f);
 	f.Update();
 	CHECK_FALSE(f.world.registry.HasComponent<Hovered>(row));
 	CHECK_FALSE(f.Pointer().overUi);
 
-	f.world.registry.GetComponent<engine::graphics::Clip>(row).rect.height = 60;
+	f.world.registry.GetComponent<engine::graphics::ClipRect>(row).rect.height = 60;
 	f.Update();
 	CHECK(f.world.registry.HasComponent<Hovered>(row));
 }
@@ -258,8 +258,8 @@ TEST_CASE("A clip on a parent applies to its children's hitboxes", "[ui]")
 	Fixture f;
 	const Entity list = f.world.registry.Create();
 	f.world.registry.Add<Transform>(list, Position{});
-	f.world.registry.Add<engine::graphics::Clip>(
-	    list, engine::graphics::Clip{.rect = {.x = 0, .y = 0, .width = 50, .height = 50}});
+	f.world.registry.Add<engine::graphics::ClipRect>(
+	    list, engine::graphics::ClipRect{.rect = {.x = 0, .y = 0, .width = 50, .height = 50}});
 	const Entity child = f.Button({0.0f, 0.0f}, 200.0f, 200.0f);
 	f.world.registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{.entity = list});
 

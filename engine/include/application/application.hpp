@@ -39,6 +39,10 @@ namespace engine::application
 		// Asked after each update: true closes the application, as closing the window does (a
 		// menu's Quit, for one). Games that never ask to quit needn't override it.
 		[[nodiscard]] virtual bool WantsToQuit() const { return false; }
+
+		// Asked each frame: false hides the operating system's mouse pointer over the window, for a game
+		// that draws its own. Games that don't draw one needn't override it.
+		[[nodiscard]] virtual bool ShowSystemCursor() const { return true; }
 	};
 
 	// Owns the platform (SDL, window, renderer, audio) and runs the main loop.

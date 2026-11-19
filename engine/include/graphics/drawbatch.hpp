@@ -106,7 +106,7 @@ namespace engine::graphics
 		[[nodiscard]] std::span<const Vertex> Vertices() const noexcept { return vertices; }
 		[[nodiscard]] std::span<const int> Indices() const noexcept { return indices; }
 
-		// The indices in drawing order, split wherever the clip changes. Without any Clip component
+		// The indices in drawing order, split wherever the clip changes. Without any ClipRect component
 		// this is one run over every index. Empty if nothing is drawn.
 		[[nodiscard]] std::span<const Run> Runs() const noexcept { return runs; }
 

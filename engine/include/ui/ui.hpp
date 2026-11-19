@@ -20,7 +20,7 @@ namespace engine::ui
 {
 	// Component: a rectangle the pointer can hit, with its top-left at the entity's Transform and
 	// the size below, in the entity's own coordinates: world units normally, screen pixels if the
-	// entity (or an ancestor) has graphics::ScreenSpace. Parts outside the entity's graphics::Clip
+	// entity (or an ancestor) has graphics::ScreenSpace. Parts outside the entity's graphics::ClipRect
 	// don't count. Put one on anything that should stop clicks reaching the world, even a plain panel.
 	struct Hitbox
 	{
@@ -95,7 +95,7 @@ namespace engine::ui
 		graphics::Camera camera{};
 	};
 
-	// Component: a scrolling area. Its entity has a Hitbox (the view), usually a graphics::Clip of the
+	// Component: a scrolling area. Its entity has a Hitbox (the view), usually a graphics::ClipRect of the
 	// same rectangle, and `content` is a child (with graphics::Parent and LocalTransform) holding the
 	// rows. The wheel over the view, or dragging it with the left button, moves the content up and
 	// down; ScrollViewSystem keeps the content's LocalTransform y at -offset.

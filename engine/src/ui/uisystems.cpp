@@ -211,6 +211,16 @@ namespace engine::ui
 	void NinePatchSystem(ecs::World& world, const ecs::FrameContext&)
 	{
 		ecs::Registry& registry = world.registry;
+
+		// Pieces whose panel was destroyed would stay drawn where they were.
+		std::vector<ecs::Entity> orphans;
+		registry.Each<NinePatchChild, ecs::Parent>([&](ecs::Entity entity, NinePatchChild&, ecs::Parent& parent)
+		{
+			if (!registry.IsAlive(parent.entity)) orphans.push_back(entity);
+		});
+		for (const ecs::Entity entity : orphans)
+			registry.Destroy(entity);
+
 		std::vector<ecs::Entity> patches;
 		registry.Each<NinePatch>([&](ecs::Entity entity, NinePatch&)
 		{
@@ -227,6 +237,7 @@ namespace engine::ui
 				{
 					piece = registry.Create();
 					registry.Add<ecs::Parent>(piece, ecs::Parent{.entity = entity});
+					registry.Add<NinePatchChild>(piece);
 					registry.Add<graphics::Transform>(piece);
 					registry.Add<graphics::LocalTransform>(piece);
 				}

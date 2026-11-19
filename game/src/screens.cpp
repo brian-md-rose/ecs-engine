@@ -154,7 +154,7 @@ namespace game
 		SpawnCentred(registry, kScope, "OPTIONS", 72.0f, kTitleColor, 2);
 
 		// The labels are placeholders: ScreenTextSystem writes each line from the settings.
-		constexpr std::string_view kLabels[] = {"SOUND: OFF", "LIVES: 3", "BACK"};
+		constexpr std::string_view kLabels[] = {"SOUND: OFF", "LIVES: 3", "UI DEMO", "BACK"};
 		static_assert(std::size(kLabels) == kOptionItems);
 		SpawnMenu(registry, kScope, TextKind::OptionItem, kLabels, std::size(kLabels), 120.0f);
 
@@ -250,6 +250,11 @@ namespace game
 		if (item == OptionItem::Back)
 		{
 			if (controls.WasPressed(Action::Confirm)) RequestScreen(world, Screen::Title);
+			return;
+		}
+		if (item == OptionItem::UiDemo)
+		{
+			if (controls.WasPressed(Action::Confirm)) RequestScreen(world, Screen::UiDemo);
 			return;
 		}
 		const bool left = controls.WasPressed(Action::MoveLeft);

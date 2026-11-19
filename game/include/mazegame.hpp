@@ -80,5 +80,8 @@ namespace game
 
 		// True once Quit was chosen on the title screen.
 		[[nodiscard]] bool WantsToQuit() const override;
+
+		// False on the UI demo screen, which draws its own mouse cursor.
+		[[nodiscard]] bool ShowSystemCursor() const override;
 	};
 } // namespace game

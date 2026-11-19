@@ -49,6 +49,9 @@ The version is available in code as `<core/version.hpp>`.
   texture, with a camera that scales a fixed logical resolution to the window. Sprites and the
   font are PNG files named by a small manifest, with the original text format as a fallback
   ([pixel sheets](docs/pixel-sheets.md)).
+- **UI**: a mouse pointer, hit-testing with layers, buttons that report hover, press and click, nine-slice panels,
+  clipped scrolling lists, Tab focus and wrapped text, all as plain components and systems with no look of their own
+  ([UI guide](docs/ui.md)). Tangle Run has a demo screen under OPTIONS.
 - **Audio**: an SDL3 audio device that plays synthesised sound effects.
 - **Debug panel** (F3): frames per second, draw time, entity counts per component and the
   time each system takes, drawn on screen with the bitmap font. The scheduler times every system.
