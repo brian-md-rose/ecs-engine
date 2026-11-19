@@ -55,7 +55,6 @@ namespace game
 		int line = 0; // 0 or 1
 	};
 
-	// Resource: what the demo remembers.
 	// Component: which of the game's pictures (a SpriteClips name: "panel", "button", "cursor") a NinePatch or Sprite
 	// shows. A scene file names its pictures this way, since where they sit in the atlas is only known
 	// once the assets are loaded; ResolveClipNames fills in the rectangle.
@@ -64,6 +63,7 @@ namespace game
 		std::string value;
 	};
 
+	// Resource: what the demo remembers.
 	struct UiDemoState
 	{
 		int clicks = 0;
@@ -75,7 +75,6 @@ namespace game
 		engine::core::JsonValue json;
 	};
 
-	// The text of list row number row (from 1): some short, some long enough to wrap.
 	// Describes the UI demo's components (and ClipName) to a type registry, so its scene file can be loaded.
 	void RegisterUiDemoComponents(engine::ecs::TypeRegistry& types);
 
@@ -83,6 +82,7 @@ namespace game
 	// An unknown name is left as it is (empty, which draws nothing).
 	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips);
 
+	// The text of list row number row (from 1): some short, some long enough to wrap.
 	[[nodiscard]] std::string DemoRowText(int row);
 
 	// A line (0 or 1) of the help text: the mouse and keyboard controls, or the pad's, named with the buttons
@@ -92,8 +92,8 @@ namespace game
 	// The counter's text, "CLICKS: 3".
 	[[nodiscard]] std::string DemoCounterText(int clicks);
 
-	// Enter system for Screen::UiDemo: the panel, the counter, the buttons, the list and the cursor,
-	// all scoped to the state so leaving it takes them away.
+	// Enter system for Screen::UiDemo: loads assets/scenes/uidemo.json (the panel, counter, buttons, list and cursor),
+	// scopes everything to the state so leaving it takes it away, and adds the list rows.
 	void SpawnUiDemoScreen(engine::ecs::World& world, const engine::ecs::FrameContext& context);
 
 	// Input, after the UI systems: pause (Escape) goes back to Options.
