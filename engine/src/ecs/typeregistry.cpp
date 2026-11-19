@@ -5,6 +5,17 @@
 
 namespace engine::ecs
 {
+	namespace
+	{
+		std::string Child(const std::string& path, std::string_view key)
+		{
+			std::string result = path;
+			result += '.';
+			result += key;
+			return result;
+		}
+	} // namespace
+
 	namespace detail
 	{
 		double FloatToJsonDouble(float value)
@@ -122,7 +133,7 @@ namespace engine::ecs
 			}
 			else
 			{
-				issues.errors.push_back({path + "." + field.name, error});
+				issues.errors.push_back({Child(path, field.name), error});
 				ok = false;
 			}
 		}
@@ -151,13 +162,14 @@ namespace engine::ecs
 				}
 				if (match == nullptr)
 				{
-					issues.warnings.push_back({path + "." + key, "unknown field of " + name + ", ignored"});
+					issues.warnings.push_back(
+					    {Child(path, key), std::string("unknown field of ") + name + ", ignored"});
 					continue;
 				}
 				std::string error;
 				if (!match->load(component, value, ids, error))
 				{
-					issues.errors.push_back({path + "." + key, error});
+					issues.errors.push_back({Child(path, key), error});
 				}
 			}
 			return issues.errors.size() == errorsBefore;
