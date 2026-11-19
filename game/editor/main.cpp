@@ -7,6 +7,7 @@
 #include "core/paths.hpp"
 #include "core/sdllog.hpp"
 #include "editor/editor.hpp"
+#include "editor/entitypanels.hpp"
 #include "mazegame.hpp"
 #include "save.hpp"
 
@@ -25,6 +26,7 @@ int main(int, char**)
 	if (!game.IsValid()) return 1;
 
 	engine::editor::Editor editor;
+	engine::editor::AddEntityPanels(editor, game.world);
 	app.SetEditorHost(&editor);
 	return app.Run(game);
 }
