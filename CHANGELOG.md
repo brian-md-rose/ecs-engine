@@ -9,6 +9,14 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `RegisterEngineComponents` also registers `Text` and the UI components (`NinePatch`, `Hitbox`, `Interactable`, `FocusOrder`, `ScrollView`), so a scene can hold a screen's layout.
+
+### Changed
+
+- Tangle Run's UI demo screen is laid out by `game/assets/scenes/uidemo.json` instead of spawn code (the game's own change; see `docs/scenes.md`).
+
 ## [0.6.0] - 2026-11-19
 
 ### Added

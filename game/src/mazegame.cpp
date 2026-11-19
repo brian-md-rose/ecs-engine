@@ -18,10 +18,12 @@
 #include "debug/debugpanel.hpp"
 #include "difficulty.hpp"
 #include "displaysettings.hpp"
+#include "ecs/enginecomponents.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
 #include "ecs/states.hpp"
+#include "ecs/typeregistry.hpp"
 #include "enemymodes.hpp"
 #include "enemysystems.hpp"
 #include "events.hpp"
@@ -164,6 +166,10 @@ namespace game
 		world.resources.Emplace<EnemyHouse>(EnemyHouse{.house = FindHouse(map)});
 
 		world.resources.Emplace<SpriteClips>(assets.clips);
+		world.resources.Emplace<UiDemoScene>(UiDemoScene{assets.uiDemoScene});
+		auto& types = world.resources.Emplace<engine::ecs::TypeRegistry>();
+		engine::ecs::RegisterEngineComponents(types);
+		RegisterUiDemoComponents(types);
 
 		// The whole frame, in run order. A system for one screen carries an InState condition.
 		scheduler.Add(Phase::Input, "Controls", ControlsSystem);

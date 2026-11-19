@@ -6,10 +6,13 @@
 #include "ecs/hierarchy.hpp"
 #include "ecs/name.hpp"
 #include "graphics/clip.hpp"
+#include "graphics/font.hpp"
 #include "graphics/interpolation.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/sprite.hpp"
+#include "ui/ninepatch.hpp"
+#include "ui/ui.hpp"
 
 namespace engine::ecs
 {
@@ -159,6 +162,39 @@ namespace engine::ecs
 		    .Field("height", &Sprite::height);
 		types.Register<ClipRect>("ClipRect").Field("rect", &ClipRect::rect);
 		types.RegisterTag<ScreenSpace>("ScreenSpace");
+		types.Register<Text>("Text")
+		    .Field("value", &Text::value)
+		    .Field("color", &Text::color)
+		    .Field("layer", &Text::layer)
+		    .Field("scale", &Text::scale)
+		    .Field("wrapWidth", &Text::wrapWidth)
+		    .EnumField("align", &Text::align,
+		               {{"Left", Align::Left}, {"Centre", Align::Centre}, {"Right", Align::Right}});
+		types.Register<ui::NinePatch>("NinePatch")
+		    .Field("source", &ui::NinePatch::source)
+		    .Field("left", &ui::NinePatch::left)
+		    .Field("right", &ui::NinePatch::right)
+		    .Field("top", &ui::NinePatch::top)
+		    .Field("bottom", &ui::NinePatch::bottom)
+		    .Field("width", &ui::NinePatch::width)
+		    .Field("height", &ui::NinePatch::height)
+		    .Field("tint", &ui::NinePatch::tint)
+		    .Field("layer", &ui::NinePatch::layer);
+		types.Register<ui::Hitbox>("Hitbox")
+		    .Field("width", &ui::Hitbox::width)
+		    .Field("height", &ui::Hitbox::height)
+		    .Field("layer", &ui::Hitbox::layer)
+		    .Field("blocksBelow", &ui::Hitbox::blocksBelow);
+		types.Register<ui::Interactable>("Interactable").Field("enabled", &ui::Interactable::enabled);
+		types.Register<ui::FocusOrder>("FocusOrder").Field("order", &ui::FocusOrder::order);
+		types.Register<ui::ScrollView>("ScrollView")
+		    .Field("content", &ui::ScrollView::content)
+		    .Field("viewHeight", &ui::ScrollView::viewHeight)
+		    .Field("contentHeight", &ui::ScrollView::contentHeight)
+		    .Field("offset", &ui::ScrollView::offset)
+		    .Field("wheelStep", &ui::ScrollView::wheelStep)
+		    .Field("dragThreshold", &ui::ScrollView::dragThreshold)
+		    .Field("padSpeed", &ui::ScrollView::padSpeed);
 		types.Register<Interpolation>("Interpolation").Runtime();
 	}
 } // namespace engine::ecs

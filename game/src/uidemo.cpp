@@ -5,8 +5,10 @@
 
 #include "assets.hpp"
 #include "controls.hpp"
+#include "core/log.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/hierarchy.hpp"
+#include "ecs/scene.hpp"
 #include "ecs/states.hpp"
 #include "gameflow.hpp"
 #include "graphics/animation.hpp"
@@ -49,32 +51,21 @@ namespace game
 
 		constexpr Screen kScope = Screen::UiDemo;
 
+		// The layout (positions, sizes, colours, labels) is in assets/scenes/uidemo.json; these are what the code
+		// still needs: the panel's centre for the hints, and the list rows it generates.
 		constexpr float kPanelX = 12.0f;
-		constexpr float kPanelY = 16.0f;
 		constexpr int kPanelWidth = 200;
-		constexpr int kPanelHeight = 256;
-		constexpr int kBorder = 2; // of the panel and button pictures
-
-		constexpr int kButtonWidth = 56;
-		constexpr int kButtonHeight = 16;
-		constexpr int kButtonGap = 8;
-		constexpr float kButtonY = 52.0f;
 
 		constexpr float kListX = 20.0f;
 		constexpr float kListY = 78.0f;
 		constexpr int kListWidth = 184;
-		constexpr int kListHeight = 160;
 		constexpr float kRowIndent = 4.0f;
 		constexpr int kRowWrap = kListWidth - 2 * static_cast<int>(kRowIndent);
 		constexpr int kRowGap = 4;
 
-		constexpr Color kTitleColor{255, 200, 70};
 		constexpr Color kTextColor{255, 255, 255};
-		constexpr Color kHintColor{170, 215, 255};
 		constexpr Color kListTint{150, 150, 150};
 		constexpr Color kListFocusTint{225, 225, 255};
-
-		constexpr std::array<std::string_view, kDemoButtons> kButtonLabels = {{"COUNT", "RESET", "BACK"}};
 
 		// Everything the screen spawns is screen-space and goes when the state does.
 		Entity SpawnScoped(Registry& registry, Position at)
@@ -86,72 +77,23 @@ namespace game
 			return entity;
 		}
 
-		Entity SpawnLabel(Registry& registry, std::string_view value, float centreX, float y, Color color)
-		{
-			const int width = static_cast<int>(value.size()) * kGlyphAdvance;
-			const Entity entity = SpawnScoped(registry, {AlignedX(centreX, Align::Centre, width), y});
-			registry.Add<Text>(entity, Text{.value = std::string(value), .color = color, .layer = kDemoTextLayer});
-			return entity;
-		}
-
-		Entity SpawnPatch(Registry& registry, Position at, const engine::graphics::Clip& source, int width, int height,
-		                  Color tint, std::uint8_t layer)
-		{
-			const Entity entity = SpawnScoped(registry, at);
-			registry.Add<NinePatch>(entity, NinePatch{.source = source.firstFrame,
-			                                          .left = kBorder,
-			                                          .right = kBorder,
-			                                          .top = kBorder,
-			                                          .bottom = kBorder,
-			                                          .width = width,
-			                                          .height = height,
-			                                          .tint = tint,
-			                                          .layer = layer});
-			return entity;
-		}
-
-		void SpawnButton(Registry& registry, const SpriteClips& clips, int index, std::string_view label)
-		{
-			const float x = kPanelX + 8.0f + static_cast<float>(index * (kButtonWidth + kButtonGap));
-			const Entity button = SpawnPatch(registry, {x, kButtonY}, clips.button, kButtonWidth, kButtonHeight,
-			                                 Color{255, 255, 255}, kDemoRowLayer);
-			registry.Add<Hitbox>(button, Hitbox{.width = static_cast<float>(kButtonWidth),
-			                                    .height = static_cast<float>(kButtonHeight),
-			                                    .layer = kDemoRowLayer});
-			registry.Add<Interactable>(button);
-			registry.Add<engine::ui::FocusOrder>(button, engine::ui::FocusOrder{.order = index});
-			registry.Add<DemoButton>(button, DemoButton{.action = static_cast<DemoAction>(index)});
-
-			// The label is a child, so it moves with the button; it has no Hitbox, so the pointer
-			// goes through it to the button.
-			const float labelX = AlignedX(static_cast<float>(kButtonWidth) / 2.0f, Align::Centre,
-			                              static_cast<int>(label.size()) * kGlyphAdvance);
-			const Entity text = SpawnScoped(registry, {x + labelX, kButtonY + 4.0f});
-			registry.Add<Parent>(text, Parent{button});
-			registry.Add<LocalTransform>(text, LocalTransform{{labelX, 4.0f}});
-			registry.Add<Text>(text, Text{.value = std::string(label), .color = kTextColor, .layer = kDemoTextLayer});
-		}
-
-		// The scrolling list: a view with a clip and a hitbox, a content child, and a text row per line.
-		void SpawnList(Registry& registry)
+		// The text rows of the scrolling list. The view and its content child are in the scene file; the rows are
+		// generated, because where each goes depends on how tall the ones before it wrap.
+		void SpawnListRows(Registry& registry)
 		{
 			engine::graphics::BitmapFont metrics;
 			metrics.advance = kGlyphAdvance;
 			metrics.lineHeight = kGlyphLineHeight;
 
-			const Entity view = SpawnScoped(registry, {kListX, kListY});
-			registry.Add<ClipRect>(view, ClipRect{.rect = {.x = static_cast<int>(kListX),
-			                                               .y = static_cast<int>(kListY),
-			                                               .width = kListWidth,
-			                                               .height = kListHeight}});
-			registry.Add<Hitbox>(view, Hitbox{.width = static_cast<float>(kListWidth),
-			                                  .height = static_cast<float>(kListHeight),
-			                                  .layer = kDemoListLayer});
-
-			const Entity content = SpawnScoped(registry, {kListX, kListY});
-			registry.Add<Parent>(content, Parent{view});
-			registry.Add<LocalTransform>(content);
-
+			// Found first, then spawned into: adding entities inside Each is not allowed.
+			Entity view = Entity::Null;
+			registry.Each<ScrollView>([&view](Entity entity, const ScrollView&)
+			{
+				view = entity;
+			});
+			if (view.IsNull()) return;
+			const Entity content = registry.GetComponent<ScrollView>(view).content;
+			if (!registry.IsAlive(content)) return;
 			float y = 0.0f;
 			for (int row = 1; row <= kDemoRows; ++row)
 			{
@@ -163,10 +105,7 @@ namespace game
 				    text, Text{.value = value, .color = kTextColor, .layer = kDemoRowLayer, .wrapWidth = kRowWrap});
 				y += static_cast<float>(engine::graphics::MeasureText(metrics, value, kRowWrap).height + kRowGap);
 			}
-			registry.Add<engine::ui::FocusOrder>(view, engine::ui::FocusOrder{.order = kDemoButtons});
-			registry.Add<ScrollView>(
-			    view,
-			    ScrollView{.content = content, .viewHeight = static_cast<float>(kListHeight), .contentHeight = y});
+			registry.GetComponent<ScrollView>(view).contentHeight = y;
 		}
 	} // namespace
 
@@ -203,41 +142,24 @@ namespace game
 	void SpawnUiDemoScreen(World& world, const engine::ecs::FrameContext&)
 	{
 		Registry& registry = world.registry;
-		const SpriteClips& clips = world.resources.Get<SpriteClips>();
 		world.resources.Get<UiDemoState>() = UiDemoState{};
-		const float centre = kPanelX + static_cast<float>(kPanelWidth) / 2.0f;
 
-		const Entity panel = SpawnPatch(registry, {kPanelX, kPanelY}, clips.panel, kPanelWidth, kPanelHeight,
-		                                Color{255, 255, 255}, kDemoPanelLayer);
-		registry.Add<Hitbox>(panel, Hitbox{.width = static_cast<float>(kPanelWidth),
-		                                   .height = static_cast<float>(kPanelHeight),
-		                                   .layer = kDemoPanelLayer});
-
-		SpawnLabel(registry, "UI DEMO", centre, kPanelY + 8.0f, kTitleColor);
-		const Entity counter = SpawnLabel(registry, DemoCounterText(0), centre, kPanelY + 24.0f, kTextColor);
-		registry.Add<DemoCounter>(counter);
-
-		for (int i = 0; i < kDemoButtons; ++i)
+		// The layout is a scene file (assets/scenes/uidemo.json). A broken one leaves the screen empty, and says why.
+		const engine::ecs::SceneLoadResult loaded = LoadScene(
+		    registry, world.resources.Get<engine::ecs::TypeRegistry>(), world.resources.Get<UiDemoScene>().json);
+		for (const engine::ecs::Issue& issue : loaded.issues.errors)
 		{
-			SpawnButton(registry, clips, i, kButtonLabels[static_cast<std::size_t>(i)]);
+			engine::core::LogError("uidemo scene: " + issue.path + ": " + issue.message);
 		}
+		if (!loaded.Ok()) return;
 
-		const Entity frame = SpawnPatch(registry, {kListX - 4.0f, kListY - 4.0f}, clips.panel, kListWidth + 8,
-		                                kListHeight + 8, kListTint, kDemoListLayer);
-		registry.Add<DemoListFrame>(frame);
-		SpawnList(registry);
-
-		for (int line = 0; line < 2; ++line)
+		// Everything the screen spawns goes when the state does.
+		for (const Entity entity : loaded.entities)
 		{
-			const Entity hint = SpawnLabel(registry, DemoHintText(line, engine::input::Device::Keyboard, {}), centre,
-			                               kPanelY + 232.0f + static_cast<float>(line) * 10.0f, kHintColor);
-			registry.Add<DemoHint>(hint, DemoHint{.line = line});
+			registry.Add<DespawnOnExit<Screen>>(entity, DespawnOnExit<Screen>{kScope});
 		}
-
-		const Entity cursor = SpawnScoped(registry, {-32.0f, -32.0f});
-		registry.Add<DemoCursor>(cursor);
-		registry.Add<Sprite>(
-		    cursor, Sprite{.source = clips.cursor.firstFrame, .tint = Color{255, 255, 255}, .layer = kDemoCursorLayer});
+		ResolveClipNames(registry, world.resources.Get<SpriteClips>());
+		SpawnListRows(registry);
 	}
 
 	void UiDemoSystem(World& world, const engine::ecs::FrameContext&)
@@ -319,5 +241,43 @@ namespace game
 			world.resources.Get<NextState<Screen>>().Set(Screen::Options);
 			break;
 		}
+	}
+} // namespace game
+
+namespace game
+{
+	void RegisterUiDemoComponents(engine::ecs::TypeRegistry& types)
+	{
+		types.Register<DemoButton>("DemoButton")
+		    .EnumField("action", &DemoButton::action,
+		               {{"Count", DemoAction::Count}, {"Reset", DemoAction::Reset}, {"Back", DemoAction::Back}});
+		types.RegisterTag<DemoCounter>("DemoCounter");
+		types.RegisterTag<DemoCursor>("DemoCursor");
+		types.RegisterTag<DemoListFrame>("DemoListFrame");
+		types.Register<DemoHint>("DemoHint").Field("line", &DemoHint::line);
+		types.Register<ClipName>("ClipName").Field("value", &ClipName::value);
+	}
+
+	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips)
+	{
+		const auto find = [&clips](const std::string& name) -> const engine::graphics::Clip*
+		{
+			if (name == "panel") return &clips.panel;
+			if (name == "button") return &clips.button;
+			if (name == "buttonHover") return &clips.buttonHover;
+			if (name == "buttonPressed") return &clips.buttonPressed;
+			if (name == "cursor") return &clips.cursor;
+			return nullptr;
+		};
+		registry.Each<ClipName, engine::ui::NinePatch>(
+		    [&](engine::ecs::Entity, const ClipName& clip, engine::ui::NinePatch& patch)
+		{
+			if (const engine::graphics::Clip* found = find(clip.value)) patch.source = found->firstFrame;
+		});
+		registry.Each<ClipName, engine::graphics::Sprite>(
+		    [&](engine::ecs::Entity, const ClipName& clip, engine::graphics::Sprite& sprite)
+		{
+			if (const engine::graphics::Clip* found = find(clip.value)) sprite.source = found->firstFrame;
+		});
 	}
 } // namespace game

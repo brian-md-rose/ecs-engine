@@ -5,10 +5,15 @@
 #include <set>
 #include <string>
 
+#include "core/json.hpp"
+#include "ecs/enginecomponents.hpp"
 #include "ecs/entity.hpp"
+#include "ecs/scene.hpp"
 #include "ecs/states.hpp"
+#include "ecs/typeregistry.hpp"
 #include "gameflow.hpp"
 #include "graphics/font.hpp"
+#include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
 #include "input/input.hpp"
 #include "input/mouse.hpp"
@@ -19,6 +24,7 @@
 #include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 #include "uidemo.hpp"
+#include <filesystem>
 
 namespace
 {
@@ -46,9 +52,20 @@ namespace
 		return *result.map;
 	}
 
+	// Assets with only the demo's scene file, read from the source tree.
+	[[nodiscard]] game::GameAssets TestAssets()
+	{
+		game::GameAssets assets;
+		engine::core::JsonResult scene =
+		    engine::core::LoadJson(std::filesystem::path(GAME_ASSETS_DIR) / "scenes" / "uidemo.json");
+		REQUIRE(scene.value.has_value());
+		assets.uiDemoScene = std::move(*scene.value);
+		return assets;
+	}
+
 	struct Demo
 	{
-		game::MazeGame maze{TestMaze()};
+		game::MazeGame maze{TestMaze(), TestAssets()};
 		engine::input::Input input;
 
 		Demo()
@@ -423,4 +440,65 @@ TEST_CASE("The cursor sprite steps aside once the player picks up a pad", "[game
 		x = transform.position.x;
 	});
 	CHECK(x < 0.0f);
+}
+
+TEST_CASE("The demo's scene file loads without a problem", "[game][uidemo][scene]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	game::RegisterUiDemoComponents(types);
+	engine::ecs::Registry registry;
+
+	const game::GameAssets assets = TestAssets();
+	const auto result = engine::ecs::LoadScene(registry, types, assets.uiDemoScene);
+	CHECK(result.Ok());
+	CHECK(result.issues.warnings.empty());
+	CHECK(result.entities.size() == 15);
+}
+
+TEST_CASE("ResolveClipNames fills in a picture's rectangle from its name", "[game][uidemo][scene]")
+{
+	engine::ecs::Registry registry;
+	game::SpriteClips clips;
+	clips.panel.firstFrame = {1, 2, 3, 4};
+	clips.cursor.firstFrame = {5, 6, 7, 8};
+
+	const Entity patch = registry.Create();
+	registry.Add<engine::ui::NinePatch>(patch);
+	registry.Add<game::ClipName>(patch, game::ClipName{"panel"});
+	const Entity sprite = registry.Create();
+	registry.Add<engine::graphics::Sprite>(sprite);
+	registry.Add<game::ClipName>(sprite, game::ClipName{"cursor"});
+	const Entity unknown = registry.Create();
+	registry.Add<engine::ui::NinePatch>(unknown);
+	registry.Add<game::ClipName>(unknown, game::ClipName{"nothing"});
+
+	game::ResolveClipNames(registry, clips);
+	CHECK(registry.GetComponent<engine::ui::NinePatch>(patch).source == engine::graphics::PixelRect{1, 2, 3, 4});
+	CHECK(registry.GetComponent<engine::graphics::Sprite>(sprite).source == engine::graphics::PixelRect{5, 6, 7, 8});
+	CHECK(registry.GetComponent<engine::ui::NinePatch>(unknown).source == engine::graphics::PixelRect{});
+}
+
+TEST_CASE("A broken demo scene leaves the screen empty instead of crashing", "[game][uidemo][scene]")
+{
+	game::MazeGame maze{TestMaze()}; // no scene loaded
+	engine::input::Input input;
+	for (int i = 0; i < 2; ++i)
+	{
+		maze.Update(kStep, input);
+		input.EndUpdate();
+	}
+	maze.world.resources.Get<engine::ecs::NextState<game::Screen>>().Set(game::Screen::UiDemo);
+	for (int i = 0; i < 2; ++i)
+	{
+		maze.Update(kStep, input);
+		input.EndUpdate();
+	}
+	CHECK(gametest::StageOf(maze) == Stage::UiDemo);
+	std::size_t buttons = 0;
+	maze.world.registry.Each<game::DemoButton>([&buttons](Entity, const game::DemoButton&)
+	{
+		++buttons;
+	});
+	CHECK(buttons == 0);
 }

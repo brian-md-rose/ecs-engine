@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "core/json.hpp"
 #include "difficulty.hpp"
 #include "enemytuning.hpp"
 #include "graphics/animation.hpp"
@@ -51,6 +52,7 @@ namespace game
 		engine::graphics::BitmapFont font;
 		SpriteClips clips;
 		DifficultyTable difficulty = FallbackDifficulty(); // assets/levels.txt once loaded
+		engine::core::JsonValue uiDemoScene;               // assets/scenes/uidemo.json once loaded; null if not
 	};
 
 	// The sprites the game needs that spriteSheet doesn't have.

@@ -14,11 +14,14 @@
 #include "ecs/registry.hpp"
 #include "ecs/typeregistry.hpp"
 #include "graphics/clip.hpp"
+#include "graphics/font.hpp"
 #include "graphics/interpolation.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
+#include "ui/ninepatch.hpp"
+#include "ui/ui.hpp"
 
 namespace
 {
@@ -269,6 +272,13 @@ TEST_CASE("Every engine component round-trips through JSON", "[ecs][typeregistry
 	registry.Add<Sprite>(e, Sprite{{1, 2, 3, 4}, Color{10, 20, 30}, 5, true, 8, 9});
 	registry.Add<engine::graphics::ClipRect>(e, engine::graphics::ClipRect{{0, 0, 64, 32}});
 	registry.Add<ScreenSpace>(e);
+	registry.Add<engine::graphics::Text>(
+	    e, engine::graphics::Text{"HI", Color{9, 8, 7}, 3, 2, 40, engine::graphics::Align::Centre});
+	registry.Add<engine::ui::NinePatch>(e, engine::ui::NinePatch{{1, 2, 3, 4}, 1, 2, 3, 4, 50, 60, Color{5, 6, 7}, 8});
+	registry.Add<engine::ui::Hitbox>(e, engine::ui::Hitbox{10.0f, 12.0f, 3, false});
+	registry.Add<engine::ui::Interactable>(e);
+	registry.Add<engine::ui::FocusOrder>(e, engine::ui::FocusOrder{4});
+	registry.Add<engine::ui::ScrollView>(e, engine::ui::ScrollView{.content = parent, .viewHeight = 100.0f});
 
 	const Entity copy = registry.Create();
 	for (std::size_t i = 0; i < types.Count(); ++i)
@@ -287,6 +297,10 @@ TEST_CASE("Every engine component round-trips through JSON", "[ecs][typeregistry
 	}
 	CHECK(registry.GetComponent<Sprite>(copy).source == PixelRect{1, 2, 3, 4});
 	CHECK(registry.GetComponent<Shape>(copy).color.g == 220);
+	CHECK(registry.GetComponent<engine::graphics::Text>(copy).align == engine::graphics::Align::Centre);
+	CHECK(registry.GetComponent<engine::ui::NinePatch>(copy).bottom == 4);
+	CHECK_FALSE(registry.GetComponent<engine::ui::Hitbox>(copy).blocksBelow);
+	CHECK(registry.GetComponent<engine::ui::ScrollView>(copy).content == parent);
 }
 
 TEST_CASE("Float fields reject out-of-range and non-finite values", "[ecs][typeregistry]")
