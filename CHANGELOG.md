@@ -9,6 +9,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-19
+
+The JSON and random number work (Phase 10) and the UI work (Phase 11) of [docs/babel-support.md](docs/babel-support.md) in one release: there is no 0.2.0. Games moving from 0.1.0 should read the **Breaking** entries under Changed first.
+
 ### Added
 
 - `core/log.hpp`: `LogSession` and `Log`/`LogInfo`/`LogWarning`/`LogError` write timestamped, levelled
@@ -87,5 +91,6 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/brian-md-rose/ecs-engine/releases/tag/v0.1.0
