@@ -44,6 +44,9 @@ namespace engine::editor
 		// Opens or closes the panel called name; false when there is none.
 		bool SetPanelOpen(std::string_view name, bool open);
 
+		// The size the panel called name opens at the first time (a saved layout wins later); false when there is none.
+		bool SetPanelSize(std::string_view name, float width, float height);
+
 		[[nodiscard]] bool IsVisible() const noexcept { return visible; }
 		void SetVisible(bool shown) noexcept { visible = shown; }
 
@@ -60,6 +63,8 @@ namespace engine::editor
 			std::string name;
 			PanelFunction draw;
 			bool open = false;
+			float width = 0;
+			float height = 0;
 		};
 
 		void DrawUi();

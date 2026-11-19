@@ -37,7 +37,7 @@ namespace engine::editor
 
 	void Editor::AddPanel(std::string name, PanelFunction draw)
 	{
-		panels.push_back({std::move(name), std::move(draw), false});
+		panels.push_back({std::move(name), std::move(draw), false, 0, 0});
 	}
 
 	bool Editor::SetPanelOpen(std::string_view name, bool open)
@@ -46,6 +46,18 @@ namespace engine::editor
 		{
 			if (panel.name != name) continue;
 			panel.open = open;
+			return true;
+		}
+		return false;
+	}
+
+	bool Editor::SetPanelSize(std::string_view name, float width, float height)
+	{
+		for (Panel& panel : panels)
+		{
+			if (panel.name != name) continue;
+			panel.width = width;
+			panel.height = height;
 			return true;
 		}
 		return false;
@@ -163,6 +175,8 @@ namespace engine::editor
 		for (std::size_t i = 0; i < panels.size(); ++i)
 		{
 			if (!panels[i].open) continue;
+			if (panels[i].width > 0)
+				ImGui::SetNextWindowSize(ImVec2(panels[i].width, panels[i].height), ImGuiCond_FirstUseEver);
 			if (ImGui::Begin(panels[i].name.c_str(), &panels[i].open)) panels[i].draw();
 			ImGui::End();
 		}

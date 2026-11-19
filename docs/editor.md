@@ -46,6 +46,12 @@ The **Scene** menu has New, Open (the `.json` files in `sceneFolder`, `assets/sc
 
 Limit: Play runs the game's own systems over the scene's entities, but a game that spawns its entities from code on a state change (most of Tangle Run's screens) does that on top of the scene. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
 
+## The viewport
+
+In the standalone editor the game is drawn into a picture (a render target as big as the game's logical screen, `Renderer::CreateRenderTarget` and `SetRenderTarget`) and the **Viewport** panel shows it. The mouse wheel zooms about the pointer, middle or right drag pans, and Reset view puts it back; this moves the view of the picture, not the game's own `Camera`. A click selects the entity drawn under it (`PickEntity` in `editor/viewport.hpp`: the highest layer, then the later entity), and the selected entity has a yellow outline. Only things with a `Shape`, a `Sprite` or a UI `Hitbox` can be picked, since those are the ones whose size is known; text and nine-patches are not yet. World-space entities go through the game's camera (`Renderer2D::camera`), and `ScreenSpace` ones, or their children, do not. If a renderer can't make a render target, the game is drawn straight to the window instead and the Viewport panel stays empty.
+
+While playing, the game's mouse input is not mapped into the viewport: use the keyboard, or run the game itself. Dragging an entity in the viewport moves it (its `LocalTransform` if it has a parent, otherwise its `Transform`; scaled by the camera zoom for world-space entities).
+
 ## How it hooks in
 
 `application/editorhost.hpp` defines `EditorHost`, with no SDL types (the window, renderer and events cross as opaque pointers). `Application::SetEditorHost` takes one, not owned, and then:
