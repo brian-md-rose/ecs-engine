@@ -167,13 +167,19 @@ TEST_CASE("The editor swallows F1 but never a quit request", "[editor][applicati
 	engine::editor::Editor editor;
 	bool f1Taken = false;
 	bool quitTaken = true;
+	bool keyUpTaken = true;
 	bool keyTakenWhileHidden = true;
 	game.onUpdate = [&](int update)
 	{
 		if (update != 3) return;
 		SDL_Event quit{};
 		quit.type = SDL_EVENT_QUIT;
+		editor.SetVisible(true); // so the quit goes through ImGui's event handling
 		quitTaken = editor.OnEvent(&quit);
+		SDL_Event keyUp{};
+		keyUp.type = SDL_EVENT_KEY_UP;
+		keyUp.key.scancode = SDL_SCANCODE_A;
+		keyUpTaken = editor.OnEvent(&keyUp);
 		SDL_Event f1{};
 		f1.type = SDL_EVENT_KEY_DOWN;
 		f1.key.scancode = SDL_SCANCODE_F1;
@@ -188,6 +194,7 @@ TEST_CASE("The editor swallows F1 but never a quit request", "[editor][applicati
 	if (app.Run(game) != 0) SKIP("no offscreen video driver");
 
 	CHECK_FALSE(quitTaken);
+	CHECK_FALSE(keyUpTaken); // releases always reach the game
 	CHECK(f1Taken);
 	CHECK_FALSE(keyTakenWhileHidden); // a hidden editor leaves every other event to the game
 }

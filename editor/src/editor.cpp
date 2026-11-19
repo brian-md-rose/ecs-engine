@@ -105,6 +105,9 @@ namespace engine::editor
 
 		ImGui_ImplSDL3_ProcessEvent(&event);
 		const ImGuiIO& io = ImGui::GetIO();
+		// Releases always reach the game too, so a key or button it saw go down is never left held when the
+		// overlay takes the release. A release for a press it never saw is harmless to it.
+		if (event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_MOUSE_BUTTON_UP) return false;
 		if (IsMouseEvent(event.type)) return io.WantCaptureMouse;
 		if (IsKeyboardEvent(event.type)) return io.WantCaptureKeyboard;
 		return false; // quit, window and controller events always reach the game
