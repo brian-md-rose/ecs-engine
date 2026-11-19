@@ -81,6 +81,11 @@ namespace engine::editor
 
 	public:
 		EditorGame(Editor& editorToUse, EditorGameConfig configToUse);
+		// The Editor keeps callbacks into this object (menu bar, panels), so destroy it only once the Editor is no
+		// longer drawing; the menu bar is unhooked here, the panels stay (they are the Editor's).
+		~EditorGame() override;
+		EditorGame(const EditorGame&) = delete;
+		EditorGame& operator=(const EditorGame&) = delete;
 
 		// False if the game couldn't be made; don't run it.
 		[[nodiscard]] bool IsValid() const noexcept { return edit != nullptr; }

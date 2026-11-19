@@ -47,6 +47,11 @@ namespace engine::editor
 		}
 	} // namespace
 
+	EditorGame::~EditorGame()
+	{
+		editor.SetMenuBar({});
+	}
+
 	EditorGame::EditorGame(Editor& editorToUse, EditorGameConfig configToUse)
 	    : editor(editorToUse), config(std::move(configToUse))
 	{
