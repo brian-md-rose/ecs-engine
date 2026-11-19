@@ -437,19 +437,19 @@ struct PlayOptions { Bus bus = Bus::Sfx; float volume = 1, pitchVariance = 0; in
 // AudioDevice::PlayMusic(path, float fadeSeconds); StopMusic(float fadeSeconds);
 ```
 
-- [ ] Volume per voice uses `SDL_SetAudioStreamGain`, and pitch uses
+- [x] Volume per voice uses `SDL_SetAudioStreamGain`, and pitch uses
       `SDL_SetAudioStreamFrequencyRatio`. Both exist in the vendored SDL3. A bus volume
       multiplies into each voice's gain.
-- [ ] Raise `kVoices` to 32, with priority stealing: when every voice is busy, a new sound
+- [x] Raise `kVoices` to 32, with priority stealing: when every voice is busy, a new sound
       replaces the lowest-priority, oldest voice.
-- [ ] **A change from the migration plan:** E3 lists per-sound cooldowns as engine work. They
+- [x] **A change from the migration plan:** E3 lists per-sound cooldowns as engine work. They
       stay in the game, as part of its audio key table, because a cooldown is a rule about
       which sounds the game plays, not about mixing.
-- [ ] Music streams from disk. `stb_vorbis` decodes chunks inside an
+- [x] Music streams from disk. `stb_vorbis` decodes chunks inside an
       `SDL_SetAudioStreamGetCallback` callback, which runs on the audio thread, so a slow frame
       on the main loop can't starve the music. Two music streams make a crossfade. Loops are
       seamless.
-- [ ] Tests (SDL-free parts): voice-stealing choice, crossfade gain curve, bus volume maths.
+- [x] Tests (SDL-free parts): voice-stealing choice, crossfade gain curve, bus volume maths.
 
 **Done when (v0.5.0):** a test scene plays WAV and OGG clips on three buses with live volume,
 and music crossfades between two tracks with no gap or click.

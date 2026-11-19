@@ -57,7 +57,8 @@ The version is available in code as `<core/version.hpp>`.
 - **Gamepads**: up to four pads with hotplug, deadzones, button names by position and focus navigation in the UI
   ([gamepads](docs/gamepad.md)).
 - **Audio**: an SDL3 audio device that plays synthesised sound effects and sound files (`.wav`, and `.ogg` through the vendored
-  stb_vorbis), each at its own sample rate and channel count.
+  stb_vorbis), each at its own sample rate and channel count, mixed on three buses with live volumes, plus streamed looping music that
+  crossfades ([audio](docs/audio.md)).
 - **Debug panel** (F3): frames per second, draw time, entity counts per component and the
   time each system takes, drawn on screen with the bitmap font. The scheduler times every system.
 

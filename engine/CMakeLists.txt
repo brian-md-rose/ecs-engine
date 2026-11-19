@@ -16,6 +16,7 @@ file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS include/*.hpp)
 set(ENGINE_PLATFORM_SOURCE_NAMES
     application/application.cpp
     audio/audiodevice.cpp
+    audio/music.cpp
     audio/soundfile.cpp
     core/paths.cpp
     core/sdllog.cpp

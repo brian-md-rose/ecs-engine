@@ -10,13 +10,7 @@
 #include <limits>
 #include <vector>
 
-// stb_vorbis is C: its header part (declarations only) is included here, and its definitions are in the
-// stb_vorbis library.
-extern "C"
-{
-#define STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.c" // NOLINT(bugprone-suspicious-include): declarations only, see HEADER_ONLY above
-}
+#include "vorbis.hpp"
 
 namespace engine::audio
 {
