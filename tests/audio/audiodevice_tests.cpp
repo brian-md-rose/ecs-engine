@@ -94,6 +94,44 @@ TEST_CASE("Music starts, crossfades to another track, stops, and a bad file leav
 	Wait(100);
 	audio.StopMusic(0.0f); // nothing playing: harmless
 
+	// The tracks that faded out are still held until Update lets them go.
+	audio.Update();
+	CHECK(audio.FadingTrackCount() == 0);
+
+	std::error_code ec;
+	std::filesystem::remove(second, ec);
+}
+
+TEST_CASE("Tracks that have faded out are released by Update, and fades requested in a hurry end where the last asked",
+          "[audio][device][music]")
+{
+	AudioDevice audio;
+	if (!audio.IsAvailable()) SKIP("no audio device, not even the dummy driver");
+
+	const std::filesystem::path first = kData / "audio" / "tone_mono_44100.ogg";
+	const std::filesystem::path second = std::filesystem::temp_directory_path() / "engine_audiodevice_test_fast.ogg";
+	std::filesystem::copy_file(first, second, std::filesystem::copy_options::overwrite_existing);
+
+	// Crossfades back and forth faster than the audio thread can follow each: every request is read whole.
+	std::string error;
+	for (int i = 0; i < 40; ++i)
+	{
+		REQUIRE(audio.PlayMusic(i % 2 == 0 ? first : second, 0.01f, error));
+	}
+	CHECK(audio.IsMusicPlaying());
+	CHECK(audio.FadingTrackCount() > 0);
+
+	Wait(200); // long enough for every fade-out to finish, and the loop to wrap round the short file a few times
+	audio.Update();
+	CHECK(audio.FadingTrackCount() == 0);
+	CHECK(audio.IsMusicPlaying()); // the last one is still going, and never ran dry
+
+	audio.StopMusic(0.02f);
+	Wait(150);
+	audio.Update();
+	CHECK(audio.FadingTrackCount() == 0);
+	CHECK_FALSE(audio.IsMusicPlaying());
+
 	std::error_code ec;
 	std::filesystem::remove(second, ec);
 }

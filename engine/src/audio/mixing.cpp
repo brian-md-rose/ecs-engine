@@ -10,6 +10,7 @@ namespace engine::audio
 		std::size_t best = voices.size();
 		for (std::size_t i = 0; i < voices.size(); ++i)
 		{
+			if (!voices[i].usable) continue;
 			if (!voices[i].busy) return i;
 			const bool lower = best == voices.size() || voices[i].priority < voices[best].priority ||
 			                   (voices[i].priority == voices[best].priority && voices[i].serial < voices[best].serial);

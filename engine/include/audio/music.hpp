@@ -29,13 +29,15 @@ namespace engine::audio
 		int sampleRate = 0;
 		std::vector<float> chunk;
 
-		// Fade requests from the main thread: a serial number says there is a new one.
-		std::atomic<std::uint32_t> requestSerial{0};
-		std::atomic<float> requestTarget{0.0f};
-		std::atomic<std::uint64_t> requestFrames{0};
+		// The latest fade request from the main thread, in one word so the audio thread can never read half of one
+		// request and half of another: bits 48 to 63 a serial number (so a new request is noticed), 32 to 47 the
+		// target level in 65535ths, 0 to 31 the length in frames.
+		std::atomic<std::uint64_t> request{0};
+		std::uint16_t requestSerial = 0; // main thread only: the serial of the last request
 
 		// The audio thread's own fade state.
-		std::uint32_t seenSerial = 0;
+		std::uint16_t seenSerial = 0;
+		bool hasFade = false; // a fade request has been taken, so a level of 0 means "faded out" and not "not started"
 		float fadeFrom = 0.0f;
 		float fadeTo = 0.0f;
 		float gain = 0.0f;

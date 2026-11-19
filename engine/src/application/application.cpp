@@ -273,6 +273,7 @@ namespace engine::application
 				game.Update(timestep.Step(), input, &audio);
 				input.EndUpdate();
 			}
+			audio.Update();
 
 			const bool wantCursor = game.ShowSystemCursor();
 			if (wantCursor != cursorShown)
