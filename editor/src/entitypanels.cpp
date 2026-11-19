@@ -537,19 +537,27 @@ namespace engine::editor
 		}
 	} // namespace
 
-	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, ecs::World& world)
+	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, std::function<ecs::World&()> world)
 	{
 		const auto state = std::make_shared<PanelState>();
-		editor.AddPanel("Hierarchy", [&world, state]
+		editor.AddPanel("Hierarchy", [world, state]
 		{
-			DrawHierarchy(world, *state);
+			DrawHierarchy(world(), *state);
 		});
-		editor.AddPanel("Inspector", [&world, state]
+		editor.AddPanel("Inspector", [world, state]
 		{
-			DrawInspector(world, *state);
+			DrawInspector(world(), *state);
 		});
 		editor.SetPanelOpen("Hierarchy", true);
 		editor.SetPanelOpen("Inspector", true);
 		return state;
+	}
+
+	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, ecs::World& world)
+	{
+		return AddEntityPanels(editor, [&world]() -> ecs::World&
+		{
+			return world;
+		});
 	}
 } // namespace engine::editor

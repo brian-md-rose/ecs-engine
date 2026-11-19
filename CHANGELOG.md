@@ -9,6 +9,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- `EditorGame` (`editor/editorgame.hpp`): the standalone editor, with an edit world and a play world, a Scene menu (New, Open, Save, Save as, unsaved-changes prompt) and Play/Stop that runs a copy and discards its changes. `tangle_run_editor` runs it by default; `--overlay` gives the old F1 overlay. `Editor::SetMenuBar` lets a host add to the menu bar, and `AddEntityPanels` can take a function that returns the current world.
+
 ## [0.7.0] - 2026-11-19
 
 ### Added

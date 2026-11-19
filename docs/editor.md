@@ -1,6 +1,6 @@
 # The editor overlay
 
-`engine::editor` is a [Dear ImGui](https://github.com/ocornut/imgui) overlay drawn on top of a running game. It has the hook and shell (E3) and the Hierarchy and Inspector panels (E4). Scene files, Play and Stop, the viewport and undo come later, and are parked for now. It is off by default, so a game that doesn't want it never compiles it and `engine::platform` doesn't depend on it.
+`engine::editor` is a [Dear ImGui](https://github.com/ocornut/imgui) overlay drawn on top of a running game. It has the hook and shell (E3) and the Hierarchy and Inspector panels (E4). The standalone editor with scene files and Play and Stop (E5) follows below; the viewport and undo come later. It is off by default, so a game that doesn't want it never compiles it and `engine::platform` doesn't depend on it.
 
 ## Building it
 
@@ -34,6 +34,17 @@ app.Run(game);
 ```
 
 and link `engine::editor`. A panel is any function that calls ImGui; it gets its own window, opened from the Panels menu.
+
+## The standalone editor
+
+`tangle_run_editor` starts as a standalone editor (`--overlay` gives the F1 overlay on the running game instead). `EditorGame` (`editor/editorgame.hpp`) is the `Game` it runs. It holds two copies of the game, both made by `EditorGameConfig::makeGame`:
+
+- The **edit world** has the game's resources and systems but runs none of them. It holds the scene being edited, and the Hierarchy and Inspector work on it.
+- The **play world** exists only between Play and Stop. Play saves the edit world's entities, makes a fresh game, loads them into it and runs it. Stop throws it away, so nothing done while playing reaches the scene.
+
+The **Scene** menu has New, Open (the `.json` files in `sceneFolder`, `assets/scenes` next to the executable), Save and Save as. A `*` beside the name marks changes not saved; New and Open ask before discarding them. Open reads the file first and keeps the current scene if it has errors. `makeGame` must not let a game write the player's save file (Tangle Run's factory clears `SaveFile::path`), since games are made and discarded freely. `afterLoad` runs after each load, for what a game does with its entities after loading (Tangle Run resolves sprite clip names).
+
+Limit: Play runs the game's own systems over the scene's entities, but a game that spawns its entities from code on a state change (most of Tangle Run's screens) does that on top of the scene. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
 
 ## How it hooks in
 
