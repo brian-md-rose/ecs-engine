@@ -231,11 +231,11 @@ namespace engine::editor
 		application::ScheduledGame& current = play ? *play : *edit;
 		if (!play && ++framesSinceCheck >= kFramesBetweenDirtyChecks) CheckDirty();
 
-		// Into a picture the viewport shows. If one can't be made, the game is drawn straight to the window.
+		// Into a picture the viewport shows (made again only when the game's screen size changes, so a failure is
+		// logged once). If none can be made, the game is drawn straight to the window.
 		const graphics::Camera camera = CurrentCamera();
 		if (camera.logicalWidth > 0 && camera.logicalHeight > 0 &&
-		    (target == graphics::kNoTexture || camera.logicalWidth != targetWidth ||
-		     camera.logicalHeight != targetHeight))
+		    (camera.logicalWidth != targetWidth || camera.logicalHeight != targetHeight))
 		{
 			renderer.DestroyTexture(target);
 			target = renderer.CreateRenderTarget(camera.logicalWidth, camera.logicalHeight);
