@@ -52,6 +52,12 @@ In the standalone editor the game is drawn into a picture (a render target as bi
 
 While playing, the game's mouse input is not mapped into the viewport: use the keyboard, or run the game itself. Dragging an entity in the viewport moves it (its `LocalTransform` if it has a parent, otherwise its `Transform`; scaled by the camera zoom for world-space entities).
 
+## Undo and redo
+
+**Edit > Undo** (Ctrl+Z) and **Redo** (Ctrl+Y, or Ctrl+Shift+Z) step through the changes made to the scene, up to 100, in the standalone editor. A step is a finished change: a whole drag in the viewport, a value typed into the Inspector until the box is left, one menu click (add child, duplicate, delete, add or remove a component). It is found by looking at the scene when the pointer and widgets go quiet, so everything the editor can change is covered, with no changes needed in the panels. New and Open start the list again, and there is no undo while playing. A text box being typed in keeps its own Ctrl+Z.
+
+This differs from the plan's per-component commands: each step is the whole scene as text (`SaveScene`), and undoing loads the neighbouring one. It is simple and covers creating and deleting entities too, at the cost of memory for large scenes and of entity ids changing on each undo (the selection is kept by its position in the scene).
+
 ## How it hooks in
 
 `application/editorhost.hpp` defines `EditorHost`, with no SDL types (the window, renderer and events cross as opaque pointers). `Application::SetEditorHost` takes one, not owned, and then:
