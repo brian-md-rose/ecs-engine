@@ -9,7 +9,8 @@ Versions follow [Semantic Versioning](https://semver.org/). The single source of
 2. Set `VERSION x.y.z` in `CMakeLists.txt`.
 3. Open a PR, wait for CI, and merge to `main`.
 4. Tag the merge commit and push the tag:
-   `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`.
+   `git tag -a vx.y.z -m "vx.y.z" && git push origin vx.y.z`. On Windows, `scripts/release.bat x.y.z`
+   does this after checking that `main` is clean and matches the version and changelog.
 5. The `Release` workflow checks that the tag matches `CMakeLists.txt`, then creates a GitHub
    release whose notes are the changelog section for that version.
 
