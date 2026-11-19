@@ -195,7 +195,7 @@ TEST_CASE("Undo and redo step back through finished changes", "[editor][game][un
 	REQUIRE(game.IsValid());
 	CHECK_FALSE(game.CanUndo());
 
-	const Entity first = AddMover(game.EditWorld(), "a", 1);
+	AddMover(game.EditWorld(), "a", 1);
 	game.CheckDirty();
 	AddMover(game.EditWorld(), "b", 2);
 	game.CheckDirty();
@@ -214,7 +214,6 @@ TEST_CASE("Undo and redo step back through finished changes", "[editor][game][un
 	CHECK(game.Redo());
 	CHECK(game.EditWorld().registry.AllEntities().size() == 2);
 	CHECK_FALSE(game.Redo());
-	(void)first;
 
 	// A change after an undo ends the redo line.
 	CHECK(game.Undo());
@@ -244,4 +243,24 @@ TEST_CASE("Undo restores a moved value and the selection, and not while playing"
 	CHECK_FALSE(game.Redo());
 	game.StopPlay();
 	CHECK(game.CanRedo());
+}
+
+TEST_CASE("Undo takes a change not yet looked at, and the selection follows", "[editor][game][undo]")
+{
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(TempFolder("undopending")));
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 1);
+	game.CheckDirty();
+	AddMover(game.EditWorld(), "b", 2);
+	// No CheckDirty: Undo must still be able to bring "b" back with Redo.
+	REQUIRE(game.Undo());
+	CHECK(game.EditWorld().registry.AllEntities().size() == 1);
+	REQUIRE(game.Redo());
+	CHECK(game.EditWorld().registry.AllEntities().size() == 2);
+
+	// New starts the list again.
+	game.NewScene();
+	CHECK_FALSE(game.CanUndo());
+	CHECK_FALSE(game.CanRedo());
 }

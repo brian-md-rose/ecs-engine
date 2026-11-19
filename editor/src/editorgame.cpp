@@ -161,11 +161,15 @@ namespace engine::editor
 
 	bool EditorGame::Undo()
 	{
+		if (play) return false;
+		CheckDirty(); // a change not yet looked at becomes a step first, so undoing it is possible
 		return historyPos > 0 && GoTo(historyPos - 1);
 	}
 
 	bool EditorGame::Redo()
 	{
+		if (play) return false;
+		CheckDirty();
 		return GoTo(historyPos + 1);
 	}
 
@@ -438,7 +442,7 @@ namespace engine::editor
 	{
 		// Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes; a text box being typed in keeps its own.
 		const ImGuiIO& io = ImGui::GetIO();
-		if (io.KeyCtrl && !io.WantTextInput)
+		if (io.KeyCtrl && !io.WantTextInput && !wasBusy)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_Z) && !io.KeyShift)
 				(void)Undo();
