@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
 #include <system_error>
 #include <utility>
 
@@ -17,6 +18,7 @@
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
 #include "editor/entitypanels.hpp"
+#include "editor/gridtool.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
 #include "save.hpp"
@@ -69,10 +71,45 @@ namespace
 		}
 	}
 
-	// Play on a maze scene starts the game on that maze; any other scene is left to the game's own start.
-	void StartPlay(engine::ecs::World& world)
+	// The maze painter: the tile palette and grid for a maze scene, and nothing for any other scene.
+	engine::editor::GridTool MazePainter()
 	{
-		if (game::HasSceneMaze(world.registry)) (void)game::AdoptSceneMaze(world);
+		engine::editor::GridTool tool;
+		tool.grid = [](engine::ecs::World& world) -> std::optional<engine::editor::GridInfo>
+		{
+			std::optional<engine::editor::GridInfo> grid;
+			world.registry.Each<game::MazeLayout>([&](engine::ecs::Entity, const game::MazeLayout& layout)
+			{
+				grid = engine::editor::GridInfo{.columns = layout.columns,
+				                                .rows = layout.rows,
+				                                .x = layout.x,
+				                                .y = layout.y,
+				                                .cellWidth = game::kTileSize,
+				                                .cellHeight = game::kTileSize};
+			});
+			return grid;
+		};
+		tool.palette = game::MazePaletteNames();
+		tool.paint = [](engine::ecs::World& world, std::size_t kind, engine::editor::GridCell cell)
+		{
+			game::PaintMazeTile(world.registry, kind, cell.column, cell.row);
+		};
+		tool.erase = [](engine::ecs::World& world, engine::editor::GridCell cell)
+		{
+			game::EraseMazeTile(world.registry, cell.column, cell.row);
+		};
+		tool.refresh = ResolveAfterLoad;
+		tool.problems = [](engine::ecs::World& world)
+		{
+			return game::BuildTileMap(world.registry).error.message;
+		};
+		return tool;
+	}
+
+	// Play on a maze scene starts the game on that maze; any other scene is left to the game's own start.
+	std::string StartPlay(engine::ecs::World& world)
+	{
+		return game::HasSceneMaze(world.registry) ? game::AdoptSceneMaze(world) : std::string();
 	}
 } // namespace
 
@@ -103,7 +140,8 @@ int main(int argc, char** argv)
 	engine::editor::EditorGame game(editor, {.makeGame = MakeEditedGame,
 	                                         .afterLoad = ResolveAfterLoad,
 	                                         .sceneFolder = SceneFolder(),
-	                                         .onPlay = StartPlay});
+	                                         .onPlay = StartPlay,
+	                                         .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
 	editor.SetVisible(true);
 	app.SetEditorHost(&editor);

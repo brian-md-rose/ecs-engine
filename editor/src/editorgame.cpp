@@ -106,11 +106,13 @@ namespace engine::editor
 		framesSinceCheck = 0;
 		const std::string text = SceneText();
 		dirty = text != savedText;
+		if (!play && !history.empty() && text != history[historyPos]) problemsStale = true;
 		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
 	}
 
 	void EditorGame::ResetHistory()
 	{
+		problemsStale = true;
 		history.assign(1, SceneText());
 		historyPos = 0;
 	}
@@ -138,6 +140,7 @@ namespace engine::editor
 		for (std::size_t i = 0; i < before.size(); ++i)
 			if (before[i] == panels->selected) selectedIndex = i;
 
+		problemsStale = true;
 		const ecs::SceneLoadResult loaded = ecs::LoadScene(world.registry, EnsureTypes(world), *parsed.value);
 		if (!loaded.Ok())
 		{
@@ -272,7 +275,15 @@ namespace engine::editor
 			return false;
 		}
 		if (config.afterLoad) config.afterLoad(game->world);
-		if (config.onPlay) config.onPlay(game->world);
+		if (config.onPlay)
+		{
+			const std::string problem = config.onPlay(game->world);
+			if (!problem.empty())
+			{
+				message = "can't play: " + problem;
+				return false;
+			}
+		}
 		play = std::move(game);
 		playMouse.Reset();
 		message.clear();
@@ -349,6 +360,69 @@ namespace engine::editor
 		current.Render(renderer, alpha);
 	}
 
+	// The grid over the picture, the cell under the pointer, and the paint or erase drag: the cells the pointer crossed
+	// while the left button is held get the brush, then the tool refreshes what depends on them.
+	void EditorGame::PaintStroke(const GridInfo& grid, graphics::Position origin, ImDrawList* draw)
+	{
+		const ImGuiIO& io = ImGui::GetIO();
+		const auto toWindow = [&](float x, float y)
+		{
+			const graphics::Position at = view.ToWindow({x, y}, origin);
+			return ImVec2(at.x, at.y);
+		};
+		const float width = static_cast<float>(grid.columns) * grid.cellWidth;
+		const float height = static_cast<float>(grid.rows) * grid.cellHeight;
+		const ImU32 lineColor = IM_COL32(255, 255, 255, 40);
+		for (int column = 0; column <= grid.columns; ++column)
+		{
+			const float x = grid.x + static_cast<float>(column) * grid.cellWidth;
+			draw->AddLine(toWindow(x, grid.y), toWindow(x, grid.y + height), lineColor);
+		}
+		for (int row = 0; row <= grid.rows; ++row)
+		{
+			const float y = grid.y + static_cast<float>(row) * grid.cellHeight;
+			draw->AddLine(toWindow(grid.x, y), toWindow(grid.x + width, y), lineColor);
+		}
+
+		const std::optional<GridCell> under = CellAt(grid, view.ToPicture({io.MousePos.x, io.MousePos.y}, origin));
+		if (under && ImGui::IsItemHovered())
+		{
+			const float x = grid.x + static_cast<float>(under->column) * grid.cellWidth;
+			const float y = grid.y + static_cast<float>(under->row) * grid.cellHeight;
+			draw->AddRect(toWindow(x, y), toWindow(x + grid.cellWidth, y + grid.cellHeight),
+			              IM_COL32(255, 200, 40, 255));
+		}
+
+		if (ImGui::IsItemActive())
+		{
+			stroking = true;
+			if (under)
+			{
+				const std::vector<GridCell> cells =
+				    lastCell ? CellLine(*lastCell, *under) : std::vector<GridCell>{*under};
+				const GridTool& tool = config.gridTool;
+				for (const GridCell& cell : cells)
+				{
+					if (brush >= 0 && static_cast<std::size_t>(brush) < tool.palette.size() && tool.paint)
+						tool.paint(edit->world, static_cast<std::size_t>(brush), cell);
+					else if (brush == kBrushErase && tool.erase)
+						tool.erase(edit->world, cell);
+				}
+				if (!lastCell || *lastCell != *under)
+				{
+					if (tool.refresh) tool.refresh(edit->world);
+					problemsStale = true;
+				}
+			}
+			lastCell = under;
+		}
+		else if (stroking)
+		{
+			stroking = false;
+			lastCell.reset();
+		}
+	}
+
 	void EditorGame::DrawViewport()
 	{
 		if (targetHandle == nullptr || target == graphics::kNoTexture)
@@ -361,6 +435,38 @@ namespace engine::editor
 		ImGui::Text(play ? "%.0f%%   the game has the mouse; hold Ctrl to zoom and pan"
 		                 : "%.0f%%   wheel zooms, middle or right drag pans, click selects",
 		            static_cast<double>(view.zoom) * 100.0);
+
+		// The grid tool's palette, when the scene being edited has a grid (a maze).
+		std::optional<GridInfo> grid;
+		if (!play && config.gridTool.grid) grid = config.gridTool.grid(edit->world);
+		if (grid)
+		{
+			const GridTool& tool = config.gridTool;
+			if (ImGui::RadioButton("Select", brush == kBrushSelect)) brush = kBrushSelect;
+			for (std::size_t i = 0; i < tool.palette.size(); ++i)
+			{
+				ImGui::SameLine();
+				if (ImGui::RadioButton(tool.palette[i].c_str(), brush == static_cast<int>(i)))
+					brush = static_cast<int>(i);
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Erase", brush == kBrushErase)) brush = kBrushErase;
+			if (tool.problems)
+			{
+				if (problemsStale)
+				{
+					gridProblems = tool.problems(edit->world);
+					problemsStale = false;
+				}
+				const std::string& problems = gridProblems;
+				if (!problems.empty()) ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.3F, 1.0F), "%s", problems.c_str());
+			}
+		}
+		else
+		{
+			brush = kBrushSelect;
+		}
+		const bool painting = grid && brush != kBrushSelect;
 
 		ImVec2 size = ImGui::GetContentRegionAvail();
 		size.x = std::max(size.x, 16.0F);
@@ -410,19 +516,21 @@ namespace engine::editor
 		const graphics::Camera camera = CurrentCamera();
 		// Press selects what is under the pointer (or nothing); dragging from there moves it, so the selected
 		// entity can be dragged without a separate handle.
-		if (!play && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (!play && !painting && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			panels->selected = PickEntity(world.registry, camera, picture);
 			movingSelected = panels->selected != ecs::Entity::Null;
 		}
 		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
-		if (!play && movingSelected && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
+		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
+		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
 			// The pointer's movement over the picture, in the picture's pixels.
 			(void)MoveEntity(world.registry, panels->selected, camera,
 			                 {io.MouseDelta.x / view.zoom, io.MouseDelta.y / view.zoom});
 		}
+		if (painting) PaintStroke(*grid, origin, draw);
 		if (panels->selected != ecs::Entity::Null && world.registry.IsAlive(panels->selected))
 		{
 			if (const auto rect = EntityScreenRect(world.registry, panels->selected, camera))

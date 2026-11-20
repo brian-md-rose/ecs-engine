@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <vector>
+
 #include "assets.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/typeregistry.hpp"
@@ -70,9 +74,22 @@ namespace game
 
 	// Starts a game on the maze a level scene has put in the world, for the editor's Play: builds the TileMap from
 	// the tile entities (replacing the game's own), resolves their pictures, tells SpawnGameWorld not to spawn
-	// another maze, and asks for the Playing screen. False, changing nothing but the log, if the tiles are not a
-	// valid maze. The world must be a MazeGame's, with its entities loaded.
-	bool AdoptSceneMaze(engine::ecs::World& world);
+	// another maze, and asks for the Playing screen. Changes nothing but the log if the tiles are not a
+	// valid maze. The world must be a MazeGame's, with its entities loaded. Returns what is wrong, or an empty string.
+	[[nodiscard]] std::string AdoptSceneMaze(engine::ecs::World& world);
+
+	// What the editor can paint into a maze, in palette order: Wall, Door, Pellet, Power pellet, Player start, Enemy
+	// start and Tunnel.
+	[[nodiscard]] const std::vector<std::string>& MazePaletteNames();
+
+	// Puts the tile of palette entry kind into the cell, replacing whatever tile is there; painting what is already
+	// there changes nothing. A maze has one player start, so painting one moves it. Does nothing for a kind outside
+	// the palette or a cell outside the layout. Call PlaceMazeTiles and ResolveMazeTiles afterwards: the new tile has
+	// no Transform or picture yet.
+	void PaintMazeTile(engine::ecs::Registry& registry, std::size_t kind, int column, int row);
+
+	// Removes the tile in the cell, if any.
+	void EraseMazeTile(engine::ecs::Registry& registry, int column, int row);
 
 	// True if the registry holds a maze scene's MazeLayout.
 	[[nodiscard]] bool HasSceneMaze(engine::ecs::Registry& registry);

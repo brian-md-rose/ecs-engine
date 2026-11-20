@@ -332,23 +332,106 @@ namespace game
 		return true;
 	}
 
-	bool AdoptSceneMaze(engine::ecs::World& world)
+	std::string AdoptSceneMaze(engine::ecs::World& world)
 	{
 		TileMapResult built = BuildTileMap(world.registry);
 		if (!built.map)
 		{
-			engine::core::LogError("maze scene: " + built.error.message);
-			return false;
+			std::string problem = built.error.message;
+			if (built.error.line > 0)
+				problem += " (line " + std::to_string(built.error.line) + ", column " +
+				           std::to_string(built.error.column) + ")";
+			engine::core::LogError("maze scene: " + problem);
+			return problem;
 		}
 		const auto* clips = world.resources.TryGet<SpriteClips>();
-		if (clips == nullptr || !ResolveMazeTiles(world.registry, *clips)) return false;
+		if (clips == nullptr || !ResolveMazeTiles(world.registry, *clips))
+			return "the game has no pictures to draw the maze with";
 
 		const TileMap& map = world.resources.Get<TileMap>() = std::move(*built.map);
 		world.resources.Get<EnemyHouse>().house = FindHouse(map);
+		// Not reset on returning to the Title: SpawnGameWorld checks that the scene's tiles still exist, and a later
+		// game in this world then spawns tiles from the (scene's) TileMap in code. Only the editor's throwaway play
+		// world gets here.
 		world.resources.Get<GameWorld>().fromScene = true;
 		// Starts the game on its own maze: entering Playing spawns the player, enemies and HUD but not the maze.
 		world.resources.Get<engine::ecs::NextState<Screen>>().Set(Screen::Playing);
-		return true;
+		return {};
+	}
+
+	const std::vector<std::string>& MazePaletteNames()
+	{
+		static const std::vector<std::string> names{"Wall",         "Door",        "Pellet", "Power pellet",
+		                                            "Player start", "Enemy start", "Tunnel"};
+		return names;
+	}
+
+	void EraseMazeTile(Registry& registry, int column, int row)
+	{
+		std::vector<Entity> found;
+		registry.Each<TileCell>([&](Entity entity, const TileCell& cell)
+		{
+			if (cell.column == column && cell.row == row) found.push_back(entity);
+		});
+		for (const Entity entity : found)
+			registry.Destroy(entity);
+	}
+
+	void PaintMazeTile(Registry& registry, std::size_t kind, int column, int row)
+	{
+		std::string message;
+		const MazeLayout* layout = FindLayout(registry, message);
+		if (layout == nullptr || kind >= MazePaletteNames().size()) return;
+		if (column < 0 || row < 0 || column >= layout->columns || row >= layout->rows) return;
+
+		// Already exactly this tile: nothing to do, so a stroke over it doesn't churn the scene.
+		constexpr char kCharacters[] = {'#', '-', '.', 'o', 'P', 'E', 'T'};
+		const char wanted = kCharacters[kind];
+		std::size_t there = 0;
+		bool same = false;
+		registry.Each<TileCell>([&](Entity entity, const TileCell& cell)
+		{
+			if (cell.column != column || cell.row != row) return;
+			++there;
+			same = TileCharacter(registry, entity) == wanted;
+		});
+		if (there == 1 && same) return;
+
+		EraseMazeTile(registry, column, row);
+		if (wanted == 'P')
+		{
+			std::vector<Entity> others;
+			registry.Each<PlayerStart>([&](Entity entity, const PlayerStart&)
+			{
+				others.push_back(entity);
+			});
+			for (const Entity entity : others)
+				registry.Destroy(entity);
+		}
+		switch (wanted)
+		{
+		case '#':
+			SpawnTileEntity<Wall>(registry, "Wall", column, row);
+			break;
+		case '-':
+			SpawnTileEntity<Door>(registry, "Door", column, row);
+			break;
+		case '.':
+			SpawnTileEntity<Pellet>(registry, "Pellet", column, row);
+			break;
+		case 'o':
+			SpawnTileEntity<PowerPellet>(registry, "Power pellet", column, row);
+			break;
+		case 'P':
+			SpawnTileEntity<PlayerStart>(registry, "Player start", column, row);
+			break;
+		case 'E':
+			SpawnTileEntity<EnemyStart>(registry, "Enemy start", column, row);
+			break;
+		default:
+			SpawnTileEntity<TunnelTile>(registry, "Tunnel", column, row);
+			break;
+		}
 	}
 
 	bool HasSceneMaze(Registry& registry)

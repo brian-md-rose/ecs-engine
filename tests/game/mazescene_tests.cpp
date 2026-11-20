@@ -273,3 +273,89 @@ TEST_CASE("the checked-in maze scene is the same maze as the text file")
 	REQUIRE(built.map.has_value());
 	RequireSameTiles(*text.map, *built.map);
 }
+
+TEST_CASE("painting a tile replaces what is in the cell")
+{
+	const game::TileMap map = Parse(kSmall);
+	Registry registry;
+	game::SpawnMazeScene(registry, map, {.x = 0.0F, .y = 16.0F});
+	const auto& names = game::MazePaletteNames();
+	REQUIRE(names.size() == 7);
+
+	const auto tileAt = [&](int column, int row)
+	{
+		auto built = game::BuildTileMap(registry);
+		REQUIRE(built.map.has_value());
+		return built.map->At({.column = static_cast<std::size_t>(column), .row = static_cast<std::size_t>(row)});
+	};
+	CHECK(tileAt(1, 2) == game::Tile::Pellet);
+
+	game::PaintMazeTile(registry, 0, 1, 2); // Wall over a pellet
+	CHECK(tileAt(1, 2) == game::Tile::Wall);
+	game::PaintMazeTile(registry, 2, 1, 2); // and a pellet over the wall
+	CHECK(tileAt(1, 2) == game::Tile::Pellet);
+
+	// Painting what is already there creates nothing.
+	const std::size_t before = registry.AllEntities().size();
+	game::PaintMazeTile(registry, 2, 1, 2);
+	CHECK(registry.AllEntities().size() == before);
+
+	game::EraseMazeTile(registry, 1, 2);
+	CHECK(tileAt(1, 2) == game::Tile::Empty);
+	CHECK(registry.AllEntities().size() == before - 1);
+	game::EraseMazeTile(registry, 1, 2); // nothing there: fine
+	CHECK(registry.AllEntities().size() == before - 1);
+}
+
+TEST_CASE("a maze has one player start, so painting one moves it")
+{
+	const game::TileMap map = Parse(kSmall);
+	Registry registry;
+	game::SpawnMazeScene(registry, map, {.x = 0.0F, .y = 16.0F});
+
+	game::PaintMazeTile(registry, 4, 1, 7); // Player start
+	const auto built = game::BuildTileMap(registry);
+	REQUIRE(built.map.has_value());
+	CHECK(built.map->Find(game::Tile::PlayerSpawn).size() == 1);
+	CHECK(built.map->Find(game::Tile::PlayerSpawn).front() == game::TilePosition{.column = 1, .row = 7});
+}
+
+TEST_CASE("painting outside the layout or with an unknown kind changes nothing")
+{
+	const game::TileMap map = Parse(kSmall);
+	Registry registry;
+	game::SpawnMazeScene(registry, map, {});
+	const std::size_t before = registry.AllEntities().size();
+	game::PaintMazeTile(registry, 0, -1, 0);
+	game::PaintMazeTile(registry, 0, 13, 0);
+	game::PaintMazeTile(registry, 0, 0, 9);
+	game::PaintMazeTile(registry, 99, 1, 1);
+	CHECK(registry.AllEntities().size() == before);
+}
+
+TEST_CASE("after painting, the tiles get a place and a picture again, and walls rejoin")
+{
+	const game::TileMap map = Parse(kSmall);
+	const game::SpriteClips clips = Clips();
+	Registry registry;
+	game::SpawnMazeScene(registry, map, {.x = 0.0F, .y = 16.0F});
+	REQUIRE(game::ResolveMazeTiles(registry, clips));
+
+	game::PaintMazeTile(registry, 0, 2, 3); // a new wall in the room
+	CHECK(game::PlaceMazeTiles(registry));
+	CHECK(game::ResolveMazeTiles(registry, clips));
+
+	bool found = false;
+	registry.Each<game::Wall, game::TileCell, engine::graphics::Sprite, engine::graphics::Transform>(
+	    [&](Entity, const game::Wall&, const game::TileCell& cell, const engine::graphics::Sprite& sprite,
+	        const engine::graphics::Transform& at)
+	{
+		if (cell.column != 2 || cell.row != 3) return;
+		found = true;
+		CHECK(at.position.x == 2 * game::kTileSize);
+		CHECK(at.position.y == 16.0F + 3 * game::kTileSize);
+		// Its neighbours: walls above (2,2) and below (2,4), floor to the sides, so it joins up and down.
+		CHECK(sprite.source.x == static_cast<int>(game::kWallUp | game::kWallDown) * 8);
+	});
+	CHECK(found);
+}

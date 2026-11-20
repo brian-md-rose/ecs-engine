@@ -11,6 +11,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- A tile brush in the standalone editor's Viewport for grid scenes: `GridTool` (`editor/gridtool.hpp`, `EditorGameConfig::gridTool`), a palette with Select and Erase, a grid overlay, and click-and-drag painting with undo; `CellAt` and `CellLine`. Tangle Run uses it for maze scenes (`PaintMazeTile`, `EraseMazeTile`, `MazePaletteNames`). `EditorGameConfig::onPlay` now returns what is wrong with the scene, which stops Play and is shown in the menu bar.
+
 - Play in the standalone editor on a maze scene (`level1.json`) starts Tangle Run on that maze (`AdoptSceneMaze`), and the Viewport shows the maze. `EditorGameConfig::onPlay` is the hook for a game to start itself on what a scene holds.
 
 - The maze as scene entities (`game/include/mazescene.hpp`): `MazeLayout`, `TileCell` and the tile tags, `BuildTileMap` (the same rules as the text format), `SpawnMazeScene`, `PlaceMazeTiles` and `ResolveMazeTiles`, the `maze_to_scene` converter, and `game/assets/scenes/level1.json`. 
