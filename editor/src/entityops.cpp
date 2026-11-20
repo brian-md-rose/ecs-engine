@@ -9,6 +9,7 @@
 #include "core/json.hpp"
 #include "ecs/hierarchy.hpp"
 #include "ecs/name.hpp"
+#include "ecs/scene.hpp"
 
 namespace engine::editor
 {
@@ -149,6 +150,50 @@ namespace engine::editor
 		}
 		if (ecs::Name* name = registry.TryGetComponent<ecs::Name>(copies.front())) name->value += " (copy)";
 		return copies.front();
+	}
+
+	std::string CopyTrees(Registry& registry, const ecs::TypeRegistry& types, std::span<const Entity> roots,
+	                      ecs::Issues& issues)
+	{
+		std::vector<Entity> all;
+		for (const Entity root : roots)
+		{
+			if (!registry.IsAlive(root)) continue;
+			all.push_back(root);
+			const std::vector<Entity> below = ecs::DescendantsOf(registry, root);
+			all.insert(all.end(), below.begin(), below.end());
+		}
+		if (all.empty()) return {};
+		ecs::Issues found;
+		const core::JsonValue scene = ecs::SaveScene(registry, types, found, all);
+		// A root's own parent is outside the copy on purpose; SaveScene leaves that field out.
+		for (const ecs::Issue& issue : found.errors)
+		{
+			if (issue.message == "the parent is not part of the scene") continue;
+			issues.errors.push_back(issue);
+		}
+		issues.warnings.insert(issues.warnings.end(), found.warnings.begin(), found.warnings.end());
+		if (!issues.Ok()) return {};
+		return core::FormatJson(scene);
+	}
+
+	std::vector<Entity> PasteTrees(Registry& registry, const ecs::TypeRegistry& types, std::string_view text,
+	                               ecs::Issues& issues)
+	{
+		const core::JsonResult parsed = core::ParseJson(text);
+		if (!parsed.value)
+		{
+			issues.errors.push_back({"", "the clipboard does not hold copied entities"});
+			return {};
+		}
+		const ecs::SceneLoadResult loaded = ecs::LoadScene(registry, types, *parsed.value);
+		issues.errors.insert(issues.errors.end(), loaded.issues.errors.begin(), loaded.issues.errors.end());
+		issues.warnings.insert(issues.warnings.end(), loaded.issues.warnings.begin(), loaded.issues.warnings.end());
+		std::vector<Entity> roots;
+		if (!loaded.Ok()) return roots;
+		for (const Entity entity : loaded.entities)
+			if (!registry.HasComponent<ecs::Parent>(entity)) roots.push_back(entity);
+		return roots;
 	}
 
 	Tree BuildTree(const Registry& registry)

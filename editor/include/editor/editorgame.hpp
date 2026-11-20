@@ -145,6 +145,8 @@ namespace engine::editor
 		void DrawDialogs();
 		void SaveOrAsk();
 		void HandleShortcuts();
+		void CopySelection();
+		void PasteClipboard();
 
 	public:
 		EditorGame(Editor& editorToUse, EditorGameConfig configToUse);

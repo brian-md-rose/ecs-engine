@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -55,6 +57,18 @@ namespace engine::editor
 	// with the problems in issues (nothing is kept then).
 	ecs::Entity DuplicateTree(ecs::Registry& registry, const ecs::TypeRegistry& types, ecs::Entity root,
 	                          ecs::Issues& issues);
+
+	// The roots and everything under them as scene JSON text, for the clipboard. An entity whose Parent is not
+	// among them is saved without one. References from the copied entities to others outside them are errors
+	// in issues, and the text is then empty.
+	[[nodiscard]] std::string CopyTrees(ecs::Registry& registry, const ecs::TypeRegistry& types,
+	                                    std::span<const ecs::Entity> roots, ecs::Issues& issues);
+
+	// Creates the entities of text (from CopyTrees, possibly in another scene) at the top level, and returns the
+	// ones that have no parent in the text, so the pasted trees' roots. Empty, with the problems in issues and
+	// nothing kept, if text is not a scene or does not load.
+	[[nodiscard]] std::vector<ecs::Entity> PasteTrees(ecs::Registry& registry, const ecs::TypeRegistry& types,
+	                                                  std::string_view text, ecs::Issues& issues);
 
 	// The entities of a registry as a tree for the hierarchy panel.
 	struct Tree

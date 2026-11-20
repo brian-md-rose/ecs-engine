@@ -2,6 +2,7 @@
 
 #include "ecs/enginecomponents.hpp"
 #include "ecs/hierarchy.hpp"
+#include "ecs/name.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/typeregistry.hpp"
 #include "editor/entityops.hpp"
@@ -139,4 +140,41 @@ TEST_CASE("SelectionRoots leaves out what has a selected ancestor", "[editor][se
 	roots = engine::editor::SelectionRoots(registry, state);
 	REQUIRE(roots.size() == 2); // a and lone
 	CHECK(((roots[0] == a && roots[1] == lone) || (roots[0] == lone && roots[1] == a)));
+}
+
+TEST_CASE("Copied trees can be pasted into the same or another scene", "[editor][selection]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	Registry registry;
+	const Entity top = AddBox(registry, 5, 6);
+	registry.Add<engine::ecs::Name>(top, engine::ecs::Name{"crate"});
+	const Entity under = AddBox(registry, 1, 1);
+	registry.Add<engine::ecs::Parent>(under, engine::ecs::Parent{top});
+	const Entity inner = AddBox(registry, 2, 2);
+	registry.Add<engine::ecs::Parent>(inner, engine::ecs::Parent{under}); // copied with `under`, which is a root here
+	const Entity roots[] = {under};
+
+	engine::ecs::Issues issues;
+	const std::string text = engine::editor::CopyTrees(registry, types, roots, issues);
+	CHECK(issues.Ok());
+	REQUIRE_FALSE(text.empty());
+
+	Registry other;
+	const std::vector<Entity> pasted = engine::editor::PasteTrees(other, types, text, issues);
+	CHECK(issues.Ok());
+	REQUIRE(pasted.size() == 1); // the root only; its Parent was outside the copy
+	CHECK_FALSE(other.HasComponent<engine::ecs::Parent>(pasted.front()));
+	CHECK(other.AllEntities().size() == 2);
+	CHECK(other.GetComponent<engine::graphics::Transform>(pasted.front()).position.x == 1.0F);
+
+	const std::vector<Entity> again = engine::editor::PasteTrees(registry, types, text, issues);
+	CHECK(again.size() == 1);
+	CHECK(registry.AllEntities().size() == 5);
+	CHECK(registry.IsAlive(top));
+
+	engine::ecs::Issues bad;
+	CHECK(engine::editor::PasteTrees(other, types, "not json", bad).empty());
+	CHECK_FALSE(bad.Ok());
+	CHECK(other.AllEntities().size() == 2);
 }

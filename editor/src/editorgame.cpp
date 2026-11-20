@@ -687,7 +687,7 @@ namespace engine::editor
 		openDialog = true;
 	}
 
-	// Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N new, Ctrl+D duplicate and
+	// Ctrl+C copy, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N new, Ctrl+D duplicate and
 	// Delete remove the selected entity (with everything under it), F5 Play or Stop. A text box being typed in keeps
 	// its keys, and nothing happens in the middle of a drag.
 	void EditorGame::HandleShortcuts()
@@ -726,6 +726,10 @@ namespace engine::editor
 			}
 			else if (ImGui::IsKeyPressed(ImGuiKey_N, false))
 				Request(Action::New, {});
+			else if (ImGui::IsKeyPressed(ImGuiKey_C, false))
+				CopySelection();
+			else if (ImGui::IsKeyPressed(ImGuiKey_V, false))
+				PasteClipboard();
 		}
 
 		ecs::Registry& registry = edit->world.registry;
@@ -762,6 +766,41 @@ namespace engine::editor
 		}
 	}
 
+	// Copy puts the selected entities, each with what is under it, on the clipboard as scene text; Paste creates them
+	// in the open scene, which may not be the one they came from.
+	void EditorGame::CopySelection()
+	{
+		ecs::Registry& registry = edit->world.registry;
+		panels->Prune(registry);
+		const std::vector<ecs::Entity> roots = SelectionRoots(registry, *panels);
+		if (roots.empty()) return;
+		ecs::Issues issues;
+		const std::string text = CopyTrees(registry, EnsureTypes(edit->world), roots, issues);
+		if (text.empty())
+			panels->status = "can't copy: " + (issues.errors.empty() ? std::string("nothing to copy")
+			                                                         : issues.errors.front().path + ": " +
+			                                                               issues.errors.front().message);
+		else
+			ImGui::SetClipboardText(text.c_str());
+	}
+
+	void EditorGame::PasteClipboard()
+	{
+		const char* text = ImGui::GetClipboardText();
+		if (text == nullptr || *text == '\0') return;
+		ecs::Issues issues;
+		const std::vector<ecs::Entity> pasted =
+		    PasteTrees(edit->world.registry, EnsureTypes(edit->world), text, issues);
+		if (pasted.empty())
+		{
+			panels->status = "can't paste: " + (issues.errors.empty() ? std::string("nothing there")
+			                                                          : issues.errors.front().message);
+			return;
+		}
+		panels->Select(pasted.front());
+		panels->extra.assign(pasted.begin() + 1, pasted.end());
+	}
+
 	void EditorGame::DrawMenuBar()
 	{
 		HandleShortcuts();
@@ -769,6 +808,9 @@ namespace engine::editor
 		{
 			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, CanUndo())) (void)Undo();
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, CanRedo())) (void)Redo();
+			ImGui::Separator();
+			if (ImGui::MenuItem("Copy", "Ctrl+C", false, !play && !panels->selected.IsNull())) CopySelection();
+			if (ImGui::MenuItem("Paste", "Ctrl+V", false, !play)) PasteClipboard();
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Scene"))
