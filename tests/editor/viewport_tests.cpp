@@ -252,3 +252,30 @@ TEST_CASE("PlayMouse ignores a press that began outside the viewport, and the wh
 	play.Reset();
 	CHECK(play.mouse.wheel == 0.0F);
 }
+
+TEST_CASE("PlayMouse: a button held when Play starts is not a press, and Reset releases what the game holds")
+{
+	using namespace engine;
+	editor::PlayMouse play;
+	const editor::ViewTransform view;
+
+	editor::PointerSample sample;
+	sample.hovered = true;
+	sample.down[0] = true; // held since before the first frame (for example F5 pressed mid-drag)
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	CHECK_FALSE(play.mouse.IsDown(input::MouseButton::Left));
+	CHECK_FALSE(play.AnyOwned());
+
+	sample.down[0] = false;
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	sample.down[0] = true; // a new press is the game's
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	CHECK(play.mouse.IsDown(input::MouseButton::Left));
+	CHECK(play.AnyOwned());
+
+	play.Reset();
+	CHECK_FALSE(play.mouse.IsDown(input::MouseButton::Left));
+	CHECK_FALSE(play.mouse.WasReleased(input::MouseButton::Left));
+	CHECK_FALSE(play.AnyOwned());
+	CHECK_FALSE(play.mouse.inside);
+}

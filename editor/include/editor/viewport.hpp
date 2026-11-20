@@ -87,6 +87,7 @@ namespace engine::editor
 	{
 		std::array<bool, input::kMouseButtonCount> previous{};
 		std::array<bool, input::kMouseButtonCount> owned{}; // pressed over the viewport, not yet released
+		bool primed = false; // Feed has seen a frame since the last Reset; buttons already down by then are not presses
 
 	public:
 		input::Mouse mouse;
