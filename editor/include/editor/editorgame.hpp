@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -40,6 +41,13 @@ namespace engine::editor
 		// reopen the last one at the next start and list the rest under Open recent. Empty keeps none.
 		std::filesystem::path recentFile = {};
 
+		// A folder where unsaved changes are written every autosaveSeconds while there are any, one file per scene,
+		// so a crash costs a minute at most. When a scene is opened and its autosave is newer than the file, the
+		// editor offers to restore it. The autosave is deleted when the scene is saved, replaced or New is chosen.
+		// Keep it outside the scene folder, which is often committed. Empty keeps no autosaves.
+		std::filesystem::path autosaveFolder = {};
+		double autosaveSeconds = 60.0;
+
 		// A scene in sceneFolder to open at start instead of the last one (".json" is added if missing), such as one
 		// named on the command line. If it can't be opened the message says so and the editor starts on a new scene.
 		std::string openOnStart = {};
@@ -75,7 +83,8 @@ namespace engine::editor
 		{
 			None,
 			ConfirmDiscard,
-			SaveAs
+			SaveAs,
+			Recover
 		};
 
 		Editor& editor;
@@ -84,7 +93,8 @@ namespace engine::editor
 		std::unique_ptr<application::ScheduledGame> play;
 		std::shared_ptr<PanelState> panels;
 
-		std::string sceneName;           // the file name of the open scene, empty for a new one
+		std::string sceneName; // the file name of the open scene, empty for a new one
+		std::chrono::steady_clock::time_point lastAutosave = std::chrono::steady_clock::now();
 		std::vector<std::string> recent; // scene file names last opened or saved, newest first
 		std::string savedText;           // the scene as last saved or loaded, to see changes against
 		bool dirty = false;
@@ -156,6 +166,9 @@ namespace engine::editor
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
 		void DrawIssues();
+		[[nodiscard]] std::filesystem::path AutosavePath() const;
+		void DropAutosave();
+		void OfferRecovery();
 		void ShowIssues(const std::string& source, const ecs::Issues& issues);
 		void PaintStroke(const GridInfo& grid, graphics::Position origin, ImDrawList* draw);
 
@@ -211,6 +224,14 @@ namespace engine::editor
 		[[nodiscard]] ecs::World& EditWorld() { return edit->world; }
 		[[nodiscard]] ecs::World* PlayWorld() { return play ? &play->world : nullptr; }
 		[[nodiscard]] const std::string& Message() const noexcept { return message; }
+		// ---- autosave ----
+		// Writes the scene to the autosave folder if it has unsaved changes. True if a file was written.
+		bool WriteAutosave();
+		// True while the editor is asking whether to bring back an autosave that is newer than the scene's file.
+		[[nodiscard]] bool RecoveryOffered() const noexcept { return dialog == Dialog::Recover; }
+		bool AcceptRecovery();  // replaces the scene with the autosave, which stays unsaved; false if it can't load
+		void DeclineRecovery(); // deletes the autosave
+
 		// How many problems the Issues panel lists: those of the last open, save or Play start.
 		[[nodiscard]] std::size_t IssueCount() const noexcept { return shownIssues.size(); }
 		// True once the game has been drawn into the viewport's picture (false if the renderer couldn't make one).

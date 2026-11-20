@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -397,4 +398,79 @@ TEST_CASE("The Issues panel lists what the last open reported", "[editor][game]"
 	REQUIRE(game.IssueCount() == 1);
 	REQUIRE(game.StartPlay());
 	CHECK(game.IssueCount() == 0);
+}
+
+TEST_CASE("Unsaved changes are autosaved and can be restored", "[editor][game]")
+{
+	const auto folder = TempFolder("autosave");
+	EditorGameConfig config = MakeConfig(folder);
+	config.autosaveFolder = folder / "autosave";
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		AddMover(game.EditWorld(), "a", 5);
+		REQUIRE(game.SaveSceneAs("level"));
+		CHECK_FALSE(game.WriteAutosave()); // nothing unsaved
+		CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
+
+		AddMover(game.EditWorld(), "b", 6);
+		REQUIRE(game.WriteAutosave());
+		CHECK(std::filesystem::exists(config.autosaveFolder / "level.json"));
+
+		REQUIRE(game.SaveScene()); // saving removes it
+		CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
+
+		AddMover(game.EditWorld(), "c", 7);
+		REQUIRE(game.WriteAutosave()); // the editor "crashes" here, with c unsaved
+	}
+	// The file on disk has two entities, the autosave three; make the autosave the newer.
+	std::filesystem::last_write_time(config.autosaveFolder / "level.json",
+	                                 std::filesystem::file_time_type::clock::now() + std::chrono::hours(1));
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		CHECK(game.OpenScene("level.json"));
+		CHECK(game.RecoveryOffered());
+		CHECK(game.EditWorld().registry.AllEntities().size() == 2);
+		REQUIRE(game.AcceptRecovery());
+		CHECK(game.EditWorld().registry.AllEntities().size() == 3);
+		CHECK(game.IsDirty()); // still unsaved
+	}
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		CHECK(game.OpenScene("level.json"));
+		REQUIRE(game.RecoveryOffered());
+		game.DeclineRecovery();
+		CHECK_FALSE(game.RecoveryOffered());
+		CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
+		CHECK(game.EditWorld().registry.AllEntities().size() == 2);
+	}
+}
+
+TEST_CASE("An autosave older than the scene file is not offered", "[editor][game]")
+{
+	const auto folder = TempFolder("autosaveold");
+	EditorGameConfig config = MakeConfig(folder);
+	config.autosaveFolder = folder / "autosave";
+	engine::editor::Editor editor;
+	EditorGame game(editor, config);
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 5);
+	REQUIRE(game.SaveSceneAs("level"));
+	AddMover(game.EditWorld(), "b", 6);
+	REQUIRE(game.WriteAutosave());
+	std::filesystem::last_write_time(config.autosaveFolder / "level.json",
+	                                 std::filesystem::file_time_type::clock::now() - std::chrono::hours(1));
+	game.NewScene(); // drops the autosave
+	CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
+	// A stale file left behind by something else is dropped on Open, not offered.
+	std::ofstream(config.autosaveFolder / "level.json") << "{}";
+	std::filesystem::last_write_time(config.autosaveFolder / "level.json",
+	                                 std::filesystem::file_time_type::clock::now() - std::chrono::hours(1));
+	CHECK(game.OpenScene("level.json"));
+	CHECK_FALSE(game.RecoveryOffered());
+	CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
 }

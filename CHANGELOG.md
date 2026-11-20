@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- Autosave and crash recovery in the standalone editor: unsaved changes are written to `EditorGameConfig::autosaveFolder` every minute, and opening a scene with a newer autosave offers to restore it.
 - An Issues panel in the standalone editor lists all the problems and warnings, with paths, from the last open, save or Play start.
 - `tangle_run_editor <scene>` opens that scene from the scene folder at start (`EditorGameConfig::openOnStart`).
 - The standalone editor remembers the panel layout and the last scene between runs, and the Scene menu has Open recent (`Editor::SetLayoutFile`, `EditorGameConfig::recentFile`).

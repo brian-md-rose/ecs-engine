@@ -150,6 +150,7 @@ int main(int argc, char** argv)
 	             .afterLoad = ResolveAfterLoad,
 	             .sceneFolder = SceneFolder(),
 	             .recentFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-recent.txt",
+	             .autosaveFolder = logFolder.empty() ? std::filesystem::path() : logFolder / "autosave",
 	             .openOnStart = openScene,
 	             .onPlay = StartPlay,
 	             .gridTool = MazePainter()});
