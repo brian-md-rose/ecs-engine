@@ -44,6 +44,8 @@ and link `engine::editor`. A panel is any function that calls ImGui; it gets its
 
 The **Scene** menu has New, Open (the `.json` files in `sceneFolder`; Tangle Run's editor uses the source folder `game/assets/scenes`, so saves are committed with the repository, and falls back to `assets/scenes` next to the executable if that folder is missing), Open recent (the last eight scenes opened or saved), Save and Save as. A `*` beside the name marks changes not saved; New and Open ask before discarding them. Open reads the file first and keeps the current scene if it has errors. `makeGame` must not let a game write the player's save file (Tangle Run's factory clears `SaveFile::path`), since games are made and discarded freely. `afterLoad` runs after each load, for what a game does with its entities after loading (Tangle Run resolves sprite clip names).
 
+If the game asks to quit while it is played (its own Quit), Play stops and the menu bar says so, rather than the run just ending.
+
 **Autosave:** with `EditorGameConfig::autosaveFolder` set, the editor writes the scene there every `autosaveSeconds` (60) while it has unsaved changes, one file per scene (`_untitled_.json` for a new one). Saving, New, or opening another scene deletes the autosave. When a scene is opened and its autosave is newer than the file, a dialog offers to restore it (the restored scene still shows as unsaved) or throw it away. Tangle Run's editor keeps autosaves in `autosave` next to its log, outside the scene folder, so they are never committed by accident.
 
 The **Issues** panel lists every problem the last open, save or Play start reported (errors first, then warnings, each with its JSON path such as `entities[3].components.Follow.target`), where the menu bar only has room for the first; it opens by itself when there is something to list, and New or Clear empties it. An unknown component name in a file is a warning, so a scene survives a removed component, and the panel is where you see which.
@@ -81,7 +83,7 @@ ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out
 
 ## Shortcuts
 
-In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+C copy and Ctrl+V paste the selected entities (each with what is under it, as scene text on the clipboard, so a paste can go into another scene or be saved in a text file; it fails with a message if a copied entity refers to one that was not copied), Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop. While playing only F5 works. None of them act while a text box has focus, a drag is in progress or a dialog is open.
+In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+C copy and Ctrl+V paste the selected entities (each with what is under it, as scene text on the clipboard, so a paste can go into another scene or be saved in a text file; it fails with a message if a copied entity refers to one that was not copied), Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop, F6 Restart (stops and plays again from the edit world as it is). While playing only F5 and F6 work. None of them act while a text box has focus, a drag is in progress or a dialog is open.
 
 ## Painting a grid scene
 
