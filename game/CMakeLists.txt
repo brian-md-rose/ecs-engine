@@ -45,4 +45,6 @@ if(ENGINE_BUILD_EDITOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:tangle_run_editor>/assets
         VERBATIM)
     add_dependencies(tangle_run_editor tangle_run_editor_assets)
+    # The editor opens and saves scenes in the source folder, so edits persist and get committed (editor/main.cpp).
+    target_compile_definitions(tangle_run_editor PRIVATE TANGLE_RUN_SOURCE_SCENES="${CMAKE_CURRENT_SOURCE_DIR}/assets/scenes")
 endif()
