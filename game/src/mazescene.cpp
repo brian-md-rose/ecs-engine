@@ -1,14 +1,18 @@
 #include "mazescene.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "components.hpp"
 #include "core/log.hpp"
+#include "ecs/enginecomponents.hpp"
 #include "ecs/name.hpp"
 #include "ecs/states.hpp"
+#include "ecs/scene.hpp"
+#include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
 #include "enemysystems.hpp"
 #include "gameflow.hpp"
@@ -17,6 +21,7 @@
 #include "maze.hpp"
 #include "mazegame.hpp"
 #include "screens.hpp"
+#include "scenes.hpp"
 #include "targeting.hpp"
 #include "walltiles.hpp"
 
@@ -453,5 +458,24 @@ namespace game
 		});
 		for (const Entity entity : tiles)
 			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
+	}
+} // namespace game
+
+namespace game
+{
+	TileMapResult LoadMazeScene(const std::filesystem::path& file)
+	{
+		engine::ecs::TypeRegistry types;
+		engine::ecs::RegisterEngineComponents(types);
+		RegisterGameComponents(types);
+		engine::ecs::Registry registry;
+		const engine::ecs::SceneLoadResult loaded = engine::ecs::LoadSceneFile(registry, types, file);
+		if (!loaded.Ok())
+		{
+			const engine::ecs::Issue& first = loaded.issues.errors.front();
+			return {.map = std::nullopt,
+			        .error = {.line = 0, .column = 0, .message = first.path + ": " + first.message}};
+		}
+		return BuildTileMap(registry);
 	}
 } // namespace game

@@ -58,7 +58,7 @@ namespace game
 		    .logicalHeight = kLogicalHeight,
 		};
 
-		// Starts on the first maze, assets/mazes/level1.txt next to the executable, with the rest
+		// Starts on the first maze, assets/scenes/level1.json (a maze scene) next to the executable, with the rest
 		// of assets/ (see LoadGameAssets). If something can't be loaded, the error is written to
 		// the log and the game is not valid: don't run it.
 		MazeGame();

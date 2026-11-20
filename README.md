@@ -94,7 +94,7 @@ target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for 
 
 **Game**
 
-- Plain-text mazes ([format](docs/maze-format.md)) and grid movement with buffered turns,
+- Mazes as editor scenes ([format](docs/maze-format.md)) and grid movement with buffered turns,
   corner tolerance, wall stops and wrap tunnels, written as pure functions.
 - Four enemies that steer toward a target tile, each choosing it differently, and switch
   between patrol, chase, frightened and returning home on a per-level schedule

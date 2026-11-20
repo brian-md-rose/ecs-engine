@@ -23,6 +23,7 @@
 #include "scoring.hpp"
 #include "stage.hpp"
 #include "targeting.hpp"
+#include "mazescene.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -47,8 +48,8 @@ namespace
 
 	[[nodiscard]] game::TileMap Level1()
 	{
-		const std::filesystem::path file = std::filesystem::path{GAME_ASSETS_DIR} / "mazes" / "level1.txt";
-		game::TileMapResult result = game::LoadTileMap(file);
+		const std::filesystem::path file = std::filesystem::path{GAME_ASSETS_DIR} / "scenes" / "level1.json";
+		game::TileMapResult result = game::LoadMazeScene(file);
 		REQUIRE(result.map.has_value());
 		return *result.map;
 	}

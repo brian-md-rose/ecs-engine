@@ -22,5 +22,5 @@ and [docs/scenes.md](../../docs/scenes.md).
 
 ## Other files
 
-`levels.txt` is the difficulty table ([difficulty.md](../../docs/difficulty.md)), `mazes/` holds the maze files
+`levels.txt` is the difficulty table ([difficulty.md](../../docs/difficulty.md)), `scenes/` holds the screens and the maze (`level1.json`)
 ([maze-format.md](../../docs/maze-format.md)) and `sprites/` the sprite and font sheets ([pixel-sheets.md](../../docs/pixel-sheets.md)).

@@ -18,6 +18,7 @@
 #include "debug/debugpanel.hpp"
 #include "difficulty.hpp"
 #include "displaysettings.hpp"
+#include "mazescene.hpp"
 #include "ecs/enginecomponents.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -56,16 +57,16 @@ namespace game
 {
 	namespace
 	{
-		constexpr std::string_view kFirstMaze = "level1.txt";
+		constexpr std::string_view kFirstMaze = "level1.json";
 
-		// Loads assets/mazes/<fileName> from next to the executable (see game/assets/README.md).
+		// Loads assets/scenes/<fileName> (a maze scene, mazescene.hpp) from next to the executable (see game/assets/README.md).
 		// On failure, logs the error with the file, line and column and returns
 		// nothing.
 		[[nodiscard]] std::optional<TileMap> LoadMazeAsset(const std::filesystem::path& folder,
 		                                                   std::string_view fileName)
 		{
-			const std::filesystem::path file = folder / "mazes" / fileName;
-			TileMapResult result = LoadTileMap(file);
+			const std::filesystem::path file = folder / "scenes" / fileName;
+			TileMapResult result = LoadMazeScene(file);
 			if (!result.map)
 			{
 				// The full path, so a missing asset shows where the game looked.

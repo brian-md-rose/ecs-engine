@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -58,6 +59,10 @@ namespace game
 	// more than one tile tag or none, or any of the maze format's own errors (line and column are the tile's, counted
 	// from 1).
 	[[nodiscard]] TileMapResult BuildTileMap(engine::ecs::Registry& registry);
+
+	// Reads a maze scene file and builds its TileMap: LoadSceneFile into a scratch registry, then BuildTileMap. This is
+	// how the game gets its maze. A scene that will not load gives no map, with the first problem as the message.
+	[[nodiscard]] TileMapResult LoadMazeScene(const std::filesystem::path& file);
 
 	// Makes the scene entities for a map: a MazeLayout at origin, and a Name, TileCell, tag and Transform for every
 	// tile that is not empty floor. Creates entities directly, so call it during setup, not from a system.
