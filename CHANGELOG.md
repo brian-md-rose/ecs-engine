@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- An Issues panel in the standalone editor lists all the problems and warnings, with paths, from the last open, save or Play start.
 - `tangle_run_editor <scene>` opens that scene from the scene folder at start (`EditorGameConfig::openOnStart`).
 - The standalone editor remembers the panel layout and the last scene between runs, and the Scene menu has Open recent (`Editor::SetLayoutFile`, `EditorGameConfig::recentFile`).
 - Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).

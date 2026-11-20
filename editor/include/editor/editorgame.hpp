@@ -90,6 +90,17 @@ namespace engine::editor
 		bool dirty = false;
 		int framesSinceCheck = 0;
 		std::string message; // the last problem, shown in the menu bar
+
+		// Everything the last load, save or Play start reported, for the Issues panel (the menu bar only has room for
+		// the first). Errors first, then warnings.
+		struct ShownIssue
+		{
+			bool error = false;
+			std::string path;
+			std::string message;
+		};
+		std::string issuesSource; // what the issues are about, such as "opening level1.json"
+		std::vector<ShownIssue> shownIssues;
 		Action pendingAction = Action::None;
 		std::string pendingName;
 		Dialog dialog = Dialog::None;
@@ -144,6 +155,8 @@ namespace engine::editor
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
+		void DrawIssues();
+		void ShowIssues(const std::string& source, const ecs::Issues& issues);
 		void PaintStroke(const GridInfo& grid, graphics::Position origin, ImDrawList* draw);
 
 		[[nodiscard]] ecs::World& CurrentWorld() { return play ? play->world : edit->world; }
@@ -198,6 +211,8 @@ namespace engine::editor
 		[[nodiscard]] ecs::World& EditWorld() { return edit->world; }
 		[[nodiscard]] ecs::World* PlayWorld() { return play ? &play->world : nullptr; }
 		[[nodiscard]] const std::string& Message() const noexcept { return message; }
+		// How many problems the Issues panel lists: those of the last open, save or Play start.
+		[[nodiscard]] std::size_t IssueCount() const noexcept { return shownIssues.size(); }
 		// True once the game has been drawn into the viewport's picture (false if the renderer couldn't make one).
 		[[nodiscard]] bool HasViewportPicture() const noexcept { return targetHandle != nullptr; }
 		[[nodiscard]] ViewTransform& View() noexcept { return view; }
