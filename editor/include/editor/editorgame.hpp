@@ -240,6 +240,8 @@ namespace engine::editor
 		// True once the game has been drawn into the viewport's picture (false if the renderer couldn't make one).
 		[[nodiscard]] bool HasViewportPicture() const noexcept { return targetHandle != nullptr; }
 		[[nodiscard]] ViewTransform& View() noexcept { return view; }
+		// The selection the Hierarchy, Inspector and Viewport share.
+		[[nodiscard]] PanelState& Selection() noexcept { return *panels; }
 
 		// Game:
 		void Update(double dt, const input::Input& input, audio::AudioDevice* audio) override;
