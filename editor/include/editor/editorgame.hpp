@@ -40,6 +40,10 @@ namespace engine::editor
 		// reopen the last one at the next start and list the rest under Open recent. Empty keeps none.
 		std::filesystem::path recentFile = {};
 
+		// A scene in sceneFolder to open at start instead of the last one (".json" is added if missing), such as one
+		// named on the command line. If it can't be opened the message says so and the editor starts on a new scene.
+		std::string openOnStart = {};
+
 		// Called on the play world after its scene is loaded and afterLoad has run, before its first update, for a game
 		// that needs to start itself on what the scene holds (Tangle Run starts on its maze when the scene is one).
 		// Returns what is wrong, if the scene can't be played (shown in the menu bar, and Play does not start), or an

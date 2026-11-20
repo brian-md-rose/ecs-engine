@@ -122,8 +122,14 @@ int main(int argc, char** argv)
 	engine::core::RouteSdlLog();
 
 	bool overlay = false;
+	std::string openScene; // the first argument that is not a flag: a scene in the scene folder
 	for (int i = 1; i < argc; ++i)
-		if (std::strcmp(argv[i], "--overlay") == 0) overlay = true;
+	{
+		if (std::strcmp(argv[i], "--overlay") == 0)
+			overlay = true;
+		else if (argv[i][0] != '-' && openScene.empty())
+			openScene = std::filesystem::path(argv[i]).filename().string(); // only the scene folder is read
+	}
 
 	Application app(game::MazeGame::kConfig);
 	engine::editor::Editor editor;
@@ -144,6 +150,7 @@ int main(int argc, char** argv)
 	             .afterLoad = ResolveAfterLoad,
 	             .sceneFolder = SceneFolder(),
 	             .recentFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-recent.txt",
+	             .openOnStart = openScene,
 	             .onPlay = StartPlay,
 	             .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
