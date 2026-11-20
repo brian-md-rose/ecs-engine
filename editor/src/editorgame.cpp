@@ -12,6 +12,7 @@
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
+#include "editor/entityops.hpp"
 #include "graphics/renderer2d.hpp"
 
 namespace engine::editor
@@ -438,17 +439,75 @@ namespace engine::editor
 		if (action == Action::Open) (void)OpenScene(name);
 	}
 
-	void EditorGame::DrawMenuBar()
+	void EditorGame::SaveOrAsk()
 	{
-		// Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes; a text box being typed in keeps its own.
+		if (SaveScene()) return;
+		saveAsName = sceneName;
+		dialog = Dialog::SaveAs;
+		openDialog = true;
+	}
+
+	// Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N new, Ctrl+D duplicate and
+	// Delete remove the selected entity (with everything under it), F5 Play or Stop. A text box being typed in keeps
+	// its keys, and nothing happens in the middle of a drag.
+	void EditorGame::HandleShortcuts()
+	{
 		const ImGuiIO& io = ImGui::GetIO();
-		if (io.KeyCtrl && !io.WantTextInput && !wasBusy)
+		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
+
+		if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
+		{
+			if (play)
+				StopPlay();
+			else
+				(void)StartPlay();
+			return;
+		}
+		if (play) return; // the rest edit the scene
+
+		if (io.KeyCtrl)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_Z) && !io.KeyShift)
 				(void)Undo();
 			else if (ImGui::IsKeyPressed(ImGuiKey_Y) || (ImGui::IsKeyPressed(ImGuiKey_Z) && io.KeyShift))
 				(void)Redo();
+			else if (ImGui::IsKeyPressed(ImGuiKey_S, false))
+			{
+				if (io.KeyShift)
+				{
+					saveAsName = sceneName;
+					dialog = Dialog::SaveAs;
+					openDialog = true;
+				}
+				else
+					SaveOrAsk();
+			}
+			else if (ImGui::IsKeyPressed(ImGuiKey_N, false))
+				Request(Action::New, {});
 		}
+
+		ecs::Registry& registry = edit->world.registry;
+		if (panels->selected.IsNull() || !registry.IsAlive(panels->selected)) return;
+		if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt)
+		{
+			DestroyTree(registry, panels->selected);
+			panels->selected = ecs::Entity::Null;
+		}
+		else if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+		{
+			ecs::Issues issues;
+			const ecs::Entity copy = DuplicateTree(registry, EnsureTypes(edit->world), panels->selected, issues);
+			if (!copy.IsNull())
+				panels->selected = copy;
+			else if (!issues.errors.empty())
+				panels->status =
+				    "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
+		}
+	}
+
+	void EditorGame::DrawMenuBar()
+	{
+		HandleShortcuts();
 		if (ImGui::BeginMenu("Edit"))
 		{
 			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, CanUndo())) (void)Undo();
@@ -457,7 +516,7 @@ namespace engine::editor
 		}
 		if (ImGui::BeginMenu("Scene"))
 		{
-			if (ImGui::MenuItem("New")) Request(Action::New, {});
+			if (ImGui::MenuItem("New", "Ctrl+N")) Request(Action::New, {});
 			if (ImGui::BeginMenu("Open"))
 			{
 				std::vector<std::string> names;
@@ -477,7 +536,7 @@ namespace engine::editor
 				}
 				ImGui::EndMenu();
 			}
-			if (ImGui::MenuItem("Save", nullptr, false, !play))
+			if (ImGui::MenuItem("Save", "Ctrl+S", false, !play))
 			{
 				if (!SaveScene())
 				{
@@ -486,7 +545,7 @@ namespace engine::editor
 					openDialog = true;
 				}
 			}
-			if (ImGui::MenuItem("Save as...", nullptr, false, !play))
+			if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S", false, !play))
 			{
 				saveAsName = sceneName;
 				dialog = Dialog::SaveAs;
@@ -495,7 +554,7 @@ namespace engine::editor
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::MenuItem(play ? "Stop" : "Play"))
+		if (ImGui::MenuItem(play ? "Stop" : "Play", "F5"))
 		{
 			if (play)
 			{
