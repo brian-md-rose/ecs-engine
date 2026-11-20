@@ -99,6 +99,8 @@ namespace engine::editor
 		static constexpr int kBrushErase = -2;
 		int brush = kBrushSelect;
 		bool stroking = false;            // a paint or erase drag is in progress
+		std::string gridProblems;         // the grid tool's problem line, kept until the scene changes
+		bool problemsStale = true;
 		std::optional<GridCell> lastCell; // the cell the stroke last touched, so a fast drag leaves no gaps
 		PlayMouse playMouse;              // the mouse the playing game sees, from the pointer over the viewport
 		bool mouseFed = false;            // the viewport fed playMouse since the last game update

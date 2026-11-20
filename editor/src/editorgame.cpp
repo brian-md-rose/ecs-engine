@@ -106,11 +106,13 @@ namespace engine::editor
 		framesSinceCheck = 0;
 		const std::string text = SceneText();
 		dirty = text != savedText;
+		if (!play && !history.empty() && text != history[historyPos]) problemsStale = true;
 		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
 	}
 
 	void EditorGame::ResetHistory()
 	{
+		problemsStale = true;
 		history.assign(1, SceneText());
 		historyPos = 0;
 	}
@@ -138,6 +140,7 @@ namespace engine::editor
 		for (std::size_t i = 0; i < before.size(); ++i)
 			if (before[i] == panels->selected) selectedIndex = i;
 
+		problemsStale = true;
 		const ecs::SceneLoadResult loaded = ecs::LoadScene(world.registry, EnsureTypes(world), *parsed.value);
 		if (!loaded.Ok())
 		{
@@ -405,7 +408,11 @@ namespace engine::editor
 					else if (brush == kBrushErase && tool.erase)
 						tool.erase(edit->world, cell);
 				}
-				if (tool.refresh) tool.refresh(edit->world);
+				if (!lastCell || *lastCell != *under)
+				{
+					if (tool.refresh) tool.refresh(edit->world);
+					problemsStale = true;
+				}
 			}
 			lastCell = under;
 		}
@@ -446,7 +453,12 @@ namespace engine::editor
 			if (ImGui::RadioButton("Erase", brush == kBrushErase)) brush = kBrushErase;
 			if (tool.problems)
 			{
-				const std::string problems = tool.problems(edit->world);
+				if (problemsStale)
+				{
+					gridProblems = tool.problems(edit->world);
+					problemsStale = false;
+				}
+				const std::string& problems = gridProblems;
 				if (!problems.empty()) ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.3F, 1.0F), "%s", problems.c_str());
 			}
 		}
