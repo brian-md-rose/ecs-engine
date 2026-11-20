@@ -1,6 +1,6 @@
 # The editor overlay
 
-`engine::editor` is a [Dear ImGui](https://github.com/ocornut/imgui) overlay drawn on top of a running game. It has the hook and shell (E3) and the Hierarchy and Inspector panels (E4). The standalone editor with scene files and Play and Stop (E5) follows below; the viewport and undo come later. It is off by default, so a game that doesn't want it never compiles it and `engine::platform` doesn't depend on it.
+`engine::editor` is a [Dear ImGui](https://github.com/ocornut/imgui) editor for the engine. It is an overlay drawn on top of a running game (the hook and shell, Hierarchy and Inspector panels), and also the standalone editor with scene files, Play and Stop, a Viewport and undo and redo, all described below. It is off by default, so a game that doesn't want it never compiles it and `engine::platform` doesn't depend on it.
 
 ## Building it
 
@@ -44,7 +44,7 @@ and link `engine::editor`. A panel is any function that calls ImGui; it gets its
 
 The **Scene** menu has New, Open (the `.json` files in `sceneFolder`, `assets/scenes` next to the executable), Save and Save as. A `*` beside the name marks changes not saved; New and Open ask before discarding them. Open reads the file first and keeps the current scene if it has errors. `makeGame` must not let a game write the player's save file (Tangle Run's factory clears `SaveFile::path`), since games are made and discarded freely. `afterLoad` runs after each load, for what a game does with its entities after loading (Tangle Run resolves sprite clip names).
 
-Limit: Play runs the game's own systems over the scene's entities, but a game that spawns its entities from code on a state change (most of Tangle Run's screens) does that on top of the scene. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
+Limit: Play runs the game's own systems over the scene's entities, and a game that also spawns entities when a state is entered does that on top of the scene. Tangle Run's menu screens are scene files that their enter systems load with `SpawnScene`, and its playing field (maze, pellets, enemies, HUD) is still built from code. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
 
 ## The viewport
 

@@ -119,7 +119,24 @@ See [screens.md](screens.md).
 
 JSON and a seeded RNG; mouse, more keys, full-ASCII text, camera zoom, clipping and UI
 mechanisms; then window settings, gamepads and audio files. See
-[babel-support.md](babel-support.md).
+[babel-support.md](babel-support.md). All three phases shipped as v0.2.0 to v0.5.0.
+
+---
+
+## Editor – type registry, scenes and an ImGui editor (v0.6.0 to v0.8.0)
+
+Plan: `plans/editor-plan.md` (steps E1 to E7). See [scenes.md](scenes.md), [editor.md](editor.md) and
+[ADR 0004](decisions/0004-reflection-and-scenes.md).
+
+- [x] **E1** (v0.6.0): `ecs::TypeRegistry` and the engine's own components registered.
+- [x] **E2** (v0.6.0): JSON scene save and load, with entity ids remapped.
+- [x] **E3** (v0.7.0): Dear ImGui as a submodule, the `EditorHost` hook, `engine::editor` and `tangle_run_editor` (`ENGINE_BUILD_EDITOR`, off by default).
+- [x] **E4** (v0.7.0): Hierarchy and Inspector panels.
+- [x] **E5** (v0.8.0): the standalone editor: edit and play worlds, scene files, Play and Stop.
+- [x] **E6** (v0.8.0): Viewport with zoom, pan, picking and drag to move.
+- [x] **E7** (v0.8.0): undo and redo.
+- [x] Tangle Run's menu screens laid out by scene files (the game's own change, after v0.8.0). The playing field is still built from code.
+- [ ] Not started: prefabs, resource editing, an asset browser, and a macOS or Linux editor build (CI builds the editor on Windows only).
 
 ---
 

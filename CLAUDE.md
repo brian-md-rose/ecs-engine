@@ -27,7 +27,7 @@ everything printed into the conversation is re-read on every later turn.
 ## Project facts (so they needn't be rediscovered)
 
 - Build: `cmake --preset msvc`, then `cmake --build --preset debug` (or `release`).
-  Tests: `build/msvc/tests/<Config>/engine_core_tests.exe`, `engine_tests.exe` and `game_tests.exe`.
+  Tests: `build/msvc/tests/<Config>/engine_core_tests.exe`, `engine_tests.exe` and `game_tests.exe` (plus `editor_tests.exe` when configured with `-DENGINE_BUILD_EDITOR=ON`, which also needs `git submodule update --init thirdparty/imgui`).
   The game: `build/msvc/game/<Config>/game.exe`.
 - CI builds MSVC Debug and Release, GCC and Clang, and treats warnings as errors
   (`/Wall /WX /analyze`, `-Wshadow -Wconversion` and more).
