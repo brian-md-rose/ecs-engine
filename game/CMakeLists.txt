@@ -48,3 +48,10 @@ if(ENGINE_BUILD_EDITOR)
     # The editor opens and saves scenes in the source folder, so edits persist and get committed (editor/main.cpp).
     target_compile_definitions(tangle_run_editor PRIVATE TANGLE_RUN_SOURCE_SCENES="${CMAKE_CURRENT_SOURCE_DIR}/assets/scenes")
 endif()
+
+# The one-off converter from a maze text file to a maze scene (game/editor/maze_to_scene.cpp).
+if(ENGINE_BUILD_EDITOR)
+    add_executable(maze_to_scene ${GAME_TESTABLE_SOURCES} ${GAME_HEADERS} editor/maze_to_scene.cpp)
+    target_include_directories(maze_to_scene PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(maze_to_scene PRIVATE engine::platform engine::warnings SDL3::SDL3)
+endif()
