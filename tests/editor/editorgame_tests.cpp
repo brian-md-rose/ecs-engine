@@ -38,9 +38,13 @@ namespace
 		});
 	}
 
+	bool gTestQuit = false; // makes every TestGame ask to quit
+
 	class TestGame final : public ScheduledGame
 	{
 	public:
+		[[nodiscard]] bool WantsToQuit() const override { return gTestQuit; }
+
 		TestGame()
 		{
 			auto& types = world.resources.Emplace<engine::ecs::TypeRegistry>();
@@ -508,4 +512,29 @@ TEST_CASE("A restored autosave goes when the scene is clean again, none is writt
 		CHECK_FALSE(game.IsDirty());
 		CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "_untitled_.json"));
 	}
+}
+
+TEST_CASE("A game that quits stops Play with a message, and Restart plays again from the edit world", "[editor][game]")
+{
+	const auto folder = TempFolder("playquit");
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(folder));
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 5);
+
+	CHECK_FALSE(game.RestartPlay()); // not playing
+	REQUIRE(game.StartPlay());
+	// The play world is a copy: changes made while playing go with Restart.
+	for (const Entity entity : game.PlayWorld()->registry.AllEntities())
+		game.PlayWorld()->registry.Destroy(entity);
+	REQUIRE(game.RestartPlay());
+	REQUIRE(game.IsPlaying());
+	CHECK(game.PlayWorld()->registry.AllEntities().size() == 1);
+
+	gTestQuit = true;
+	game.Update(0.016, engine::input::Input{}, nullptr);
+	gTestQuit = false;
+	CHECK_FALSE(game.IsPlaying());
+	CHECK(game.Message() == "the game quit, so Play stopped");
+	CHECK(game.EditWorld().registry.AllEntities().size() == 1);
 }

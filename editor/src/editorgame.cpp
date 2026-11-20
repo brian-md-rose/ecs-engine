@@ -511,7 +511,18 @@ namespace engine::editor
 		gameInput.mouse = playMouse.mouse;
 		play->Update(dt, gameInput, audio);
 		playMouse.mouse.EndUpdate();
-		if (play->WantsToQuit()) StopPlay(); // the game's Quit ends the run, not the editor
+		if (play->WantsToQuit())
+		{
+			StopPlay(); // the game's Quit ends the run, not the editor
+			message = "the game quit, so Play stopped";
+		}
+	}
+
+	bool EditorGame::RestartPlay()
+	{
+		if (!play) return false;
+		StopPlay();
+		return StartPlay();
 	}
 
 	graphics::Camera EditorGame::CurrentCamera()
@@ -882,8 +893,8 @@ namespace engine::editor
 	}
 
 	// Ctrl+C copy, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N
-	// new, Ctrl+D duplicate and Delete remove the selected entity (with everything under it), F5 Play or Stop. A text
-	// box being typed in keeps its keys, and nothing happens in the middle of a drag.
+	// new, Ctrl+D duplicate and Delete remove the selected entity (with everything under it), F5 Play or Stop, F6
+	// restart Play. A text box being typed in keeps its keys, and nothing happens in the middle of a drag.
 	void EditorGame::HandleShortcuts()
 	{
 		const ImGuiIO& io = ImGui::GetIO();
@@ -899,7 +910,11 @@ namespace engine::editor
 				(void)StartPlay();
 			return;
 		}
-		if (play) return; // the rest edit the scene
+		if (play)
+		{
+			if (ImGui::IsKeyPressed(ImGuiKey_F6, false)) (void)RestartPlay();
+			return; // the rest edit the scene
+		}
 
 		if (io.KeyCtrl)
 		{
@@ -1056,6 +1071,7 @@ namespace engine::editor
 			ImGui::EndMenu();
 		}
 
+		if (play && ImGui::MenuItem("Restart", "F6")) (void)RestartPlay();
 		if (ImGui::MenuItem(play ? "Stop" : "Play", "F5"))
 		{
 			if (play)

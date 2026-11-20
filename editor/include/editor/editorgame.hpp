@@ -220,6 +220,8 @@ namespace engine::editor
 		// ---- play ----
 		bool StartPlay();
 		void StopPlay();
+		// Stops and starts again from the edit world as it is now. False if not playing, or if it can't start.
+		bool RestartPlay();
 		[[nodiscard]] bool IsPlaying() const noexcept { return play != nullptr; }
 
 		[[nodiscard]] ecs::World& EditWorld() { return edit->world; }
