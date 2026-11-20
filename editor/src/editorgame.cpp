@@ -563,7 +563,7 @@ namespace engine::editor
 			dragged.clear();
 			if (movingSelected)
 			{
-				for (const ecs::Entity entity : panels->All())
+				for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
 					if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
 			}
 			dragPixels = {};
@@ -751,7 +751,7 @@ namespace engine::editor
 			if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) by.y += step;
 			if (by.x != 0.0F || by.y != 0.0F)
 			{
-				for (const ecs::Entity entity : panels->All())
+				for (const ecs::Entity entity : SelectionRoots(registry, *panels))
 				{
 					if (const auto at = MovablePosition(registry, entity))
 						(void)SetMovablePosition(

@@ -47,6 +47,10 @@ namespace engine::editor
 	// draw (the standalone editor shows the edit world, and the play world while playing).
 	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, std::function<ecs::World&()> world);
 
+	// The selected entities that have no selected ancestor: what to move or copy so that nothing moves twice (an
+	// entity follows its ancestor).
+	[[nodiscard]] std::vector<ecs::Entity> SelectionRoots(const ecs::Registry& registry, const PanelState& state);
+
 	// Deletes everything selected, each with what is under it, and clears the selection.
 	void DeleteSelection(ecs::Registry& registry, PanelState& state);
 

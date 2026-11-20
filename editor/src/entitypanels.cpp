@@ -626,6 +626,14 @@ namespace engine::editor
 		}
 	} // namespace
 
+	std::vector<ecs::Entity> SelectionRoots(const ecs::Registry& registry, const PanelState& state)
+	{
+		std::vector<ecs::Entity> roots;
+		for (const ecs::Entity entity : state.All())
+			if (registry.IsAlive(entity) && !HasSelectedAncestor(registry, state, entity)) roots.push_back(entity);
+		return roots;
+	}
+
 	void DeleteSelection(ecs::Registry& registry, PanelState& state)
 	{
 		for (const ecs::Entity entity : state.All())
@@ -636,9 +644,8 @@ namespace engine::editor
 	void DuplicateSelection(ecs::Registry& registry, const ecs::TypeRegistry& types, PanelState& state)
 	{
 		std::vector<ecs::Entity> copies;
-		for (const ecs::Entity entity : state.All())
+		for (const ecs::Entity entity : SelectionRoots(registry, state))
 		{
-			if (!registry.IsAlive(entity) || HasSelectedAncestor(registry, state, entity)) continue;
 			ecs::Issues issues;
 			const ecs::Entity copy = DuplicateTree(registry, types, entity, issues);
 			if (!copy.IsNull())

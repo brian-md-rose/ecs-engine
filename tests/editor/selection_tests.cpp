@@ -115,3 +115,28 @@ TEST_CASE("EntitiesInBox finds what a box overlaps, lowest layer first", "[edito
 	CHECK(engine::editor::ScreenRect{0, 0, 10, 10}.Overlaps({9, 9, 5, 5}));
 	CHECK_FALSE(engine::editor::ScreenRect{0, 0, 10, 10}.Overlaps({10, 0, 5, 5})); // touching is not overlapping
 }
+
+TEST_CASE("SelectionRoots leaves out what has a selected ancestor", "[editor][selection]")
+{
+	Registry registry;
+	const Entity a = AddBox(registry, 0, 0);
+	const Entity child = AddBox(registry, 1, 1);
+	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{a});
+	const Entity grandchild = AddBox(registry, 2, 2);
+	registry.Add<engine::ecs::Parent>(grandchild, engine::ecs::Parent{child});
+	const Entity lone = AddBox(registry, 50, 0);
+
+	PanelState state;
+	state.Select(grandchild);
+	state.Toggle(child);
+	state.Toggle(lone);
+	// child is under nothing selected but a is not selected, so child stays; grandchild goes with child.
+	auto roots = engine::editor::SelectionRoots(registry, state);
+	CHECK(roots.size() == 2);
+	CHECK(state.IsSelected(grandchild));
+
+	state.Toggle(a);
+	roots = engine::editor::SelectionRoots(registry, state);
+	REQUIRE(roots.size() == 2); // a and lone
+	CHECK(((roots[0] == a && roots[1] == lone) || (roots[0] == lone && roots[1] == a)));
+}
