@@ -687,9 +687,9 @@ namespace engine::editor
 		openDialog = true;
 	}
 
-	// Ctrl+C copy, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N new, Ctrl+D duplicate and
-	// Delete remove the selected entity (with everything under it), F5 Play or Stop. A text box being typed in keeps
-	// its keys, and nothing happens in the middle of a drag.
+	// Ctrl+C copy, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+N
+	// new, Ctrl+D duplicate and Delete remove the selected entity (with everything under it), F5 Play or Stop. A text
+	// box being typed in keeps its keys, and nothing happens in the middle of a drag.
 	void EditorGame::HandleShortcuts()
 	{
 		const ImGuiIO& io = ImGui::GetIO();
@@ -777,9 +777,9 @@ namespace engine::editor
 		ecs::Issues issues;
 		const std::string text = CopyTrees(registry, EnsureTypes(edit->world), roots, issues);
 		if (text.empty())
-			panels->status = "can't copy: " + (issues.errors.empty() ? std::string("nothing to copy")
-			                                                         : issues.errors.front().path + ": " +
-			                                                               issues.errors.front().message);
+			panels->status = "can't copy: " + (issues.errors.empty()
+			                                       ? std::string("nothing to copy")
+			                                       : issues.errors.front().path + ": " + issues.errors.front().message);
 		else
 			ImGui::SetClipboardText(text.c_str());
 	}
@@ -793,12 +793,15 @@ namespace engine::editor
 		    PasteTrees(edit->world.registry, EnsureTypes(edit->world), text, issues);
 		if (pasted.empty())
 		{
-			panels->status = "can't paste: " + (issues.errors.empty() ? std::string("nothing there")
-			                                                          : issues.errors.front().message);
+			panels->status = "can't paste: " +
+			                 (issues.errors.empty() ? std::string("nothing there") : issues.errors.front().message);
 			return;
 		}
 		panels->Select(pasted.front());
 		panels->extra.assign(pasted.begin() + 1, pasted.end());
+		if (!issues.warnings.empty())
+			panels->status = "pasted, but " + std::to_string(issues.warnings.size()) + " warning(s), e.g. " +
+			                 issues.warnings.front().path + ": " + issues.warnings.front().message;
 	}
 
 	void EditorGame::DrawMenuBar()

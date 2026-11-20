@@ -166,14 +166,19 @@ namespace engine::editor
 		if (all.empty()) return {};
 		ecs::Issues found;
 		const core::JsonValue scene = ecs::SaveScene(registry, types, found, all);
-		// A root's own parent is outside the copy on purpose; SaveScene leaves that field out.
+		// A root's own parent is outside the copy on purpose; SaveScene leaves that field out, and says so with an
+		// error at the entity's own "parent" (not one inside its components).
+		bool failed = false;
 		for (const ecs::Issue& issue : found.errors)
 		{
-			if (issue.message == "the parent is not part of the scene") continue;
+			const bool isParent =
+			    issue.path.ends_with(".parent") && issue.path.find(".components.") == std::string::npos;
+			if (isParent) continue;
 			issues.errors.push_back(issue);
+			failed = true;
 		}
 		issues.warnings.insert(issues.warnings.end(), found.warnings.begin(), found.warnings.end());
-		if (!issues.Ok()) return {};
+		if (failed) return {};
 		return core::FormatJson(scene);
 	}
 

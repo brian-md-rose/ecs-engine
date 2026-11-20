@@ -169,7 +169,8 @@ TEST_CASE("Copied trees can be pasted into the same or another scene", "[editor]
 	CHECK(other.GetComponent<engine::graphics::Transform>(pasted.front()).position.x == 1.0F);
 
 	const std::vector<Entity> again = engine::editor::PasteTrees(registry, types, text, issues);
-	CHECK(again.size() == 1);
+	REQUIRE(again.size() == 1);
+	CHECK_FALSE(registry.HasComponent<engine::ecs::Parent>(again.front()));
 	CHECK(registry.AllEntities().size() == 5);
 	CHECK(registry.IsAlive(top));
 
@@ -177,4 +178,47 @@ TEST_CASE("Copied trees can be pasted into the same or another scene", "[editor]
 	CHECK(engine::editor::PasteTrees(other, types, "not json", bad).empty());
 	CHECK_FALSE(bad.Ok());
 	CHECK(other.AllEntities().size() == 2);
+}
+
+namespace
+{
+	struct Follows
+	{
+		Entity target = Entity::Null;
+	};
+} // namespace
+
+TEST_CASE("Copying more than one root keeps names, and refuses a reference to something not copied",
+          "[editor][selection]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	types.Register<Follows>("Follows").Field("target", &Follows::target);
+	Registry registry;
+	const Entity a = AddBox(registry, 1, 1);
+	registry.Add<engine::ecs::Name>(a, engine::ecs::Name{"first"});
+	const Entity b = AddBox(registry, 2, 2);
+	registry.Add<engine::ecs::Name>(b, engine::ecs::Name{"second"});
+	const Entity c = AddBox(registry, 3, 3);
+	registry.Add<Follows>(c, Follows{a});
+
+	const Entity both[] = {a, b};
+	engine::ecs::Issues issues;
+	const std::string text = engine::editor::CopyTrees(registry, types, both, issues);
+	REQUIRE(issues.Ok());
+	Registry other;
+	const std::vector<Entity> pasted = engine::editor::PasteTrees(other, types, text, issues);
+	REQUIRE(pasted.size() == 2);
+	CHECK(other.GetComponent<engine::ecs::Name>(pasted[0]).value == "first");
+	CHECK(other.GetComponent<engine::ecs::Name>(pasted[1]).value == "second");
+
+	const Entity withRef[] = {c}; // Follows points at a, which is not part of the copy
+	engine::ecs::Issues refused;
+	CHECK(engine::editor::CopyTrees(registry, types, withRef, refused).empty());
+	CHECK_FALSE(refused.Ok());
+
+	// An Issues that already holds an error does not make a good copy fail.
+	engine::ecs::Issues busy;
+	busy.errors.push_back({"earlier", "something"});
+	CHECK_FALSE(engine::editor::CopyTrees(registry, types, both, busy).empty());
 }
