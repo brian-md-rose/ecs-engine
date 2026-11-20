@@ -9,10 +9,12 @@
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
 #include "editor/viewport.hpp"
+#include "graphics/font.hpp"
 #include "graphics/renderer2d.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
+#include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 
 namespace
@@ -278,4 +280,58 @@ TEST_CASE("PlayMouse: a button held when Play starts is not a press, and Reset r
 	CHECK_FALSE(play.mouse.WasReleased(input::MouseButton::Left));
 	CHECK_FALSE(play.AnyOwned());
 	CHECK_FALSE(play.mouse.inside);
+}
+
+TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
+{
+	Registry registry;
+	const Camera camera = MakeCamera();
+
+	const Entity label = registry.Create();
+	registry.Add<Transform>(label, Transform{{20, 10}});
+	registry.Add<engine::graphics::Text>(label, engine::graphics::Text{.value = "HELLO", .scale = 2});
+	// Five letters, 6 pixels each, at scale 2: 60 wide; one line of 8, at scale 2: 16 tall.
+	const auto textRect = EntityScreenRect(registry, label, camera);
+	REQUIRE(textRect.has_value());
+	CHECK(textRect->x == 20.0F);
+	CHECK(textRect->width == 60.0F);
+	CHECK(textRect->height == 16.0F);
+	CHECK(PickEntity(registry, camera, {25, 15}) == label);
+	CHECK(PickEntity(registry, camera, {90, 15}) == Entity::Null);
+
+	// Centred text is drawn around its Transform, so its rectangle starts to the left of it.
+	const Entity centred = registry.Create();
+	registry.Add<Transform>(centred, Transform{{100, 50}});
+	registry.Add<engine::graphics::Text>(centred,
+	                                     engine::graphics::Text{.value = "AB", .align = engine::graphics::Align::Centre});
+	CHECK(EntityScreenRect(registry, centred, camera)->x == 94.0F);
+
+	const Entity panel = registry.Create();
+	registry.Add<Transform>(panel, Transform{{200, 100}});
+	registry.Add<engine::ui::NinePatch>(panel, engine::ui::NinePatch{.width = 40, .height = 30});
+	CHECK(PickEntity(registry, camera, {210, 110}) == panel);
+}
+
+TEST_CASE("ScrollIntoView centres an off-screen rectangle and leaves a visible one", "[editor][viewport]")
+{
+	engine::editor::ViewTransform view;
+	view.zoom = 2.0F;
+	view.panX = 10.0F;
+	view.panY = 0.0F;
+	const float width = 400;
+	const float height = 300;
+
+	// Window x of this rectangle is 10 + 50 * 2 = 110 to 150: showing.
+	CHECK_FALSE(view.ScrollIntoView({50, 50, 20, 20}, width, height));
+	CHECK(view.panX == 10.0F);
+
+	// Window x of 10 + 600 * 2 is far past the right edge: it is centred.
+	CHECK(view.ScrollIntoView({600, 40, 20, 20}, width, height));
+	CHECK(view.panX == 200.0F - 610.0F * 2.0F);
+	CHECK(view.panY == 150.0F - 50.0F * 2.0F);
+	CHECK_FALSE(view.ScrollIntoView({600, 40, 20, 20}, width, height)); // now showing
+
+	// Partly showing counts as showing.
+	view = {};
+	CHECK_FALSE(view.ScrollIntoView({390, 10, 50, 10}, width, height));
 }

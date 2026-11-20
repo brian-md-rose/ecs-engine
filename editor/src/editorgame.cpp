@@ -523,6 +523,17 @@ namespace engine::editor
 			movingSelected = panels->selected != ecs::Entity::Null;
 		}
 		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
+		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen. While
+		// playing the selection is only noted, so Stop does not scroll to a change made during Play.
+		if (panels->selected != shownSelection)
+		{
+			shownSelection = panels->selected;
+			if (!play && shownSelection != ecs::Entity::Null && world.registry.IsAlive(shownSelection))
+			{
+				if (const auto rect = EntityScreenRect(world.registry, shownSelection, camera))
+					(void)view.ScrollIntoView(*rect, max.x - min.x, max.y - min.y);
+			}
+		}
 		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
