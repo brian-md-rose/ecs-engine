@@ -115,6 +115,10 @@ namespace engine::editor
 		void Commit(const std::string& text);
 		bool GoTo(std::size_t position);
 		bool movingSelected = false; // a drag that began on an entity is moving it
+		std::optional<graphics::Position> dragStart; // where the dragged entity was when the drag began
+		graphics::Position dragMoved{};              // how far the pointer has moved since, in the entity's units
+		bool snapToGrid = false;                     // moves land on multiples of snapSize (Ctrl flips this while dragging)
+		int snapSize = 8;
 		ecs::Entity shownSelection = ecs::Entity::Null; // the selection the viewport last looked at, to scroll to a new one
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
