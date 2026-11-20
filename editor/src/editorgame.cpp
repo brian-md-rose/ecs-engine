@@ -488,7 +488,7 @@ namespace engine::editor
 
 		ecs::Registry& registry = edit->world.registry;
 		if (panels->selected.IsNull() || !registry.IsAlive(panels->selected)) return;
-		if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+		if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt)
 		{
 			DestroyTree(registry, panels->selected);
 			panels->selected = ecs::Entity::Null;
