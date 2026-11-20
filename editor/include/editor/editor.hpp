@@ -1,6 +1,7 @@
 #pragma once
 
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -47,6 +48,10 @@ namespace engine::editor
 		// The size the panel called name opens at the first time (a saved layout wins later); false when there is none.
 		bool SetPanelSize(std::string_view name, float width, float height);
 
+		// Where Dear ImGui keeps the panels' positions and sizes between runs (an .ini file, written as they change
+		// and read at the next start). Call before the editor is attached; empty, the default, keeps none.
+		void SetLayoutFile(std::filesystem::path file) { layoutFile = std::move(file); }
+
 		[[nodiscard]] bool IsVisible() const noexcept { return visible; }
 		void SetVisible(bool shown) noexcept { visible = shown; }
 
@@ -70,7 +75,9 @@ namespace engine::editor
 		void DrawUi();
 		void DrawAbout();
 
-		void* renderer = nullptr; // the SDL_Renderer*, kept for Draw
+		void* renderer = nullptr;         // the SDL_Renderer*, kept for Draw
+		std::filesystem::path layoutFile; // kept alive for ImGuiIO::IniFilename
+		std::string layoutFileText;
 		bool attached = false;
 		bool visible = false;
 		bool showAbout = false;

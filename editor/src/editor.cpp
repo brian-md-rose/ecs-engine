@@ -73,7 +73,9 @@ namespace engine::editor
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
-		io.IniFilename = nullptr; // no imgui.ini next to wherever the game was started from
+		// No imgui.ini next to wherever the game was started from; a layout file only where the game says.
+		layoutFileText = layoutFile.string();
+		io.IniFilename = layoutFileText.empty() ? nullptr : layoutFileText.c_str();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ImGui::StyleColorsDark();
 		if (!ImGui_ImplSDL3_InitForSDLRenderer(window, sdlRenderer))
