@@ -65,6 +65,10 @@ namespace engine::editor
 
 		// Zooms by factor, keeping the picture pixel under the window point where it is.
 		void ZoomAt(float factor, graphics::Position window, graphics::Position origin) noexcept;
+
+		// If rect (picture pixels) is wholly outside a view of width by height window pixels, pans so its middle is in
+		// the middle of the view and returns true. A rectangle that shows, even partly, is left alone (false).
+		bool ScrollIntoView(const ScreenRect& rect, float width, float height) noexcept;
 	};
 } // namespace engine::editor
 

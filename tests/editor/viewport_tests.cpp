@@ -9,9 +9,9 @@
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
 #include "editor/viewport.hpp"
+#include "graphics/font.hpp"
 #include "graphics/renderer2d.hpp"
 #include "graphics/screenspace.hpp"
-#include "graphics/font.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 #include "ui/ninepatch.hpp"
@@ -310,4 +310,28 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 	registry.Add<Transform>(panel, Transform{{200, 100}});
 	registry.Add<engine::ui::NinePatch>(panel, engine::ui::NinePatch{.width = 40, .height = 30});
 	CHECK(PickEntity(registry, camera, {210, 110}) == panel);
+}
+
+TEST_CASE("ScrollIntoView centres an off-screen rectangle and leaves a visible one", "[editor][viewport]")
+{
+	engine::editor::ViewTransform view;
+	view.zoom = 2.0F;
+	view.panX = 10.0F;
+	view.panY = 0.0F;
+	const float width = 400;
+	const float height = 300;
+
+	// Window x of this rectangle is 10 + 50 * 2 = 110 to 150: showing.
+	CHECK_FALSE(view.ScrollIntoView({50, 50, 20, 20}, width, height));
+	CHECK(view.panX == 10.0F);
+
+	// Window x of 10 + 600 * 2 is far past the right edge: it is centred.
+	CHECK(view.ScrollIntoView({600, 40, 20, 20}, width, height));
+	CHECK(view.panX == 200.0F - 610.0F * 2.0F);
+	CHECK(view.panY == 150.0F - 50.0F * 2.0F);
+	CHECK_FALSE(view.ScrollIntoView({600, 40, 20, 20}, width, height)); // now showing
+
+	// Partly showing counts as showing.
+	view = {};
+	CHECK_FALSE(view.ScrollIntoView({390, 10, 50, 10}, width, height));
 }

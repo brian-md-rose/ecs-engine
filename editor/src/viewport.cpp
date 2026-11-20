@@ -190,3 +190,16 @@ namespace engine::editor
 		return false;
 	}
 } // namespace engine::editor
+
+namespace engine::editor
+{
+	bool ViewTransform::ScrollIntoView(const ScreenRect& rect, float width, float height) noexcept
+	{
+		const graphics::Position a = ToWindow({rect.x, rect.y}, {0, 0});
+		const graphics::Position b = ToWindow({rect.x + rect.width, rect.y + rect.height}, {0, 0});
+		if (a.x < width && b.x > 0 && a.y < height && b.y > 0) return false;
+		panX = width / 2.0F - (rect.x + rect.width / 2.0F) * zoom;
+		panY = height / 2.0F - (rect.y + rect.height / 2.0F) * zoom;
+		return true;
+	}
+} // namespace engine::editor
