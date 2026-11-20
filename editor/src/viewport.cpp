@@ -1,6 +1,7 @@
 #include "editor/viewport.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 #include "ecs/hierarchy.hpp"
@@ -95,6 +96,60 @@ namespace engine::editor
 			}
 		}
 		return best;
+	}
+
+	std::optional<graphics::Position> MovablePosition(const ecs::Registry& registry, ecs::Entity entity)
+	{
+		if (!registry.IsAlive(entity)) return std::nullopt;
+		if (registry.HasComponent<ecs::Parent>(entity))
+		{
+			if (const auto* local = registry.TryGetComponent<graphics::LocalTransform>(entity)) return local->position;
+		}
+		if (const auto* transform = registry.TryGetComponent<graphics::Transform>(entity)) return transform->position;
+		return std::nullopt;
+	}
+
+	bool SetMovablePosition(ecs::Registry& registry, ecs::Entity entity, graphics::Position position)
+	{
+		if (!registry.IsAlive(entity)) return false;
+		if (registry.HasComponent<ecs::Parent>(entity))
+		{
+			if (auto* local = registry.TryGetComponent<graphics::LocalTransform>(entity))
+			{
+				local->position = position;
+				return true;
+			}
+		}
+		if (auto* transform = registry.TryGetComponent<graphics::Transform>(entity))
+		{
+			transform->position = position;
+			return true;
+		}
+		return false;
+	}
+
+	float UnitsPerPixel(const ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera)
+	{
+		return IsScreenSpace(registry, entity) ? 1.0F : 1.0F / static_cast<float>(camera.EffectiveZoom());
+	}
+
+	graphics::Position DragTarget(graphics::Position start, graphics::Position moved, bool axisLock,
+	                              float grid) noexcept
+	{
+		if (axisLock)
+		{
+			if (std::abs(moved.x) >= std::abs(moved.y))
+				moved.y = 0;
+			else
+				moved.x = 0;
+		}
+		graphics::Position target{start.x + moved.x, start.y + moved.y};
+		if (grid > 0)
+		{
+			target.x = std::round(target.x / grid) * grid;
+			target.y = std::round(target.y / grid) * grid;
+		}
+		return target;
 	}
 
 	bool MoveEntity(ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera,

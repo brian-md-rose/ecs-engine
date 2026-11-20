@@ -11,6 +11,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- Moving entities in the editor's Viewport: a Snap toggle and grid size, Ctrl to flip snapping and Shift to lock an axis while dragging, and arrow-key nudging (Shift for a grid step). `DragTarget`, `MovablePosition`, `SetMovablePosition` and `UnitsPerPixel` in `editor/viewport.hpp`.
+
 - Picking in the editor's Viewport now covers `Text` and `NinePatch` entities, and selecting an off-screen entity in the Hierarchy scrolls the Viewport to it.
 
 - The game now loads its maze from `scenes/level1.json` (`LoadMazeScene`) and `game/assets/mazes/level1.txt` is removed, so the scene is the only source of the layout. `maze_to_scene` stays as an import tool for new levels written as text.

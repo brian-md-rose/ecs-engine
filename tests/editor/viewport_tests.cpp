@@ -335,3 +335,56 @@ TEST_CASE("ScrollIntoView centres an off-screen rectangle and leaves a visible o
 	view = {};
 	CHECK_FALSE(view.ScrollIntoView({390, 10, 50, 10}, width, height));
 }
+
+TEST_CASE("DragTarget adds the movement, locks to one axis and snaps to a grid", "[editor][viewport]")
+{
+	using engine::editor::DragTarget;
+	const Position start{10, 10};
+
+	const Position free = DragTarget(start, {5, -3}, false, 0);
+	CHECK(free.x == 15.0F);
+	CHECK(free.y == 7.0F);
+
+	const Position horizontal = DragTarget(start, {5, -3}, true, 0);
+	CHECK(horizontal.x == 15.0F);
+	CHECK(horizontal.y == 10.0F);
+	const Position vertical = DragTarget(start, {2, -9}, true, 0);
+	CHECK(vertical.x == 10.0F);
+	CHECK(vertical.y == 1.0F);
+
+	const Position snapped = DragTarget(start, {5, -3}, false, 8);
+	CHECK(snapped.x == 16.0F); // 15 rounds to 16
+	CHECK(snapped.y == 8.0F);  // 7 rounds to 8
+	const Position both = DragTarget({0, 0}, {13, 2}, true, 8);
+	CHECK(both.x == 16.0F);
+	CHECK(both.y == 0.0F);
+}
+
+TEST_CASE("MovablePosition is the LocalTransform of a child and the Transform of anything else", "[editor][viewport]")
+{
+	using engine::editor::MovablePosition;
+	using engine::editor::SetMovablePosition;
+	using engine::editor::UnitsPerPixel;
+	Registry registry;
+	Camera camera = MakeCamera();
+	camera.zoom = 2;
+
+	const Entity plain = AddBox(registry, 4, 6, 5);
+	CHECK(MovablePosition(registry, plain)->x == 4.0F);
+	REQUIRE(SetMovablePosition(registry, plain, {9, 1}));
+	CHECK(registry.GetComponent<Transform>(plain).position.x == 9.0F);
+	CHECK(UnitsPerPixel(registry, plain, camera) == 0.5F);
+
+	const Entity parent = AddBox(registry, 100, 100, 5);
+	const Entity child = AddBox(registry, 100, 100, 5);
+	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{parent});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{3, 4}});
+	CHECK(MovablePosition(registry, child)->x == 3.0F);
+	REQUIRE(SetMovablePosition(registry, child, {7, 8}));
+	CHECK(registry.GetComponent<engine::graphics::LocalTransform>(child).position.y == 8.0F);
+	CHECK(registry.GetComponent<Transform>(child).position.x == 100.0F);
+
+	registry.Add<engine::graphics::ScreenSpace>(plain);
+	CHECK(UnitsPerPixel(registry, plain, camera) == 1.0F);
+	CHECK_FALSE(MovablePosition(registry, registry.Create()).has_value());
+}

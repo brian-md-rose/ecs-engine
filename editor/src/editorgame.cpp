@@ -436,6 +436,17 @@ namespace engine::editor
 		                 : "%.0f%%   wheel zooms, middle or right drag pans, click selects",
 		            static_cast<double>(view.zoom) * 100.0);
 
+		if (!play)
+		{
+			ImGui::SameLine();
+			ImGui::Checkbox("Snap", &snapToGrid);
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Dragging and nudging land on multiples of the grid size.\nHold Ctrl while dragging to flip it; Shift keeps one axis.");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(56.0F);
+			ImGui::InputInt("grid", &snapSize, 0);
+			snapSize = std::clamp(snapSize, 1, 256);
+		}
 		// The grid tool's palette, when the scene being edited has a grid (a maze).
 		std::optional<GridInfo> grid;
 		if (!play && config.gridTool.grid) grid = config.gridTool.grid(edit->world);
@@ -473,6 +484,7 @@ namespace engine::editor
 		size.y = std::max(size.y, 16.0F);
 		ImGui::InvisibleButton("##viewport", size, ImGuiButtonFlags_MouseButtonLeft);
 		const bool hovered = ImGui::IsItemHovered();
+		viewportActive = hovered || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 		const ImVec2 min = ImGui::GetItemRectMin();
 		const ImVec2 max = ImGui::GetItemRectMax();
 		const graphics::Position origin{min.x, min.y};
@@ -521,6 +533,8 @@ namespace engine::editor
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			panels->selected = PickEntity(world.registry, camera, picture);
 			movingSelected = panels->selected != ecs::Entity::Null;
+			dragStart = MovablePosition(world.registry, panels->selected);
+			dragMoved = {};
 		}
 		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
 		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen. While
@@ -537,9 +551,18 @@ namespace engine::editor
 		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
-			// The pointer's movement over the picture, in the picture's pixels.
-			(void)MoveEntity(world.registry, panels->selected, camera,
-			                 {io.MouseDelta.x / view.zoom, io.MouseDelta.y / view.zoom});
+			// The pointer's movement over the picture, in the picture's pixels, in the entity's units. Shift keeps one
+			// axis; the grid applies when snapping is on, and Ctrl flips that for the drag.
+			const float units = UnitsPerPixel(world.registry, panels->selected, camera) / view.zoom;
+			dragMoved.x += io.MouseDelta.x * units;
+			dragMoved.y += io.MouseDelta.y * units;
+			if (dragStart)
+			{
+				const bool snapping = snapToGrid != io.KeyCtrl;
+				(void)SetMovablePosition(world.registry, panels->selected,
+				                         DragTarget(*dragStart, dragMoved, io.KeyShift,
+				                                    snapping ? static_cast<float>(snapSize) : 0.0F));
+			}
 		}
 		if (painting) PaintStroke(*grid, origin, draw);
 		if (panels->selected != ecs::Entity::Null && world.registry.IsAlive(panels->selected))
@@ -598,6 +621,8 @@ namespace engine::editor
 	void EditorGame::HandleShortcuts()
 	{
 		const ImGuiIO& io = ImGui::GetIO();
+		const bool inViewport = viewportActive; // set again by the Viewport if it is drawn this frame
+		viewportActive = false;
 		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
@@ -647,6 +672,23 @@ namespace engine::editor
 			else if (!issues.errors.empty())
 				panels->status =
 				    "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
+		}
+		else if (!io.KeyCtrl && !io.KeyAlt && inViewport)
+		{
+			// Arrow keys nudge the selection one unit (Shift, or Snap on: one grid step, landing on the grid). Only while
+			// the Viewport has the pointer or focus, so arrowing through a list or tree elsewhere moves nothing.
+			const float step = io.KeyShift || snapToGrid ? static_cast<float>(snapSize) : 1.0F;
+			graphics::Position by{};
+			if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) by.x -= step;
+			if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) by.x += step;
+			if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) by.y -= step;
+			if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) by.y += step;
+			if (by.x != 0.0F || by.y != 0.0F)
+			{
+				if (const auto at = MovablePosition(registry, panels->selected))
+					(void)SetMovablePosition(registry, panels->selected,
+					                         DragTarget(*at, by, false, snapToGrid ? static_cast<float>(snapSize) : 0.0F));
+			}
 		}
 	}
 
