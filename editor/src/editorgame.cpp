@@ -9,6 +9,7 @@
 #include <system_error>
 #include <utility>
 
+#include "core/files.hpp"
 #include "core/json.hpp"
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
@@ -115,8 +116,10 @@ namespace engine::editor
 			{
 				message.clear();
 				shownIssues.clear();
+				editor.SetPanelOpen("Issues", false); // ShowIssues opened it; a silent start should stay silent
 			}
 		}
+		if (sceneName.empty()) OfferRecovery(); // changes to a new scene that was never saved
 	}
 
 	// Replaces what the Issues panel lists. Nothing to list clears it; anything to list opens it.
@@ -151,6 +154,93 @@ namespace engine::editor
 		}
 	}
 
+	std::filesystem::path EditorGame::AutosavePath() const
+	{
+		if (config.autosaveFolder.empty()) return {};
+		return config.autosaveFolder / (sceneName.empty() ? std::string("_untitled_.json") : sceneName);
+	}
+
+	void EditorGame::DropAutosave()
+	{
+		const std::filesystem::path file = AutosavePath();
+		if (file.empty()) return;
+		std::error_code ignored;
+		std::filesystem::remove(file, ignored);
+	}
+
+	bool EditorGame::WriteAutosave()
+	{
+		lastAutosave = std::chrono::steady_clock::now();
+		const std::filesystem::path file = AutosavePath();
+		if (file.empty() || play) return false;
+		// Compared directly, not through CheckDirty, which would also add an undo step in the middle of an edit.
+		const std::string text = SceneText();
+		if (text == savedText)
+		{
+			DropAutosave(); // changes undone or saved: nothing left to bring back
+			autosaveWritten = false;
+			return false;
+		}
+		std::error_code ignored;
+		std::filesystem::create_directories(file.parent_path(), ignored);
+		// Atomically, so a crash in the middle leaves the last whole autosave and not half of one.
+		autosaveWritten = core::WriteFileAtomic(file, text + '\n');
+		return autosaveWritten;
+	}
+
+	// After a scene is opened (or the editor starts on a new one): an autosave newer than the file is a crash or a
+	// close with unsaved changes, so ask.
+	void EditorGame::OfferRecovery()
+	{
+		const std::filesystem::path file = AutosavePath();
+		if (file.empty()) return;
+		std::error_code error;
+		const auto saved = std::filesystem::last_write_time(file, error);
+		if (error) return;
+		if (!sceneName.empty())
+		{
+			const auto scene = std::filesystem::last_write_time(config.sceneFolder / sceneName, error);
+			if (!error && saved <= scene)
+			{
+				DropAutosave(); // older than the file: the changes were saved after it
+				return;
+			}
+		}
+		dialog = Dialog::Recover;
+		openDialog = true;
+	}
+
+	bool EditorGame::AcceptRecovery()
+	{
+		dialog = Dialog::None;
+		const std::filesystem::path file = AutosavePath();
+		if (file.empty()) return false;
+		ecs::World& world = edit->world;
+		const std::vector<ecs::Entity> before = world.registry.AllEntities();
+		const ecs::SceneLoadResult loaded = ecs::LoadSceneFile(world.registry, EnsureTypes(world), file);
+		if (!loaded.Ok())
+		{
+			message = "can't restore the autosave: " + FirstProblem(loaded.issues);
+			ShowIssues("restoring the autosave", loaded.issues);
+			return false;
+		}
+		for (const ecs::Entity entity : before)
+			world.registry.Destroy(entity);
+		if (config.afterLoad) config.afterLoad(world);
+		ResetHistory();
+		autosaveWritten = true; // the file is still there; it goes when the scene is clean again
+		CheckDirty();           // against the saved text, so the restored scene shows as unsaved
+		message.clear();
+		panels->Select(ecs::Entity::Null);
+		return true;
+	}
+
+	void EditorGame::DeclineRecovery()
+	{
+		dialog = Dialog::None;
+		DropAutosave();
+	}
+
 	void EditorGame::Remember(std::string name) // by value: it may be an element of recent
 	{
 		recent.erase(std::remove(recent.begin(), recent.end(), name), recent.end());
@@ -182,6 +272,11 @@ namespace engine::editor
 		framesSinceCheck = 0;
 		const std::string text = SceneText();
 		dirty = text != savedText;
+		if (!dirty && autosaveWritten)
+		{
+			DropAutosave(); // changes undone or saved: nothing left to bring back
+			autosaveWritten = false;
+		}
 		if (!play && !history.empty() && text != history[historyPos]) problemsStale = true;
 		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
 	}
@@ -268,6 +363,7 @@ namespace engine::editor
 	void EditorGame::NewScene()
 	{
 		if (play) StopPlay();
+		DropAutosave(); // the changes were given up (or saved) by now
 		ClearWorld(edit->world);
 		if (config.afterLoad) config.afterLoad(edit->world);
 		sceneName.clear();
@@ -300,6 +396,7 @@ namespace engine::editor
 		for (const ecs::Entity entity : before)
 			world.registry.Destroy(entity);
 		if (config.afterLoad) config.afterLoad(world);
+		if (dirty || !sceneName.empty()) DropAutosave(); // the old scene's changes were given up
 		sceneName = name;
 		Remember(name);
 		savedText = SceneText();
@@ -310,6 +407,7 @@ namespace engine::editor
 		              : std::to_string(loaded.issues.warnings.size()) + " warning(s) opening " + name;
 		ShowIssues("opening " + name, loaded.issues);
 		panels->Select(ecs::Entity::Null);
+		OfferRecovery();
 		return true;
 	}
 
@@ -336,7 +434,9 @@ namespace engine::editor
 			ShowIssues("saving " + file, issues);
 			return false;
 		}
+		DropAutosave(); // of the name it had
 		sceneName = file;
+		DropAutosave(); // and of the name it has now
 		Remember(file);
 		savedText = SceneText();
 		dirty = false;
@@ -437,6 +537,10 @@ namespace engine::editor
 				wasBusy = false;
 				CheckDirty();
 			}
+			if (!busy && config.autosaveSeconds > 0 && dirty && dialog != Dialog::Recover &&
+			    std::chrono::duration<double>(std::chrono::steady_clock::now() - lastAutosave).count() >=
+			        config.autosaveSeconds)
+				(void)WriteAutosave();
 		}
 
 		// Into a picture the viewport shows (made again only when the game's screen size changes, so a failure is
@@ -998,6 +1102,28 @@ namespace engine::editor
 				{
 					dialog = Dialog::None;
 					pendingAction = Action::None;
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndPopup();
+			}
+		}
+		else if (dialog == Dialog::Recover)
+		{
+			if (openDialog) ImGui::OpenPopup("Unsaved changes found");
+			openDialog = false;
+			if (ImGui::BeginPopupModal("Unsaved changes found", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				ImGui::Text("%s has an autosave newer than its file, from changes that were never saved.",
+				            sceneName.empty() ? "The new scene" : sceneName.c_str());
+				if (ImGui::Button("Restore them"))
+				{
+					(void)AcceptRecovery();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Throw them away"))
+				{
+					DeclineRecovery();
 					ImGui::CloseCurrentPopup();
 				}
 				ImGui::EndPopup();
