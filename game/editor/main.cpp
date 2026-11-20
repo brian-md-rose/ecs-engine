@@ -127,6 +127,8 @@ int main(int argc, char** argv)
 
 	Application app(game::MazeGame::kConfig);
 	engine::editor::Editor editor;
+	// Panel positions and the scenes last opened are kept with the log, so the next start picks up where this left off.
+	if (!logFolder.empty()) editor.SetLayoutFile(logFolder / "editor-layout.ini");
 
 	if (overlay)
 	{
@@ -137,11 +139,13 @@ int main(int argc, char** argv)
 		return app.Run(game);
 	}
 
-	engine::editor::EditorGame game(editor, {.makeGame = MakeEditedGame,
-	                                         .afterLoad = ResolveAfterLoad,
-	                                         .sceneFolder = SceneFolder(),
-	                                         .onPlay = StartPlay,
-	                                         .gridTool = MazePainter()});
+	engine::editor::EditorGame game(
+	    editor, {.makeGame = MakeEditedGame,
+	             .afterLoad = ResolveAfterLoad,
+	             .sceneFolder = SceneFolder(),
+	             .recentFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-recent.txt",
+	             .onPlay = StartPlay,
+	             .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
 	editor.SetVisible(true);
 	app.SetEditorHost(&editor);

@@ -295,3 +295,39 @@ TEST_CASE("onPlay is called on the play world after the scene is loaded", "[edit
 	CHECK_FALSE(game.IsPlaying());
 	CHECK(game.Message().find("no player start") != std::string::npos);
 }
+
+TEST_CASE("The last scene is reopened at the next start, newest first", "[editor][game]")
+{
+	const auto folder = TempFolder("recent");
+	EditorGameConfig config = MakeConfig(folder);
+	config.recentFile = folder / "state" / "recent.txt";
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		CHECK(game.SceneName().empty()); // nothing remembered yet
+		AddMover(game.EditWorld(), "a", 5);
+		REQUIRE(game.SaveSceneAs("first"));
+		game.NewScene();
+		AddMover(game.EditWorld(), "b", 6);
+		AddMover(game.EditWorld(), "c", 7);
+		REQUIRE(game.SaveSceneAs("second"));
+		REQUIRE(game.OpenScene("first.json"));
+	}
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		CHECK(game.SceneName() == "first.json");
+		CHECK(game.EditWorld().registry.AllEntities().size() == 1);
+		CHECK_FALSE(game.IsDirty());
+	}
+
+	// A remembered scene that is gone leaves a new scene and no complaint.
+	std::filesystem::remove(folder / "first.json");
+	engine::editor::Editor editor;
+	EditorGame game(editor, config);
+	REQUIRE(game.IsValid());
+	CHECK(game.SceneName().empty());
+	CHECK(game.Message().empty());
+}

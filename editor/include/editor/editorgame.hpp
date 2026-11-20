@@ -36,6 +36,10 @@ namespace engine::editor
 		// Where scenes (.json files) are listed for Open, and written for Save.
 		std::filesystem::path sceneFolder;
 
+		// A text file where the names of the scenes last opened or saved are kept, newest first, so the editor can
+		// reopen the last one at the next start and list the rest under Open recent. Empty keeps none.
+		std::filesystem::path recentFile = {};
+
 		// Called on the play world after its scene is loaded and afterLoad has run, before its first update, for a game
 		// that needs to start itself on what the scene holds (Tangle Run starts on its maze when the scene is one).
 		// Returns what is wrong, if the scene can't be played (shown in the menu bar, and Play does not start), or an
@@ -76,8 +80,9 @@ namespace engine::editor
 		std::unique_ptr<application::ScheduledGame> play;
 		std::shared_ptr<PanelState> panels;
 
-		std::string sceneName; // the file name of the open scene, empty for a new one
-		std::string savedText; // the scene as last saved or loaded, to see changes against
+		std::string sceneName;           // the file name of the open scene, empty for a new one
+		std::vector<std::string> recent; // scene file names last opened or saved, newest first
+		std::string savedText;           // the scene as last saved or loaded, to see changes against
 		bool dirty = false;
 		int framesSinceCheck = 0;
 		std::string message; // the last problem, shown in the menu bar
@@ -95,6 +100,7 @@ namespace engine::editor
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
 		// The grid tool's brush: select (the usual click and drag), a palette entry (its index), or erase.
+		static constexpr std::size_t kRecentScenes = 8; // how many scene names are kept
 		static constexpr int kBrushSelect = -1;
 		static constexpr int kBrushErase = -2;
 		int brush = kBrushSelect;
@@ -145,6 +151,7 @@ namespace engine::editor
 		void DrawDialogs();
 		void SaveOrAsk();
 		void HandleShortcuts();
+		void Remember(std::string name);
 		void CopySelection();
 		void PasteClipboard();
 

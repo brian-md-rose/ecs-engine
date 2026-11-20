@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <system_error>
 #include <utility>
 
@@ -86,6 +87,33 @@ namespace engine::editor
 		editor.SetPanelSize("Viewport", 700, 480);
 		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
+
+		if (!config.recentFile.empty())
+		{
+			std::ifstream in(config.recentFile);
+			std::string line;
+			while (recent.size() < kRecentScenes && std::getline(in, line))
+			{
+				if (!line.empty() && line.back() == '\r') line.pop_back();
+				if (IsPlainName(line) && std::find(recent.begin(), recent.end(), line) == recent.end())
+					recent.push_back(line);
+			}
+			// The scene that was open last time, if it is still there; a failure leaves a new scene and no message.
+			if (!recent.empty() && !OpenScene(recent.front())) message.clear();
+		}
+	}
+
+	void EditorGame::Remember(std::string name) // by value: it may be an element of recent
+	{
+		recent.erase(std::remove(recent.begin(), recent.end(), name), recent.end());
+		recent.insert(recent.begin(), name);
+		if (recent.size() > kRecentScenes) recent.resize(kRecentScenes);
+		if (config.recentFile.empty()) return;
+		std::error_code ignored;
+		std::filesystem::create_directories(config.recentFile.parent_path(), ignored);
+		std::ofstream out(config.recentFile, std::ios::trunc);
+		for (const std::string& item : recent)
+			out << item << '\n';
 	}
 
 	std::string EditorGame::SceneText()
@@ -222,6 +250,7 @@ namespace engine::editor
 			world.registry.Destroy(entity);
 		if (config.afterLoad) config.afterLoad(world);
 		sceneName = name;
+		Remember(name);
 		savedText = SceneText();
 		ResetHistory();
 		dirty = false;
@@ -255,6 +284,7 @@ namespace engine::editor
 			return false;
 		}
 		sceneName = file;
+		Remember(file);
 		savedText = SceneText();
 		dirty = false;
 		message.clear();
@@ -836,6 +866,12 @@ namespace engine::editor
 				{
 					if (ImGui::MenuItem(name.c_str(), nullptr, name == sceneName)) Request(Action::Open, name);
 				}
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Open recent", !recent.empty()))
+			{
+				for (const std::string& name : std::vector<std::string>(recent))
+					if (ImGui::MenuItem(name.c_str(), nullptr, name == sceneName)) Request(Action::Open, name);
 				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem("Save", "Ctrl+S", false, !play))
