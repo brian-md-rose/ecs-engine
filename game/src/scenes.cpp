@@ -6,6 +6,7 @@
 #include "core/log.hpp"
 #include "core/text.hpp"
 #include "ecs/scene.hpp"
+#include "mazescene.hpp"
 #include "menuui.hpp"
 #include "screens.hpp"
 #include "uidemo.hpp"
@@ -51,6 +52,7 @@ namespace game
 	void RegisterGameComponents(engine::ecs::TypeRegistry& types)
 	{
 		RegisterUiDemoComponents(types);
+		RegisterMazeComponents(types);
 		types.Register<MenuButton>("MenuButton")
 		    .EnumField("menu", &MenuButton::menu,
 		               {{"Title", MenuId::Title},
