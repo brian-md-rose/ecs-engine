@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - Multi-select in the standalone editor: Ctrl or Shift click in the Hierarchy and the Viewport, a drag box in the Viewport, and move, nudge, Delete and Duplicate on the whole selection. `PanelState` gained `extra`, `All`, `Select`, `Toggle` and `Prune`; `DeleteSelection`, `DuplicateSelection` (`editor/entitypanels.hpp`) and `EntitiesInBox` (`editor/viewport.hpp`) are new.
 
 - Moving entities in the editor's Viewport: a Snap toggle and grid size, Ctrl to flip snapping and Shift to lock an axis while dragging, and arrow-key nudging (Shift for a grid step). `DragTarget`, `MovablePosition`, `SetMovablePosition` and `UnitsPerPixel` in `editor/viewport.hpp`.

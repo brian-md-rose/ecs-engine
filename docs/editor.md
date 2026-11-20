@@ -75,7 +75,7 @@ ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out
 
 ## Shortcuts
 
-In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop. While playing only F5 works. None of them act while a text box has focus, a drag is in progress or a dialog is open.
+In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+C copy and Ctrl+V paste the selected entities (each with what is under it, as scene text on the clipboard, so a paste can go into another scene or be saved in a text file; it fails with a message if a copied entity refers to one that was not copied), Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop. While playing only F5 works. None of them act while a text box has focus, a drag is in progress or a dialog is open.
 
 ## Painting a grid scene
 
