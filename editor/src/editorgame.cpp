@@ -136,9 +136,13 @@ namespace engine::editor
 		if (!parsed.value) return false;
 		ecs::World& world = edit->world;
 		const std::vector<ecs::Entity> before = world.registry.AllEntities();
-		std::size_t selectedIndex = before.size();
-		for (std::size_t i = 0; i < before.size(); ++i)
-			if (before[i] == panels->selected) selectedIndex = i;
+		// The selection is kept by position in the entity list, since undo gives every entity a new id.
+		std::vector<std::size_t> selectedIndexes;
+		for (const ecs::Entity chosen : panels->All())
+		{
+			const auto at = std::find(before.begin(), before.end(), chosen);
+			if (at != before.end()) selectedIndexes.push_back(static_cast<std::size_t>(at - before.begin()));
+		}
 
 		problemsStale = true;
 		const ecs::SceneLoadResult loaded = ecs::LoadScene(world.registry, EnsureTypes(world), *parsed.value);
@@ -151,9 +155,16 @@ namespace engine::editor
 			world.registry.Destroy(entity);
 		if (config.afterLoad) config.afterLoad(world);
 
-		panels->selected = ecs::Entity::Null;
+		panels->Select(ecs::Entity::Null);
 		const std::vector<ecs::Entity> after = world.registry.AllEntities();
-		if (selectedIndex < after.size()) panels->selected = after[selectedIndex];
+		for (const std::size_t index : selectedIndexes)
+		{
+			if (index >= after.size()) continue;
+			if (panels->selected.IsNull())
+				panels->selected = after[index];
+			else
+				panels->extra.push_back(after[index]);
+		}
 
 		historyPos = position;
 		history[position] = SceneText(); // as this world writes it, so the next check sees no change
@@ -187,7 +198,7 @@ namespace engine::editor
 		ResetHistory();
 		dirty = false;
 		message.clear();
-		panels->selected = ecs::Entity::Null;
+		panels->Select(ecs::Entity::Null);
 	}
 
 	bool EditorGame::OpenScene(const std::string& name)
@@ -217,7 +228,7 @@ namespace engine::editor
 		message = loaded.issues.warnings.empty()
 		              ? std::string()
 		              : std::to_string(loaded.issues.warnings.size()) + " warning(s) opening " + name;
-		panels->selected = ecs::Entity::Null;
+		panels->Select(ecs::Entity::Null);
 		return true;
 	}
 
@@ -287,7 +298,7 @@ namespace engine::editor
 		play = std::move(game);
 		playMouse.Reset();
 		message.clear();
-		panels->selected = ecs::Entity::Null;
+		panels->Select(ecs::Entity::Null);
 		return true;
 	}
 
@@ -296,7 +307,7 @@ namespace engine::editor
 		if (!play) return;
 		playMouse.Reset();
 		play.reset();
-		panels->selected = ecs::Entity::Null;
+		panels->Select(ecs::Entity::Null);
 	}
 
 	void EditorGame::Update(double dt, const input::Input& input, audio::AudioDevice* audio)
@@ -441,7 +452,8 @@ namespace engine::editor
 			ImGui::SameLine();
 			ImGui::Checkbox("Snap", &snapToGrid);
 			if (ImGui::IsItemHovered())
-				ImGui::SetTooltip("Dragging and nudging land on multiples of the grid size.\nHold Ctrl while dragging to flip it; Shift keeps one axis.");
+				ImGui::SetTooltip("Dragging and nudging land on multiples of the grid size.\nHold Ctrl while dragging "
+				                  "to flip it; Shift keeps one axis.");
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(56.0F);
 			ImGui::InputInt("grid", &snapSize, 0);
@@ -526,17 +538,46 @@ namespace engine::editor
 
 		ecs::World& world = CurrentWorld();
 		const graphics::Camera camera = CurrentCamera();
-		// Press selects what is under the pointer (or nothing); dragging from there moves it, so the selected
-		// entity can be dragged without a separate handle.
+		// Press selects what is under the pointer; dragging from there moves it (and the rest of the selection it is
+		// part of), so no separate handle is needed. Ctrl or Shift adds to the selection or takes the entity out of it.
+		// A press on empty space starts a box: what it covers when released is selected (added to the selection with
+		// Ctrl or Shift).
 		if (!play && !painting && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
-			panels->selected = PickEntity(world.registry, camera, picture);
-			movingSelected = panels->selected != ecs::Entity::Null;
-			dragStart = MovablePosition(world.registry, panels->selected);
-			dragMoved = {};
+			const ecs::Entity picked = PickEntity(world.registry, camera, picture);
+			const bool add = io.KeyCtrl || io.KeyShift;
+			boxStart.reset();
+			movingSelected = false;
+			if (add && !picked.IsNull())
+				panels->Toggle(picked);
+			else if (!picked.IsNull() && !panels->IsSelected(picked))
+				panels->Select(picked);
+			else if (picked.IsNull())
+			{
+				boxStart = picture;
+				boxBase = add ? panels->All() : std::vector<ecs::Entity>{};
+				if (!add) panels->Select(ecs::Entity::Null);
+			}
+			movingSelected = !picked.IsNull() && panels->IsSelected(picked);
+			dragged.clear();
+			if (movingSelected)
+			{
+				for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
+					if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
+			}
+			dragPixels = {};
+			// A plain click on part of a multiple selection keeps it, so the group can be dragged; if the button comes
+			// up without a drag, the click narrows the selection to that entity.
+			collapseTo = !add && movingSelected && !panels->extra.empty() ? picked : ecs::Entity::Null;
 		}
-		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
+		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			if (!collapseTo.IsNull() && dragPixels.x == 0.0F && dragPixels.y == 0.0F && panels->IsSelected(collapseTo))
+				panels->Select(collapseTo);
+			collapseTo = ecs::Entity::Null;
+			movingSelected = false;
+		}
 		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen. While
 		// playing the selection is only noted, so Stop does not scroll to a change made during Play.
 		if (panels->selected != shownSelection)
@@ -551,28 +592,59 @@ namespace engine::editor
 		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
-			// The pointer's movement over the picture, in the picture's pixels, in the entity's units. Shift keeps one
-			// axis; the grid applies when snapping is on, and Ctrl flips that for the drag.
-			const float units = UnitsPerPixel(world.registry, panels->selected, camera) / view.zoom;
-			dragMoved.x += io.MouseDelta.x * units;
-			dragMoved.y += io.MouseDelta.y * units;
-			if (dragStart)
+			// The pointer's movement over the picture, in the picture's pixels. Each entity moves by that in its own
+			// units. Shift keeps one axis; the grid applies when snapping is on, and Ctrl flips that for the drag.
+			dragPixels.x += io.MouseDelta.x / view.zoom;
+			dragPixels.y += io.MouseDelta.y / view.zoom;
+			const bool snapping = snapToGrid != io.KeyCtrl;
+			for (const DraggedEntity& item : dragged)
 			{
-				const bool snapping = snapToGrid != io.KeyCtrl;
-				(void)SetMovablePosition(world.registry, panels->selected,
-				                         DragTarget(*dragStart, dragMoved, io.KeyShift,
-				                                    snapping ? static_cast<float>(snapSize) : 0.0F));
+				const float units = UnitsPerPixel(world.registry, item.entity, camera);
+				(void)SetMovablePosition(world.registry, item.entity,
+				                         DragTarget(item.start, {dragPixels.x * units, dragPixels.y * units},
+				                                    io.KeyShift, snapping ? static_cast<float>(snapSize) : 0.0F));
+			}
+		}
+		if (boxStart)
+		{
+			const graphics::Position here = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
+			const ScreenRect box{std::min(boxStart->x, here.x), std::min(boxStart->y, here.y),
+			                     std::abs(here.x - boxStart->x), std::abs(here.y - boxStart->y)};
+			if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				const graphics::Position a = view.ToWindow({box.x, box.y}, origin);
+				const graphics::Position b = view.ToWindow({box.x + box.width, box.y + box.height}, origin);
+				draw->AddRectFilled(ImVec2(a.x, a.y), ImVec2(b.x, b.y), IM_COL32(255, 200, 40, 40));
+				draw->AddRect(ImVec2(a.x, a.y), ImVec2(b.x, b.y), IM_COL32(255, 200, 40, 200));
+			}
+			else
+			{
+				std::vector<ecs::Entity> chosen = boxBase;
+				for (const ecs::Entity entity : EntitiesInBox(world.registry, camera, box))
+					if (std::find(chosen.begin(), chosen.end(), entity) == chosen.end()) chosen.push_back(entity);
+				panels->Select(ecs::Entity::Null);
+				for (const ecs::Entity entity : chosen)
+				{
+					if (panels->selected.IsNull())
+						panels->selected = entity;
+					else
+						panels->extra.push_back(entity);
+				}
+				boxStart.reset();
 			}
 		}
 		if (painting) PaintStroke(*grid, origin, draw);
-		if (panels->selected != ecs::Entity::Null && world.registry.IsAlive(panels->selected))
+		panels->Prune(world.registry);
+		for (const ecs::Entity entity : panels->All())
 		{
-			if (const auto rect = EntityScreenRect(world.registry, panels->selected, camera))
+			if (const auto rect = EntityScreenRect(world.registry, entity, camera))
 			{
 				const graphics::Position a = view.ToWindow({rect->x, rect->y}, origin);
 				const graphics::Position b = view.ToWindow({rect->x + rect->width, rect->y + rect->height}, origin);
-				draw->AddRect(ImVec2(a.x - 1, a.y - 1), ImVec2(b.x + 1, b.y + 1), IM_COL32(255, 200, 40, 255), 0.0F,
-				              2.0F);
+				// The primary selection, the one the Inspector shows, is brighter than the rest.
+				const ImU32 color =
+				    entity == panels->selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(255, 160, 40, 150);
+				draw->AddRect(ImVec2(a.x - 1, a.y - 1), ImVec2(b.x + 1, b.y + 1), color, 0.0F, 2.0F);
 			}
 		}
 		draw->PopClipRect();
@@ -657,26 +729,20 @@ namespace engine::editor
 		}
 
 		ecs::Registry& registry = edit->world.registry;
-		if (panels->selected.IsNull() || !registry.IsAlive(panels->selected)) return;
+		panels->Prune(registry);
+		if (panels->selected.IsNull()) return;
 		if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) && !io.KeyCtrl && !io.KeyShift && !io.KeyAlt)
 		{
-			DestroyTree(registry, panels->selected);
-			panels->selected = ecs::Entity::Null;
+			DeleteSelection(registry, *panels);
 		}
 		else if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
 		{
-			ecs::Issues issues;
-			const ecs::Entity copy = DuplicateTree(registry, EnsureTypes(edit->world), panels->selected, issues);
-			if (!copy.IsNull())
-				panels->selected = copy;
-			else if (!issues.errors.empty())
-				panels->status =
-				    "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
+			DuplicateSelection(registry, EnsureTypes(edit->world), *panels);
 		}
 		else if (!io.KeyCtrl && !io.KeyAlt && inViewport)
 		{
-			// Arrow keys nudge the selection one unit (Shift, or Snap on: one grid step, landing on the grid). Only while
-			// the Viewport has the pointer or focus, so arrowing through a list or tree elsewhere moves nothing.
+			// Arrow keys nudge the selection one unit (Shift, or Snap on: one grid step, landing on the grid). Only
+			// while the Viewport has the pointer or focus, so arrowing through a list or tree elsewhere moves nothing.
 			const float step = io.KeyShift || snapToGrid ? static_cast<float>(snapSize) : 1.0F;
 			graphics::Position by{};
 			if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) by.x -= step;
@@ -685,9 +751,13 @@ namespace engine::editor
 			if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) by.y += step;
 			if (by.x != 0.0F || by.y != 0.0F)
 			{
-				if (const auto at = MovablePosition(registry, panels->selected))
-					(void)SetMovablePosition(registry, panels->selected,
-					                         DragTarget(*at, by, false, snapToGrid ? static_cast<float>(snapSize) : 0.0F));
+				for (const ecs::Entity entity : SelectionRoots(registry, *panels))
+				{
+					if (const auto at = MovablePosition(registry, entity))
+						(void)SetMovablePosition(
+						    registry, entity,
+						    DragTarget(*at, by, false, snapToGrid ? static_cast<float>(snapSize) : 0.0F));
+				}
 			}
 		}
 	}

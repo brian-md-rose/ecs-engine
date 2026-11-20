@@ -2,6 +2,7 @@
 
 #include <array>
 #include <optional>
+#include <vector>
 
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
@@ -22,10 +23,15 @@ namespace engine::editor
 		{
 			return point.x >= x && point.y >= y && point.x < x + width && point.y < y + height;
 		}
+		[[nodiscard]] constexpr bool Overlaps(const ScreenRect& other) const noexcept
+		{
+			return x < other.x + other.width && other.x < x + width && y < other.y + other.height &&
+			       other.y < y + height;
+		}
 	};
 
-	// Where an entity is drawn, for the things the editor can pick: a Shape, Sprite, UI Hitbox, NinePatch or Text, each at the
-	// entity's Transform. World-space entities are put through the camera (position, zoom and offset), and ones
+	// Where an entity is drawn, for the things the editor can pick: a Shape, Sprite, UI Hitbox, NinePatch or Text, each
+	// at the entity's Transform. World-space entities are put through the camera (position, zoom and offset), and ones
 	// with graphics::ScreenSpace, on themselves or an ancestor, are not. Empty if the entity has none of those, no
 	// Transform, or no size.
 	[[nodiscard]] std::optional<ScreenRect> EntityScreenRect(const ecs::Registry& registry, ecs::Entity entity,
@@ -35,6 +41,10 @@ namespace engine::editor
 	// registry. Entity::Null if nothing is there.
 	[[nodiscard]] ecs::Entity PickEntity(const ecs::Registry& registry, const graphics::Camera& camera,
 	                                     graphics::Position point);
+
+	// Every entity drawn (as EntityScreenRect gives it) that overlaps box, lowest layer first.
+	[[nodiscard]] std::vector<ecs::Entity> EntitiesInBox(const ecs::Registry& registry, const graphics::Camera& camera,
+	                                                     const ScreenRect& box);
 
 	// Moves the entity by delta, in logical screen pixels (what the pointer moved over the picture): world-space
 	// entities by delta / the camera's zoom world units, screen-space ones by delta. An entity with a Parent and a
@@ -50,7 +60,8 @@ namespace engine::editor
 
 	// How many of MovablePosition's units one logical screen pixel is: 1 / the camera zoom for world-space entities, 1
 	// for screen-space ones. A pointer movement in screen pixels is that times this in units.
-	[[nodiscard]] float UnitsPerPixel(const ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera);
+	[[nodiscard]] float UnitsPerPixel(const ecs::Registry& registry, ecs::Entity entity,
+	                                  const graphics::Camera& camera);
 
 	// Where a drag that began at start, and has moved the pointer by moved (in the same units), puts the entity.
 	// axisLock keeps only the larger of the two movements; a grid above 0 rounds the result to its multiples.
