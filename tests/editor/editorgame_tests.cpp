@@ -387,4 +387,14 @@ TEST_CASE("The Issues panel lists what the last open reported", "[editor][game]"
 
 	game.NewScene();
 	CHECK(game.IssueCount() == 0);
+
+	// A clean save or Play start replaces the list instead of leaving the old entries.
+	CHECK(game.OpenScene("warns.json"));
+	REQUIRE(game.IssueCount() == 1);
+	CHECK(game.SaveSceneAs("clean"));
+	CHECK(game.IssueCount() == 0);
+	CHECK(game.OpenScene("warns.json"));
+	REQUIRE(game.IssueCount() == 1);
+	REQUIRE(game.StartPlay());
+	CHECK(game.IssueCount() == 0);
 }

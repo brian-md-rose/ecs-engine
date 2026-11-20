@@ -341,6 +341,7 @@ namespace engine::editor
 		savedText = SceneText();
 		dirty = false;
 		message.clear();
+		ShowIssues("saving " + file, issues); // a save with warnings lists them; a clean one clears the list
 		return true;
 	}
 
@@ -386,6 +387,7 @@ namespace engine::editor
 		play = std::move(game);
 		playMouse.Reset();
 		message.clear();
+		ShowIssues("starting Play", loaded.issues);
 		panels->Select(ecs::Entity::Null);
 		return true;
 	}
