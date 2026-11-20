@@ -6,7 +6,9 @@
 #include <cstring>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <system_error>
+#include <utility>
 
 #include "application/application.hpp"
 #include "core/log.hpp"
@@ -17,20 +19,13 @@
 #include "editor/entitypanels.hpp"
 #include "mazegame.hpp"
 #include "save.hpp"
+#include "scenes.hpp"
 #include "uidemo.hpp"
 
 using engine::application::Application;
 
 namespace
 {
-	std::unique_ptr<engine::application::ScheduledGame> MakeEditedGame()
-	{
-		auto made = std::make_unique<game::MazeGame>();
-		if (!made->IsValid()) return nullptr;
-		// The editor makes several games and throws them away; none may write the player's save file.
-		made->world.resources.Get<game::SaveFile>().path.clear();
-		return made;
-	}
 
 	// The folder the editor opens and saves scenes in: the source copy (game/assets/scenes, baked in by CMake) so
 	// edits land where they are committed and a rebuild's asset copy can't overwrite them. Falls back to the copy next
@@ -43,6 +38,20 @@ namespace
 		if (std::filesystem::is_directory(source, error)) return source;
 #endif
 		return engine::core::ExecutableDirectory() / "assets" / "scenes";
+	}
+
+	// A new copy of the game for the edit world or for Play. Its scene files are read again from the folder the editor
+	// saves to, so Play shows an edited screen without a rebuild copying the assets first.
+	std::unique_ptr<engine::application::ScheduledGame> MakeEditedGame()
+	{
+		auto made = std::make_unique<game::MazeGame>();
+		if (!made->IsValid()) return nullptr;
+		// The editor makes several games and throws them away; none may write the player's save file.
+		made->world.resources.Get<game::SaveFile>().path.clear();
+		// A scene that can't be read leaves the copy's own scenes in place (the error is logged).
+		if (std::optional<game::SceneFiles> scenes = game::LoadSceneFolder(SceneFolder()))
+			made->world.resources.Get<game::GameScenes>().files = std::move(*scenes);
+		return made;
 	}
 
 	void ResolveAfterLoad(engine::ecs::World& world)
