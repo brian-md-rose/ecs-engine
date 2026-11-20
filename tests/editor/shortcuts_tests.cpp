@@ -3,9 +3,11 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "application/application.hpp"
