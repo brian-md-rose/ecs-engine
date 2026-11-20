@@ -88,6 +88,7 @@ namespace engine::editor
 		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
 
+		const bool asked = !config.openOnStart.empty();
 		if (!config.recentFile.empty())
 		{
 			std::ifstream in(config.recentFile);
@@ -98,8 +99,15 @@ namespace engine::editor
 				if (IsPlainName(line) && std::find(recent.begin(), recent.end(), line) == recent.end())
 					recent.push_back(line);
 			}
+		}
+		if (asked)
+		{
+			(void)OpenScene(WithJsonExtension(config.openOnStart)); // a failure leaves a new scene and says why
+		}
+		else if (!recent.empty())
+		{
 			// The scene that was open last time, if it is still there; a failure leaves a new scene and no message.
-			if (!recent.empty() && !OpenScene(recent.front())) message.clear();
+			if (!OpenScene(recent.front())) message.clear();
 		}
 	}
 

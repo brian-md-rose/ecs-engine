@@ -331,3 +331,32 @@ TEST_CASE("The last scene is reopened at the next start, newest first", "[editor
 	CHECK(game.SceneName().empty());
 	CHECK(game.Message().empty());
 }
+
+TEST_CASE("openOnStart wins over the last scene, and says why when it can't open", "[editor][game]")
+{
+	const auto folder = TempFolder("openonstart");
+	EditorGameConfig config = MakeConfig(folder);
+	config.recentFile = folder / "state" / "recent.txt";
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		AddMover(game.EditWorld(), "a", 5);
+		REQUIRE(game.SaveSceneAs("first"));
+		game.NewScene();
+		REQUIRE(game.SaveSceneAs("second")); // the last scene
+	}
+	config.openOnStart = "first"; // no extension needed
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		CHECK(game.SceneName() == "first.json");
+		CHECK(game.EditWorld().registry.AllEntities().size() == 1);
+	}
+	config.openOnStart = "nothing.json";
+	engine::editor::Editor editor;
+	EditorGame game(editor, config);
+	REQUIRE(game.IsValid());
+	CHECK(game.SceneName().empty());
+	CHECK_FALSE(game.Message().empty());
+}
