@@ -4,10 +4,12 @@
 #include <cstdint>
 
 #include "ecs/hierarchy.hpp"
+#include "graphics/font.hpp"
 #include "graphics/screenspace.hpp"
 #include "graphics/shape.hpp"
 #include "graphics/sprite.hpp"
 #include "graphics/transform.hpp"
+#include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
 
 namespace engine::editor
@@ -19,6 +21,7 @@ namespace engine::editor
 			float width = 0;
 			float height = 0;
 			std::uint8_t layer = 0;
+			float offsetX = 0; // where the left edge is from the Transform (text can end or centre on it)
 		};
 
 		bool IsScreenSpace(const ecs::Registry& registry, ecs::Entity entity)
@@ -46,6 +49,16 @@ namespace engine::editor
 			}
 			if (const auto* hitbox = registry.TryGetComponent<ui::Hitbox>(entity))
 				return Extent{hitbox->width, hitbox->height, hitbox->layer};
+			if (const auto* patch = registry.TryGetComponent<ui::NinePatch>(entity))
+				return Extent{static_cast<float>(patch->width), static_cast<float>(patch->height), patch->layer};
+			if (const auto* text = registry.TryGetComponent<graphics::Text>(entity))
+			{
+				// The font is not known here, so the engine's default metrics (6 by 8) stand in for it.
+				static const graphics::BitmapFont font;
+				const graphics::TextSize size = graphics::MeasureText(font, text->value, text->wrapWidth, text->scale);
+				const float left = graphics::AlignedX(0.0F, text->align, size.width);
+				return Extent{static_cast<float>(size.width), static_cast<float>(size.height), text->layer, left};
+			}
 			return std::nullopt;
 		}
 	} // namespace
@@ -59,10 +72,11 @@ namespace engine::editor
 		if (!extent || extent->width <= 0 || extent->height <= 0) return std::nullopt;
 
 		if (IsScreenSpace(registry, entity))
-			return ScreenRect{transform->position.x, transform->position.y, extent->width, extent->height};
+			return ScreenRect{transform->position.x + extent->offsetX, transform->position.y, extent->width,
+			                  extent->height};
 		const graphics::Position corner = camera.WorldToScreen(transform->position);
 		const auto zoom = static_cast<float>(camera.EffectiveZoom());
-		return ScreenRect{corner.x, corner.y, extent->width * zoom, extent->height * zoom};
+		return ScreenRect{corner.x + extent->offsetX * zoom, corner.y, extent->width * zoom, extent->height * zoom};
 	}
 
 	ecs::Entity PickEntity(const ecs::Registry& registry, const graphics::Camera& camera, graphics::Position point)

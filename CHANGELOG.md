@@ -11,6 +11,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- Picking in the editor's Viewport now covers `Text` and `NinePatch` entities, and selecting an off-screen entity in the Hierarchy scrolls the Viewport to it.
+
 - The game now loads its maze from `scenes/level1.json` (`LoadMazeScene`) and `game/assets/mazes/level1.txt` is removed, so the scene is the only source of the layout. `maze_to_scene` stays as an import tool for new levels written as text.
 
 - The HUD of a maze scene is scene data: `level1.json` now holds the three labels and the five `HudText` fields (registered, with sample text so the editor shows the layout), written by `maze_to_scene` through `SpawnHudScene`. A game started on a scene uses them instead of spawning its own HUD (`HasSceneHud`, `ScopeSceneHud`).

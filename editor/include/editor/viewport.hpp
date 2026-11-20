@@ -24,7 +24,7 @@ namespace engine::editor
 		}
 	};
 
-	// Where an entity is drawn, for the things the editor can pick: a Shape, a Sprite or a UI Hitbox, each at the
+	// Where an entity is drawn, for the things the editor can pick: a Shape, Sprite, UI Hitbox, NinePatch or Text, each at the
 	// entity's Transform. World-space entities are put through the camera (position, zoom and offset), and ones
 	// with graphics::ScreenSpace, on themselves or an ancestor, are not. Empty if the entity has none of those, no
 	// Transform, or no size.

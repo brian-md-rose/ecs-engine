@@ -523,6 +523,26 @@ namespace engine::editor
 			movingSelected = panels->selected != ecs::Entity::Null;
 		}
 		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
+		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen.
+		if (!play && panels->selected != shownSelection)
+		{
+			shownSelection = panels->selected;
+			if (shownSelection != ecs::Entity::Null && world.registry.IsAlive(shownSelection))
+			{
+				if (const auto rect = EntityScreenRect(world.registry, shownSelection, camera))
+				{
+					const graphics::Position a = view.ToWindow({rect->x, rect->y}, origin);
+					const graphics::Position b = view.ToWindow({rect->x + rect->width, rect->y + rect->height}, origin);
+					const bool visible = a.x < max.x && b.x > min.x && a.y < max.y && b.y > min.y;
+					if (!visible)
+					{
+						// Centre the entity: the picture point under the viewport's middle becomes its middle.
+						view.panX = (max.x - min.x) / 2.0F - (rect->x + rect->width / 2.0F) * view.zoom;
+						view.panY = (max.y - min.y) / 2.0F - (rect->y + rect->height / 2.0F) * view.zoom;
+					}
+				}
+			}
+		}
 		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{

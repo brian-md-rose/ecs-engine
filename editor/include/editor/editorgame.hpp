@@ -115,6 +115,7 @@ namespace engine::editor
 		void Commit(const std::string& text);
 		bool GoTo(std::size_t position);
 		bool movingSelected = false; // a drag that began on an entity is moving it
+		ecs::Entity shownSelection = ecs::Entity::Null; // the selection the viewport last looked at, to scroll to a new one
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
