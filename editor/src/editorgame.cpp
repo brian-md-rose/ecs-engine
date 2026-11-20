@@ -484,6 +484,7 @@ namespace engine::editor
 		size.y = std::max(size.y, 16.0F);
 		ImGui::InvisibleButton("##viewport", size, ImGuiButtonFlags_MouseButtonLeft);
 		const bool hovered = ImGui::IsItemHovered();
+		viewportActive = hovered || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 		const ImVec2 min = ImGui::GetItemRectMin();
 		const ImVec2 max = ImGui::GetItemRectMax();
 		const graphics::Position origin{min.x, min.y};
@@ -620,6 +621,8 @@ namespace engine::editor
 	void EditorGame::HandleShortcuts()
 	{
 		const ImGuiIO& io = ImGui::GetIO();
+		const bool inViewport = viewportActive; // set again by the Viewport if it is drawn this frame
+		viewportActive = false;
 		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
@@ -670,10 +673,11 @@ namespace engine::editor
 				panels->status =
 				    "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
 		}
-		else if (!io.KeyCtrl && !io.KeyAlt)
+		else if (!io.KeyCtrl && !io.KeyAlt && inViewport)
 		{
-			// Arrow keys nudge the selection one unit (Shift: one grid step).
-			const float step = io.KeyShift ? static_cast<float>(snapSize) : 1.0F;
+			// Arrow keys nudge the selection one unit (Shift, or Snap on: one grid step, landing on the grid). Only while
+			// the Viewport has the pointer or focus, so arrowing through a list or tree elsewhere moves nothing.
+			const float step = io.KeyShift || snapToGrid ? static_cast<float>(snapSize) : 1.0F;
 			graphics::Position by{};
 			if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) by.x -= step;
 			if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) by.x += step;
@@ -682,7 +686,8 @@ namespace engine::editor
 			if (by.x != 0.0F || by.y != 0.0F)
 			{
 				if (const auto at = MovablePosition(registry, panels->selected))
-					(void)SetMovablePosition(registry, panels->selected, {at->x + by.x, at->y + by.y});
+					(void)SetMovablePosition(registry, panels->selected,
+					                         DragTarget(*at, by, false, snapToGrid ? static_cast<float>(snapSize) : 0.0F));
 			}
 		}
 	}
