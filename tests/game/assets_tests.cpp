@@ -14,6 +14,7 @@
 #include "graphics/sheetmanifest.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "mazescene.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -27,8 +28,8 @@ namespace
 
 	[[nodiscard]] TileMap LoadMaze(const std::string& name)
 	{
-		const std::filesystem::path file = kAssets / "mazes" / name;
-		const game::TileMapResult result = game::LoadTileMap(file);
+		const std::filesystem::path file = kAssets / "scenes" / name;
+		const game::TileMapResult result = game::LoadMazeScene(file);
 		INFO(engine::core::FormatError(name, result.error));
 		REQUIRE(result.map.has_value());
 		return *result.map;
@@ -90,7 +91,7 @@ namespace
 
 TEST_CASE("Level 1 loads and fits on screen below the HUD", "[game][assets]")
 {
-	const TileMap map = LoadMaze("level1.txt");
+	const TileMap map = LoadMaze("level1.json");
 	CHECK(static_cast<float>(map.Width()) * game::kTileSize <= static_cast<float>(game::kLogicalWidth));
 	CHECK(static_cast<float>(game::kHudRows + map.Height()) * game::kTileSize <=
 	      static_cast<float>(game::kLogicalHeight));
@@ -98,7 +99,7 @@ TEST_CASE("Level 1 loads and fits on screen below the HUD", "[game][assets]")
 
 TEST_CASE("Level 1 has four power pellets, a tunnel and a house with a door", "[game][assets]")
 {
-	const TileMap map = LoadMaze("level1.txt");
+	const TileMap map = LoadMaze("level1.json");
 	CHECK(map.Find(Tile::PowerPellet).size() == 4);
 	CHECK_FALSE(map.Find(Tile::Tunnel).empty());
 	CHECK_FALSE(map.Find(Tile::Door).empty());
@@ -107,7 +108,7 @@ TEST_CASE("Level 1 has four power pellets, a tunnel and a house with a door", "[
 
 TEST_CASE("Level 1 has no dead ends", "[game][assets]")
 {
-	const TileMap map = LoadMaze("level1.txt");
+	const TileMap map = LoadMaze("level1.json");
 	for (std::size_t row = 0; row < map.Height(); ++row)
 	{
 		for (std::size_t column = 0; column < map.Width(); ++column)
@@ -122,7 +123,7 @@ TEST_CASE("Level 1 has no dead ends", "[game][assets]")
 
 TEST_CASE("Every open tile of level 1 is reachable, and the house only through its door", "[game][assets]")
 {
-	const TileMap map = LoadMaze("level1.txt");
+	const TileMap map = LoadMaze("level1.json");
 	const TilePosition player = map.Find(Tile::PlayerSpawn).front();
 
 	const std::vector<bool> withDoor = Reachable(map, player, true);
@@ -146,7 +147,7 @@ TEST_CASE("Every open tile of level 1 is reachable, and the house only through i
 
 TEST_CASE("The player can reach every pellet of level 1, so the level can be cleared", "[game][assets]")
 {
-	const TileMap map = LoadMaze("level1.txt");
+	const TileMap map = LoadMaze("level1.json");
 	const std::vector<bool> reachable = Reachable(map, map.Find(Tile::PlayerSpawn).front(), false);
 	for (const Tile kind : {Tile::Pellet, Tile::PowerPellet})
 	{

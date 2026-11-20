@@ -1,7 +1,6 @@
 # Maze format
 
-Mazes are plain text files in `game/assets/mazes/`, one character per tile and one line per
-row of tiles. A text editor is the level editor: what you see in the file is the maze.
+Mazes are scenes now (see [Maze scenes](#maze-scenes) below): the game loads `game/assets/scenes/level1.json`, and the editor edits it. The text format described first is still how `ParseTileMap` reads a maze, and it is what `maze_to_scene` imports. It is one character per tile and one line per row of tiles.
 
 ## Tiles
 
@@ -76,4 +75,4 @@ reported at the second one.
 
 The editor edits a maze as scene entities (`game/include/mazescene.hpp`, `game/assets/scenes/level1.json`) rather than as text. A maze scene has one entity with a `MazeLayout` (columns, rows, and where the top-left tile is drawn) and one entity per tile that is not empty floor: a `TileCell` (column and row from 0) and one tag, `Wall`, `Door`, `Pellet`, `PowerPellet`, `PlayerStart`, `EnemyStart` or `TunnelTile`. `BuildTileMap` turns the entities back into a `TileMap` and applies the rules above, so a scene is checked the same way as a text file; it also reports a tile outside the layout, two tiles on one cell, and a tile with no tag or more than one. Gameplay still reads the `TileMap`. A tile's `Transform` is worked out from its cell and the layout (`PlaceMazeTiles`), and wall pictures from their neighbours (`ResolveMazeTiles`).
 
-`maze_to_scene <maze.txt> <scene.json>` (built with `ENGINE_BUILD_EDITOR`) writes a scene from a maze text file. In the editor, Play on a maze scene starts the game on it (`AdoptSceneMaze`): the `TileMap` is built from the tile entities, no second maze is spawned, and the player and enemies come from the map as usual. The HUD is part of the scene (three labels and five `HudText` fields, with sample text); a game started on a scene uses them and spawns no HUD of its own. The normal game still loads the text file.
+`maze_to_scene <maze.txt> <scene.json>` (built with `ENGINE_BUILD_EDITOR`) writes a scene from a maze text file. In the editor, Play on a maze scene starts the game on it (`AdoptSceneMaze`): the `TileMap` is built from the tile entities, no second maze is spawned, and the player and enemies come from the map as usual. The HUD is part of the scene (three labels and five `HudText` fields, with sample text); a game started on a scene uses them and spawns no HUD of its own. The normal game loads the scene too (`LoadMazeScene`, which reads the file and calls `BuildTileMap`); `game/assets/mazes/` is gone, so the scene is the only source of the layout. To add a level, write its text with this format, run `maze_to_scene`, and open the result in the editor.

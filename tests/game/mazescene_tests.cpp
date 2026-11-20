@@ -256,22 +256,24 @@ TEST_CASE("ResolveMazeTiles changes nothing when the tiles are not a valid maze"
 	CHECK_FALSE(game::ResolveMazeTiles(registry, Clips()));
 }
 
-TEST_CASE("the checked-in maze scene is the same maze as the text file")
+TEST_CASE("the checked-in level scene is a valid maze")
 {
 	const std::filesystem::path assets = GAME_ASSETS_DIR;
-	const game::TileMapResult text = game::LoadTileMap(assets / "mazes" / "level1.txt");
-	REQUIRE(text.map.has_value());
-
-	engine::ecs::TypeRegistry types;
-	engine::ecs::RegisterEngineComponents(types);
-	game::RegisterGameComponents(types);
-	Registry registry;
-	const engine::ecs::SceneLoadResult loaded =
-	    engine::ecs::LoadSceneFile(registry, types, assets / "scenes" / "level1.json");
-	REQUIRE(loaded.Ok());
-	const game::TileMapResult built = game::BuildTileMap(registry);
+	const game::TileMapResult built = game::LoadMazeScene(assets / "scenes" / "level1.json");
+	INFO(built.error.message);
 	REQUIRE(built.map.has_value());
-	RequireSameTiles(*text.map, *built.map);
+	CHECK(built.map->Width() == 28);
+	CHECK(built.map->Height() == 33);
+	CHECK(built.map->Find(game::Tile::PlayerSpawn).size() == 1);
+	CHECK(built.map->Find(game::Tile::EnemySpawn).size() == 4);
+}
+
+TEST_CASE("a scene file that is missing or broken gives no maze")
+{
+	const std::filesystem::path assets = GAME_ASSETS_DIR;
+	const game::TileMapResult missing = game::LoadMazeScene(assets / "scenes" / "no_such_level.json");
+	CHECK_FALSE(missing.map.has_value());
+	CHECK_FALSE(missing.error.message.empty());
 }
 
 TEST_CASE("painting a tile replaces what is in the cell")

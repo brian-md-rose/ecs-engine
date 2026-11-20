@@ -63,7 +63,7 @@ endif()
 if(TARGET game)
     add_executable(game_tests ${GAME_TEST_SOURCES} ${GAME_TESTABLE_SOURCES})
     target_include_directories(game_tests PRIVATE ${GAME_INCLUDE_DIR})
-    # The asset tests read the mazes from the source tree, as written.
+    # The asset tests read the maze scene from the source tree, as written.
     target_compile_definitions(game_tests PRIVATE GAME_ASSETS_DIR="${PROJECT_SOURCE_DIR}/game/assets")
     target_link_libraries(game_tests PRIVATE engine::platform engine::warnings Catch2::Catch2WithMain)
     if(MSVC)
