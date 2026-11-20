@@ -84,6 +84,10 @@ namespace engine::editor
 		{
 			DrawViewport();
 		});
+		editor.AddPanel("Issues", [this]
+		{
+			DrawIssues();
+		});
 		editor.SetPanelSize("Viewport", 700, 480);
 		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
@@ -107,7 +111,43 @@ namespace engine::editor
 		else if (!recent.empty())
 		{
 			// The scene that was open last time, if it is still there; a failure leaves a new scene and no message.
-			if (!OpenScene(recent.front())) message.clear();
+			if (!OpenScene(recent.front()))
+			{
+				message.clear();
+				shownIssues.clear();
+			}
+		}
+	}
+
+	// Replaces what the Issues panel lists. Nothing to list clears it; anything to list opens it.
+	void EditorGame::ShowIssues(const std::string& source, const ecs::Issues& issues)
+	{
+		shownIssues.clear();
+		issuesSource = source;
+		for (const ecs::Issue& issue : issues.errors)
+			shownIssues.push_back({true, issue.path, issue.message});
+		for (const ecs::Issue& issue : issues.warnings)
+			shownIssues.push_back({false, issue.path, issue.message});
+		if (!shownIssues.empty()) editor.SetPanelOpen("Issues", true);
+	}
+
+	void EditorGame::DrawIssues()
+	{
+		if (shownIssues.empty())
+		{
+			ImGui::TextDisabled("No problems reported by the last open, save or Play.");
+			return;
+		}
+		ImGui::TextUnformatted(issuesSource.c_str());
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Clear")) shownIssues.clear();
+		ImGui::Separator();
+		for (const ShownIssue& issue : shownIssues)
+		{
+			const ImVec4 color = issue.error ? ImVec4(1.0F, 0.4F, 0.4F, 1.0F) : ImVec4(1.0F, 0.8F, 0.3F, 1.0F);
+			ImGui::TextColored(color, issue.error ? "error" : "warning");
+			ImGui::SameLine();
+			ImGui::TextWrapped("%s%s%s", issue.path.c_str(), issue.path.empty() ? "" : ": ", issue.message.c_str());
 		}
 	}
 
@@ -185,6 +225,7 @@ namespace engine::editor
 		if (!loaded.Ok())
 		{
 			message = "can't go back: " + FirstProblem(loaded.issues);
+			ShowIssues("going back in the history", loaded.issues);
 			return false;
 		}
 		for (const ecs::Entity entity : before)
@@ -234,6 +275,7 @@ namespace engine::editor
 		ResetHistory();
 		dirty = false;
 		message.clear();
+		shownIssues.clear();
 		panels->Select(ecs::Entity::Null);
 	}
 
@@ -252,6 +294,7 @@ namespace engine::editor
 		if (!loaded.Ok())
 		{
 			message = "can't open " + name + ": " + FirstProblem(loaded.issues);
+			ShowIssues("opening " + name, loaded.issues);
 			return false;
 		}
 		for (const ecs::Entity entity : before)
@@ -265,6 +308,7 @@ namespace engine::editor
 		message = loaded.issues.warnings.empty()
 		              ? std::string()
 		              : std::to_string(loaded.issues.warnings.size()) + " warning(s) opening " + name;
+		ShowIssues("opening " + name, loaded.issues);
 		panels->Select(ecs::Entity::Null);
 		return true;
 	}
@@ -289,6 +333,7 @@ namespace engine::editor
 		if (!ecs::SaveSceneFile(edit->world.registry, EnsureTypes(edit->world), config.sceneFolder / file, issues))
 		{
 			message = "can't save " + file + ": " + FirstProblem(issues);
+			ShowIssues("saving " + file, issues);
 			return false;
 		}
 		sceneName = file;
@@ -296,6 +341,7 @@ namespace engine::editor
 		savedText = SceneText();
 		dirty = false;
 		message.clear();
+		ShowIssues("saving " + file, issues); // a save with warnings lists them; a clean one clears the list
 		return true;
 	}
 
@@ -308,6 +354,7 @@ namespace engine::editor
 		if (!issues.Ok())
 		{
 			message = "can't play: " + FirstProblem(issues);
+			ShowIssues("starting Play", issues);
 			return false;
 		}
 		std::unique_ptr<application::ScheduledGame> game = config.makeGame();
@@ -321,6 +368,7 @@ namespace engine::editor
 		if (!loaded.Ok())
 		{
 			message = "can't play: " + FirstProblem(loaded.issues);
+			ShowIssues("starting Play", loaded.issues);
 			return false;
 		}
 		if (config.afterLoad) config.afterLoad(game->world);
@@ -330,12 +378,16 @@ namespace engine::editor
 			if (!problem.empty())
 			{
 				message = "can't play: " + problem;
+				ecs::Issues reported;
+				reported.errors.push_back({"", problem});
+				ShowIssues("starting Play", reported);
 				return false;
 			}
 		}
 		play = std::move(game);
 		playMouse.Reset();
 		message.clear();
+		ShowIssues("starting Play", loaded.issues);
 		panels->Select(ecs::Entity::Null);
 		return true;
 	}

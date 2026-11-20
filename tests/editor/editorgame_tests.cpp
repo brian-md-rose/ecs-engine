@@ -360,3 +360,41 @@ TEST_CASE("openOnStart wins over the last scene, and says why when it can't open
 	CHECK(game.SceneName().empty());
 	CHECK_FALSE(game.Message().empty());
 }
+
+TEST_CASE("The Issues panel lists what the last open reported", "[editor][game]")
+{
+	const auto folder = TempFolder("issues");
+	std::filesystem::create_directories(folder);
+	{
+		std::ofstream out(folder / "warns.json");
+		out << R"({"format":1,"entities":[{"id":1,"name":"a","components":{"NoSuchThing":{}}}]})";
+	}
+	{
+		std::ofstream out(folder / "broken.json");
+		out << R"({"format":1,"entities":[{"id":1,"parent":9}]})";
+	}
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(folder));
+	REQUIRE(game.IsValid());
+	CHECK(game.IssueCount() == 0);
+
+	CHECK(game.OpenScene("warns.json")); // an unknown component is a warning, and the scene opens
+	CHECK(game.IssueCount() == 1);
+
+	CHECK_FALSE(game.OpenScene("broken.json"));
+	CHECK(game.IssueCount() >= 1);
+	CHECK(game.SceneName() == "warns.json"); // untouched
+
+	game.NewScene();
+	CHECK(game.IssueCount() == 0);
+
+	// A clean save or Play start replaces the list instead of leaving the old entries.
+	CHECK(game.OpenScene("warns.json"));
+	REQUIRE(game.IssueCount() == 1);
+	CHECK(game.SaveSceneAs("clean"));
+	CHECK(game.IssueCount() == 0);
+	CHECK(game.OpenScene("warns.json"));
+	REQUIRE(game.IssueCount() == 1);
+	REQUIRE(game.StartPlay());
+	CHECK(game.IssueCount() == 0);
+}
