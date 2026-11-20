@@ -6,6 +6,7 @@
 #include "core/log.hpp"
 #include "core/text.hpp"
 #include "ecs/scene.hpp"
+#include "hud.hpp"
 #include "mazescene.hpp"
 #include "menuui.hpp"
 #include "screens.hpp"
@@ -61,6 +62,19 @@ namespace game
 		                {"Help", MenuId::Help}})
 		    .Field("item", &MenuButton::item);
 		types.RegisterTag<HelpList>("HelpList");
+		types.RegisterTag<HudLabel>("HudLabel");
+		types.Register<HudText>("HudText")
+		    .EnumField("field", &HudText::field,
+		               {{"Score", HudField::Score},
+		                {"HighScore", HudField::HighScore},
+		                {"Level", HudField::Level},
+		                {"Lives", HudField::Lives},
+		                {"Message", HudField::Message}})
+		    .Field("anchorX", &HudText::anchorX)
+		    .EnumField("align", &HudText::align,
+		               {{"Left", engine::graphics::Align::Left},
+		                {"Centre", engine::graphics::Align::Centre},
+		                {"Right", engine::graphics::Align::Right}});
 		types.Register<ScreenText>("ScreenText")
 		    .EnumField("kind", &ScreenText::kind,
 		               {{"TitleItem", TextKind::TitleItem},

@@ -7,6 +7,8 @@
 #include "ecs/states.hpp"
 #include "enemysystems.hpp"
 #include "gameflow.hpp"
+#include "graphics/font.hpp"
+#include "hud.hpp"
 #include "input/input.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
@@ -80,6 +82,11 @@ TEST_CASE("Play on a maze scene starts a game on that maze")
 	CHECK(game.Count<game::PlayerControlled>() == 1);
 	CHECK(game.Count<game::Enemy>() == map.Find(game::Tile::EnemySpawn).size());
 	CHECK(game.maze.world.resources.Get<game::EnemyHouse>().house.has_value());
+
+	// The HUD is the scene's, not a second one: three labels and five fields.
+	CHECK(game.Count<game::HudLabel>() == 3);
+	CHECK(game.Count<game::HudText>() == 5);
+	CHECK(game.Count<engine::graphics::Text>() == 8);
 }
 
 TEST_CASE("the scene's maze goes away when the game returns to the title")
@@ -94,6 +101,8 @@ TEST_CASE("the scene's maze goes away when the game returns to the title")
 	game.Update(2);
 	CHECK(game.Count<game::Wall>() == 0);
 	CHECK(game.Count<game::MazeLayout>() == 0);
+	CHECK(game.Count<game::HudText>() == 0);
+	CHECK(game.Count<game::HudLabel>() == 0);
 	CHECK_FALSE(game::HasSceneMaze(game.maze.world.registry));
 }
 
@@ -111,4 +120,18 @@ TEST_CASE("a maze scene that is not valid is not adopted")
 	CHECK(game::AdoptSceneMaze(game.maze.world).find("no player spawn") != std::string::npos);
 	CHECK(game.maze.world.resources.Get<game::TileMap>().Width() == 7); // the game's own maze is kept
 	CHECK_FALSE(game.maze.world.resources.Get<game::GameWorld>().fromScene);
+}
+
+TEST_CASE("scoping a scene's HUD leaves other texts alone")
+{
+	LevelGame game;
+	REQUIRE_FALSE(game::SpawnScene(game.maze.world, "level1").empty());
+	auto& registry = game.maze.world.registry;
+	const Entity stray = registry.Create();
+	registry.Add<engine::graphics::Text>(stray);
+	REQUIRE(game::AdoptSceneMaze(game.maze.world).empty());
+	game.Update(3);
+
+	CHECK_FALSE(registry.HasComponent<engine::ecs::DespawnOnEnter<game::Screen>>(stray));
+	CHECK(game.Count<game::HudText>() == 5);
 }

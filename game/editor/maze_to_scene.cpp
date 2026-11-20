@@ -7,6 +7,7 @@
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
+#include "hud.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
 #include "scenes.hpp"
@@ -31,6 +32,7 @@ int main(int argc, char** argv)
 	engine::ecs::RegisterEngineComponents(types);
 	game::RegisterGameComponents(types);
 	game::SpawnMazeScene(registry, *loaded.map, game::MazeOrigin(*loaded.map));
+	(void)game::SpawnHudScene(registry, *loaded.map, game::MazeOrigin(*loaded.map));
 
 	engine::ecs::Issues issues;
 	if (!engine::ecs::SaveSceneFile(registry, types, std::filesystem::path(argv[2]), issues))
