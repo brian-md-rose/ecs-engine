@@ -11,7 +11,9 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- The maze as scene entities (`game/include/mazescene.hpp`): `MazeLayout`, `TileCell` and the tile tags, `BuildTileMap` (the same rules as the text format), `SpawnMazeScene`, `PlaceMazeTiles` and `ResolveMazeTiles`, the `maze_to_scene` converter, and `game/assets/scenes/level1.json`. The game does not load it yet.
+- Play in the standalone editor on a maze scene (`level1.json`) starts Tangle Run on that maze (`AdoptSceneMaze`), and the Viewport shows the maze. `EditorGameConfig::onPlay` is the hook for a game to start itself on what a scene holds.
+
+- The maze as scene entities (`game/include/mazescene.hpp`): `MazeLayout`, `TileCell` and the tile tags, `BuildTileMap` (the same rules as the text format), `SpawnMazeScene`, `PlaceMazeTiles` and `ResolveMazeTiles`, the `maze_to_scene` converter, and `game/assets/scenes/level1.json`. 
 
 - The mouse works in the standalone editor while playing (a button already held when Play starts stays with the editor): the pointer over the Viewport is mapped into the game's screen (`PlayMouse`), so buttons and other mouse UI can be used in Play. Hold Ctrl to zoom or pan the view during Play.
 

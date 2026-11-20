@@ -18,6 +18,7 @@
 #include "editor/editorgame.hpp"
 #include "editor/entitypanels.hpp"
 #include "mazegame.hpp"
+#include "mazescene.hpp"
 #include "save.hpp"
 #include "scenes.hpp"
 #include "uidemo.hpp"
@@ -56,8 +57,22 @@ namespace
 
 	void ResolveAfterLoad(engine::ecs::World& world)
 	{
-		if (const auto* clips = world.resources.TryGet<game::SpriteClips>())
-			game::ResolveClipNames(world.registry, *clips);
+		const auto* clips = world.resources.TryGet<game::SpriteClips>();
+		if (clips == nullptr) return;
+		game::ResolveClipNames(world.registry, *clips);
+		// A maze scene: put the tiles where their cells say and give them their pictures, even if the maze is
+		// not valid yet.
+		if (game::HasSceneMaze(world.registry))
+		{
+			game::PlaceMazeTiles(world.registry);
+			game::ResolveMazeTiles(world.registry, *clips);
+		}
+	}
+
+	// Play on a maze scene starts the game on that maze; any other scene is left to the game's own start.
+	void StartPlay(engine::ecs::World& world)
+	{
+		if (game::HasSceneMaze(world.registry)) (void)game::AdoptSceneMaze(world);
 	}
 } // namespace
 
@@ -87,7 +102,8 @@ int main(int argc, char** argv)
 
 	engine::editor::EditorGame game(editor, {.makeGame = MakeEditedGame,
 	                                         .afterLoad = ResolveAfterLoad,
-	                                         .sceneFolder = SceneFolder()});
+	                                         .sceneFolder = SceneFolder(),
+	                                         .onPlay = StartPlay});
 	if (!game.IsValid()) return 1;
 	editor.SetVisible(true);
 	app.SetEditorHost(&editor);

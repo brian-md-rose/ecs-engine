@@ -1,14 +1,23 @@
 #include "mazescene.hpp"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "components.hpp"
+#include "core/log.hpp"
 #include "ecs/name.hpp"
+#include "ecs/states.hpp"
+#include "ecs/world.hpp"
+#include "enemysystems.hpp"
+#include "gameflow.hpp"
 #include "graphics/animation.hpp"
 #include "graphics/sprite.hpp"
 #include "maze.hpp"
+#include "mazegame.hpp"
+#include "screens.hpp"
+#include "targeting.hpp"
 #include "walltiles.hpp"
 
 namespace game
@@ -60,6 +69,48 @@ namespace game
 			note(registry.HasComponent<EnemyStart>(entity), 'E');
 			note(registry.HasComponent<TunnelTile>(entity), 'T');
 			return count == 1 ? found : char{0};
+		}
+
+		// The tiles as they stand, without the maze format's checks: a tile outside the layout is skipped, and of two
+		// on one cell the later one counts. Enough to draw the maze, and to join its walls, while it is half edited.
+		TileMap LenientTileMap(Registry& registry, const MazeLayout& layout)
+		{
+			const auto columns = static_cast<std::size_t>(std::max(layout.columns, 0));
+			const auto rows = static_cast<std::size_t>(std::max(layout.rows, 0));
+			std::vector<Tile> tiles(columns * rows, Tile::Empty);
+			registry.Each<TileCell>([&](Entity entity, const TileCell& cell)
+			{
+				if (cell.column < 0 || cell.row < 0 || cell.column >= layout.columns || cell.row >= layout.rows) return;
+				Tile tile = Tile::Empty;
+				switch (TileCharacter(registry, entity))
+				{
+				case '#':
+					tile = Tile::Wall;
+					break;
+				case '-':
+					tile = Tile::Door;
+					break;
+				case '.':
+					tile = Tile::Pellet;
+					break;
+				case 'o':
+					tile = Tile::PowerPellet;
+					break;
+				case 'P':
+					tile = Tile::PlayerSpawn;
+					break;
+				case 'E':
+					tile = Tile::EnemySpawn;
+					break;
+				case 'T':
+					tile = Tile::Tunnel;
+					break;
+				default:
+					return;
+				}
+				tiles[static_cast<std::size_t>(cell.row) * columns + static_cast<std::size_t>(cell.column)] = tile;
+			});
+			return TileMap(columns, rows, std::move(tiles));
 		}
 
 		std::string Where(const TileCell& cell)
@@ -224,9 +275,10 @@ namespace game
 
 	bool ResolveMazeTiles(Registry& registry, const SpriteClips& clips)
 	{
-		const TileMapResult built = BuildTileMap(registry);
-		if (!built.map) return false;
-		const TileMap& map = *built.map;
+		std::string message;
+		const MazeLayout* layout = FindLayout(registry, message);
+		if (layout == nullptr) return false;
+		const TileMap map = LenientTileMap(registry, *layout);
 
 		// Collected first: adding components is not allowed while Each is running.
 		struct Tiled
@@ -278,5 +330,45 @@ namespace game
 			}
 		}
 		return true;
+	}
+
+	bool AdoptSceneMaze(engine::ecs::World& world)
+	{
+		TileMapResult built = BuildTileMap(world.registry);
+		if (!built.map)
+		{
+			engine::core::LogError("maze scene: " + built.error.message);
+			return false;
+		}
+		const auto* clips = world.resources.TryGet<SpriteClips>();
+		if (clips == nullptr || !ResolveMazeTiles(world.registry, *clips)) return false;
+
+		const TileMap& map = world.resources.Get<TileMap>() = std::move(*built.map);
+		world.resources.Get<EnemyHouse>().house = FindHouse(map);
+		world.resources.Get<GameWorld>().fromScene = true;
+		// Starts the game on its own maze: entering Playing spawns the player, enemies and HUD but not the maze.
+		world.resources.Get<engine::ecs::NextState<Screen>>().Set(Screen::Playing);
+		return true;
+	}
+
+	bool HasSceneMaze(Registry& registry)
+	{
+		std::string message;
+		return FindLayout(registry, message) != nullptr;
+	}
+
+	void ScopeMazeTiles(engine::ecs::Registry& registry)
+	{
+		std::vector<Entity> tiles;
+		registry.Each<TileCell>([&](Entity entity, const TileCell&)
+		{
+			tiles.push_back(entity);
+		});
+		registry.Each<MazeLayout>([&](Entity entity, const MazeLayout&)
+		{
+			tiles.push_back(entity);
+		});
+		for (const Entity entity : tiles)
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 	}
 } // namespace game
