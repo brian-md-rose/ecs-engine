@@ -98,6 +98,31 @@ namespace engine::editor
 		return best;
 	}
 
+	std::vector<ecs::Entity> EntitiesInBox(const ecs::Registry& registry, const graphics::Camera& camera,
+	                                       const ScreenRect& box)
+	{
+		struct Hit
+		{
+			ecs::Entity entity;
+			int layer;
+		};
+		std::vector<Hit> hits;
+		for (const ecs::Entity entity : registry.AllEntities())
+		{
+			const std::optional<ScreenRect> rect = EntityScreenRect(registry, entity, camera);
+			if (rect && rect->Overlaps(box)) hits.push_back({entity, ExtentOf(registry, entity)->layer});
+		}
+		std::stable_sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b)
+		{
+			return a.layer < b.layer;
+		});
+		std::vector<ecs::Entity> found;
+		found.reserve(hits.size());
+		for (const Hit& hit : hits)
+			found.push_back(hit.entity);
+		return found;
+	}
+
 	std::optional<graphics::Position> MovablePosition(const ecs::Registry& registry, ecs::Entity entity)
 	{
 		if (!registry.IsAlive(entity)) return std::nullopt;

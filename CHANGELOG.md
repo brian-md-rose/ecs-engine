@@ -11,6 +11,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- Multi-select in the standalone editor: Ctrl or Shift click in the Hierarchy and the Viewport, a drag box in the Viewport, and move, nudge, Delete and Duplicate on the whole selection. `PanelState` gained `extra`, `All`, `Select`, `Toggle` and `Prune`; `DeleteSelection`, `DuplicateSelection` (`editor/entitypanels.hpp`) and `EntitiesInBox` (`editor/viewport.hpp`) are new.
+
 - Moving entities in the editor's Viewport: a Snap toggle and grid size, Ctrl to flip snapping and Shift to lock an axis while dragging, and arrow-key nudging (Shift for a grid step). `DragTarget`, `MovablePosition`, `SetMovablePosition` and `UnitsPerPixel` in `editor/viewport.hpp`.
 
 - Picking in the editor's Viewport now covers `Text` and `NinePatch` entities, and selecting an off-screen entity in the Hierarchy scrolls the Viewport to it.

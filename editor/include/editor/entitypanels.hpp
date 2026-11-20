@@ -3,8 +3,10 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "ecs/entity.hpp"
+#include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
 #include "editor/editor.hpp"
 
@@ -23,9 +25,20 @@ namespace engine::editor
 	// own code, and tests can.
 	struct PanelState
 	{
-		ecs::Entity selected = ecs::Entity::Null;
+		ecs::Entity selected = ecs::Entity::Null; // the primary selection, the one the Inspector shows
+		std::vector<ecs::Entity> extra;           // the rest of a multiple selection (Ctrl or Shift click, drag box)
 		std::string filter;
 		std::string status; // the last thing that was refused
+
+		// The whole selection: the primary first, then the others. Empty if nothing is selected.
+		[[nodiscard]] std::vector<ecs::Entity> All() const;
+		[[nodiscard]] bool IsSelected(ecs::Entity entity) const;
+		// Selects only entity (Null clears the selection).
+		void Select(ecs::Entity entity);
+		// Adds entity to the selection, making it the primary, or removes it if it was selected.
+		void Toggle(ecs::Entity entity);
+		// Drops dead entities, and makes one of the others primary if the primary is gone.
+		void Prune(const ecs::Registry& registry);
 	};
 
 	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, ecs::World& world);
@@ -33,4 +46,11 @@ namespace engine::editor
 	// The same, for a world that can change from frame to frame: world is asked for it each time the panels
 	// draw (the standalone editor shows the edit world, and the play world while playing).
 	std::shared_ptr<PanelState> AddEntityPanels(Editor& editor, std::function<ecs::World&()> world);
+
+	// Deletes everything selected, each with what is under it, and clears the selection.
+	void DeleteSelection(ecs::Registry& registry, PanelState& state);
+
+	// Duplicates everything selected (an entity whose ancestor is also selected goes with that ancestor's copy) and
+	// selects the copies. A copy that can not be made leaves its reason in state.status.
+	void DuplicateSelection(ecs::Registry& registry, const ecs::TypeRegistry& types, PanelState& state);
 } // namespace engine::editor

@@ -98,8 +98,8 @@ namespace engine::editor
 		static constexpr int kBrushSelect = -1;
 		static constexpr int kBrushErase = -2;
 		int brush = kBrushSelect;
-		bool stroking = false;            // a paint or erase drag is in progress
-		std::string gridProblems;         // the grid tool's problem line, kept until the scene changes
+		bool stroking = false;    // a paint or erase drag is in progress
+		std::string gridProblems; // the grid tool's problem line, kept until the scene changes
 		bool problemsStale = true;
 		std::optional<GridCell> lastCell; // the cell the stroke last touched, so a fast drag leaves no gaps
 		PlayMouse playMouse;              // the mouse the playing game sees, from the pointer over the viewport
@@ -115,12 +115,20 @@ namespace engine::editor
 		void Commit(const std::string& text);
 		bool GoTo(std::size_t position);
 		bool movingSelected = false; // a drag that began on an entity is moving it
-		std::optional<graphics::Position> dragStart; // where the dragged entity was when the drag began
-		graphics::Position dragMoved{};              // how far the pointer has moved since, in the entity's units
-		bool snapToGrid = false;                     // moves land on multiples of snapSize (Ctrl flips this while dragging)
+		struct DraggedEntity
+		{
+			ecs::Entity entity;
+			graphics::Position start; // where it was when the drag began (MovablePosition)
+		};
+		std::vector<DraggedEntity> dragged;         // what a drag in the Viewport is moving
+		graphics::Position dragPixels{};            // how far the pointer has moved since it began, in picture pixels
+		std::optional<graphics::Position> boxStart; // where a box selection began, in picture pixels
+		std::vector<ecs::Entity> boxBase;           // what was selected when the box began, kept if it adds
+		bool snapToGrid = false; // moves land on multiples of snapSize (Ctrl flips this while dragging)
 		int snapSize = 8;
-		bool viewportActive = false;                 // the Viewport had the pointer or focus last frame (arrow keys nudge only then)
-		ecs::Entity shownSelection = ecs::Entity::Null; // the selection the viewport last looked at, to scroll to a new one
+		bool viewportActive = false; // the Viewport had the pointer or focus last frame (arrow keys nudge only then)
+		ecs::Entity shownSelection =
+		    ecs::Entity::Null; // the selection the viewport last looked at, to scroll to a new one
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();

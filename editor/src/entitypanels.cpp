@@ -65,16 +65,23 @@ namespace engine::editor
 
 			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 			if (!hasChildren) flags |= ImGuiTreeNodeFlags_Leaf;
-			if (entity == state.selected) flags |= ImGuiTreeNodeFlags_Selected;
+			if (state.IsSelected(entity)) flags |= ImGuiTreeNodeFlags_Selected;
 			if (!state.filter.empty()) flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
 			ImGui::PushID(static_cast<int>(entity.id));
 			const bool open = ImGui::TreeNodeEx(LabelOf(registry, entity).c_str(), flags);
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) state.selected = entity;
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+			{
+				// Ctrl or Shift adds to the selection (or takes the entity out of it); a plain click selects just it.
+				if (ImGui::GetIO().KeyCtrl || ImGui::GetIO().KeyShift)
+					state.Toggle(entity);
+				else
+					state.Select(entity);
+			}
 
 			if (ImGui::BeginPopupContextItem())
 			{
-				state.selected = entity;
+				if (!state.IsSelected(entity)) state.Select(entity); // right-clicking part of a selection keeps it
 				if (ImGui::MenuItem("Add child")) pending = {Pending::Kind::AddChild, entity, Entity::Null};
 				if (ImGui::MenuItem("Duplicate")) pending = {Pending::Kind::Duplicate, entity, Entity::Null};
 				if (ImGui::MenuItem("Delete")) pending = {Pending::Kind::Delete, entity, Entity::Null};
@@ -124,27 +131,18 @@ namespace engine::editor
 			case Pending::Kind::None:
 				break;
 			case Pending::Kind::AddChild:
-				state.selected = CreateEntity(registry, "New Entity", pending.target);
+				state.Select(CreateEntity(registry, "New Entity", pending.target));
 				break;
 			case Pending::Kind::Duplicate:
 			{
 				if (types == nullptr) break;
-				ecs::Issues issues;
-				const Entity copy = DuplicateTree(registry, *types, pending.target, issues);
-				if (!copy.IsNull())
-				{
-					state.selected = copy;
-				}
-				else if (!issues.errors.empty())
-				{
-					state.status =
-					    "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
-				}
+				if (!state.IsSelected(pending.target)) state.Select(pending.target);
+				DuplicateSelection(registry, *types, state);
 				break;
 			}
 			case Pending::Kind::Delete:
-				DestroyTree(registry, pending.target);
-				if (!registry.IsAlive(state.selected)) state.selected = Entity::Null;
+				if (!state.IsSelected(pending.target)) state.Select(pending.target);
+				DeleteSelection(registry, state);
 				break;
 			case Pending::Kind::Reparent:
 				if (!SetParent(registry, pending.target, pending.newParent))
@@ -162,7 +160,7 @@ namespace engine::editor
 			const TypeRegistry* types = world.resources.TryGet<TypeRegistry>();
 			if (types == nullptr) ImGui::TextDisabled("No TypeRegistry resource: copies and the inspector are off.");
 
-			if (ImGui::Button("New entity")) state.selected = CreateEntity(registry, "New Entity");
+			if (ImGui::Button("New entity")) state.Select(CreateEntity(registry, "New Entity"));
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(-FLT_MIN);
 			ImGui::InputTextWithHint("##filter", "filter by name", &state.filter);
@@ -494,7 +492,7 @@ namespace engine::editor
 				ImGui::TextDisabled("No TypeRegistry resource, nothing to show.");
 				return;
 			}
-			if (!registry.IsAlive(state.selected)) state.selected = Entity::Null;
+			state.Prune(registry);
 			if (state.selected.IsNull())
 			{
 				ImGui::TextDisabled("Select an entity in the Hierarchy.");
@@ -502,6 +500,9 @@ namespace engine::editor
 			}
 			const Entity entity = state.selected;
 			ImGui::Text("%s  (index %u)", LabelOf(registry, entity).c_str(), static_cast<unsigned>(entity.id));
+			if (!state.extra.empty())
+				ImGui::TextDisabled("%u more selected; changes here apply to this entity only",
+				                    static_cast<unsigned>(state.extra.size()));
 			if (!state.status.empty()) ImGui::TextColored(ImVec4(1.0F, 0.4F, 0.4F, 1.0F), "%s", state.status.c_str());
 			ImGui::Separator();
 
@@ -559,5 +560,94 @@ namespace engine::editor
 		{
 			return world;
 		});
+	}
+
+	std::vector<ecs::Entity> PanelState::All() const
+	{
+		std::vector<ecs::Entity> all;
+		if (!selected.IsNull()) all.push_back(selected);
+		for (const ecs::Entity entity : extra)
+			if (entity != selected) all.push_back(entity);
+		return all;
+	}
+
+	bool PanelState::IsSelected(ecs::Entity entity) const
+	{
+		if (entity.IsNull()) return false;
+		return entity == selected || std::find(extra.begin(), extra.end(), entity) != extra.end();
+	}
+
+	void PanelState::Select(ecs::Entity entity)
+	{
+		selected = entity;
+		extra.clear();
+	}
+
+	void PanelState::Toggle(ecs::Entity entity)
+	{
+		if (entity.IsNull()) return;
+		std::vector<ecs::Entity> all = All();
+		const auto found = std::find(all.begin(), all.end(), entity);
+		if (found != all.end())
+			all.erase(found);
+		else
+			all.insert(all.begin(), entity);
+		selected = all.empty() ? ecs::Entity::Null : all.front();
+		extra.assign(all.empty() ? all.end() : all.begin() + 1, all.end());
+	}
+
+	void PanelState::Prune(const ecs::Registry& registry)
+	{
+		std::vector<ecs::Entity> all = All();
+		all.erase(std::remove_if(all.begin(), all.end(),
+		                         [&registry](ecs::Entity entity)
+		{
+			return !registry.IsAlive(entity);
+		}),
+		          all.end());
+		selected = all.empty() ? ecs::Entity::Null : all.front();
+		extra.assign(all.empty() ? all.end() : all.begin() + 1, all.end());
+	}
+
+	namespace
+	{
+		// True if some other entity of the selection is an ancestor of entity.
+		bool HasSelectedAncestor(const ecs::Registry& registry, const PanelState& state, ecs::Entity entity)
+		{
+			ecs::Entity at = entity;
+			for (int depth = 0; depth < 256; ++depth)
+			{
+				const auto* parent = registry.TryGetComponent<ecs::Parent>(at);
+				if (parent == nullptr || parent->entity.IsNull()) return false;
+				if (state.IsSelected(parent->entity)) return true;
+				at = parent->entity;
+			}
+			return false;
+		}
+	} // namespace
+
+	void DeleteSelection(ecs::Registry& registry, PanelState& state)
+	{
+		for (const ecs::Entity entity : state.All())
+			if (registry.IsAlive(entity)) DestroyTree(registry, entity);
+		state.Select(ecs::Entity::Null);
+	}
+
+	void DuplicateSelection(ecs::Registry& registry, const ecs::TypeRegistry& types, PanelState& state)
+	{
+		std::vector<ecs::Entity> copies;
+		for (const ecs::Entity entity : state.All())
+		{
+			if (!registry.IsAlive(entity) || HasSelectedAncestor(registry, state, entity)) continue;
+			ecs::Issues issues;
+			const ecs::Entity copy = DuplicateTree(registry, types, entity, issues);
+			if (!copy.IsNull())
+				copies.push_back(copy);
+			else if (!issues.errors.empty())
+				state.status = "can't duplicate: " + issues.errors.front().path + ": " + issues.errors.front().message;
+		}
+		if (copies.empty()) return;
+		state.Select(copies.front());
+		state.extra.assign(copies.begin() + 1, copies.end());
 	}
 } // namespace engine::editor
