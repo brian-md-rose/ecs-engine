@@ -6,6 +6,7 @@
 #include <cstring>
 #include <filesystem>
 #include <memory>
+#include <system_error>
 
 #include "application/application.hpp"
 #include "core/log.hpp"
