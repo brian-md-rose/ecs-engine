@@ -15300,7 +15300,8 @@
           "scale": 1,
           "wrapWidth": 0,
           "align": "Left"
-        }
+        },
+        "HudLabel": {}
       }
     },
     {
@@ -15351,7 +15352,8 @@
           "scale": 1,
           "wrapWidth": 0,
           "align": "Left"
-        }
+        },
+        "HudLabel": {}
       }
     },
     {
@@ -15402,7 +15404,8 @@
           "scale": 1,
           "wrapWidth": 0,
           "align": "Left"
-        }
+        },
+        "HudLabel": {}
       }
     },
     {

@@ -39,6 +39,7 @@ namespace game
 		{
 			const Entity entity = registry.Create();
 			registry.Add<Transform>(entity, Position{AlignedX(anchorX, align, Width(label)), y});
+			registry.Add<HudLabel>(entity);
 			registry.Add<Text>(entity, Text{.value = std::string(label), .color = kHudLabelColor, .layer = kHudLayer});
 			return entity;
 		}
@@ -125,7 +126,11 @@ namespace game
 	void ScopeSceneHud(Registry& registry)
 	{
 		std::vector<Entity> texts;
-		registry.Each<Text>([&texts](Entity entity, const Text&)
+		registry.Each<HudText>([&texts](Entity entity, const HudText&)
+		{
+			texts.push_back(entity);
+		});
+		registry.Each<HudLabel>([&texts](Entity entity, const HudLabel&)
 		{
 			texts.push_back(entity);
 		});

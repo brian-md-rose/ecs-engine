@@ -62,6 +62,7 @@ namespace game
 		                {"Help", MenuId::Help}})
 		    .Field("item", &MenuButton::item);
 		types.RegisterTag<HelpList>("HelpList");
+		types.RegisterTag<HudLabel>("HudLabel");
 		types.Register<HudText>("HudText")
 		    .EnumField("field", &HudText::field,
 		               {{"Score", HudField::Score},

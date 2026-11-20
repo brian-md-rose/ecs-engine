@@ -42,6 +42,11 @@ namespace game
 		Message
 	};
 
+	// Tag: a fixed label of the HUD ("SCORE"). Only the HUD's own texts (this and HudText) are scoped to the world.
+	struct HudLabel
+	{
+	};
+
 	// Component: a Text the HUD keeps up to date, placed against anchorX each time it changes
 	// (engine::graphics::AlignedX).
 	struct HudText
