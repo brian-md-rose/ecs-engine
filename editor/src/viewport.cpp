@@ -122,6 +122,11 @@ namespace engine::editor
 	void PlayMouse::Feed(const PointerSample& sample, const ViewTransform& view, graphics::Position origin, int width,
 	                     int height)
 	{
+		if (!primed)
+		{
+			previous = sample.down; // a button already held when Play starts belongs to the editor
+			primed = true;
+		}
 		for (std::size_t i = 0; i < input::kMouseButtonCount; ++i)
 		{
 			const auto button = static_cast<input::MouseButton>(i);
@@ -161,6 +166,7 @@ namespace engine::editor
 		mouse.EndUpdate();
 		previous.fill(false);
 		owned.fill(false);
+		primed = false;
 	}
 
 	bool PlayMouse::AnyOwned() const noexcept

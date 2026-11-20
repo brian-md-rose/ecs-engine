@@ -11,7 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- The mouse works in the standalone editor while playing: the pointer over the Viewport is mapped into the game's screen (`PlayMouse`), so buttons and other mouse UI can be used in Play. Hold Ctrl to zoom or pan the view during Play.
+- The mouse works in the standalone editor while playing (a button already held when Play starts stays with the editor): the pointer over the Viewport is mapped into the game's screen (`PlayMouse`), so buttons and other mouse UI can be used in Play. Hold Ctrl to zoom or pan the view during Play.
 
 - Keyboard shortcuts in the standalone editor: Ctrl+S (Save), Ctrl+Shift+S (Save as), Ctrl+N (New), Ctrl+D (duplicate the selected entity), Delete (delete it and everything under it) and F5 (Play or Stop), shown in the menus.
 
