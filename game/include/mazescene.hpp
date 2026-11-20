@@ -3,6 +3,7 @@
 #include "assets.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/typeregistry.hpp"
+#include "ecs/world.hpp"
 #include "graphics/transform.hpp"
 #include "tilemap.hpp"
 
@@ -63,6 +64,20 @@ namespace game
 
 	// Gives the tile entities their pictures and what the game adds at run time: walls get the sprite that joins up
 	// with their neighbours, doors, pellets and power pellets their sprite (power pellets also an Animation), and
-	// pellets and power pellets an OnTile. False, changing nothing, if the tiles don't make a valid maze.
+	// pellets and power pellets an OnTile. Works on a maze that is not valid yet (as while it is being edited): a
+	// tile outside the layout is left alone. False only if there is not exactly one MazeLayout.
 	bool ResolveMazeTiles(engine::ecs::Registry& registry, const SpriteClips& clips);
+
+	// Starts a game on the maze a level scene has put in the world, for the editor's Play: builds the TileMap from
+	// the tile entities (replacing the game's own), resolves their pictures, tells SpawnGameWorld not to spawn
+	// another maze, and asks for the Playing screen. False, changing nothing but the log, if the tiles are not a
+	// valid maze. The world must be a MazeGame's, with its entities loaded.
+	bool AdoptSceneMaze(engine::ecs::World& world);
+
+	// True if the registry holds a maze scene's MazeLayout.
+	[[nodiscard]] bool HasSceneMaze(engine::ecs::Registry& registry);
+
+	// Makes the scene's tile entities go away on entering the Title, like the rest of the game's world. SpawnGameWorld
+	// calls it when the maze came from a scene.
+	void ScopeMazeTiles(engine::ecs::Registry& registry);
 } // namespace game

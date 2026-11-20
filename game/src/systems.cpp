@@ -23,6 +23,7 @@
 #include "hud.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
+#include "mazescene.hpp"
 #include "options.hpp"
 #include "scoring.hpp"
 #include "screens.hpp"
@@ -149,7 +150,11 @@ namespace game
 		const auto& map = world.resources.Get<TileMap>();
 		const Position origin = MazeOrigin(map);
 		const auto& clips = world.resources.Get<SpriteClips>();
-		SpawnMaze(world.registry, map, origin, clips);
+		// Entering the Title destroys a scene maze, so a game started after that spawns its own.
+		if (flag.fromScene && HasSceneMaze(world.registry))
+			ScopeMazeTiles(world.registry);
+		else
+			SpawnMaze(world.registry, map, origin, clips);
 		SpawnPlayer(world.registry, map, origin, clips, LevelTuningOf(world).playerSpeed);
 		SpawnEnemies(world.registry, map, origin, clips);
 		SpawnHud(world.registry, map, origin);

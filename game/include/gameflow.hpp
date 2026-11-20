@@ -72,6 +72,7 @@ namespace game
 	struct GameWorld
 	{
 		bool spawned = false;
+		bool fromScene = false; // the maze's tiles came from a scene (mazescene.hpp), so SpawnGameWorld spawns none
 	};
 
 	// Every entity of the game's world carries this: it is destroyed on entering the Title.

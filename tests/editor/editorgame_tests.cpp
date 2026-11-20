@@ -264,3 +264,25 @@ TEST_CASE("Undo takes a change not yet looked at, and the selection follows", "[
 	CHECK_FALSE(game.CanUndo());
 	CHECK_FALSE(game.CanRedo());
 }
+
+TEST_CASE("onPlay is called on the play world after the scene is loaded", "[editor][game]")
+{
+	engine::editor::Editor editor;
+	EditorGameConfig config = MakeConfig(TempFolder("onplay"));
+	engine::ecs::World* seen = nullptr;
+	std::size_t entitiesThen = 0;
+	config.onPlay = [&](engine::ecs::World& world)
+	{
+		seen = &world;
+		entitiesThen = world.registry.AllEntities().size();
+	};
+	EditorGame game(editor, std::move(config));
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 1);
+	AddMover(game.EditWorld(), "b", 2);
+
+	CHECK(seen == nullptr); // not for the edit world
+	REQUIRE(game.StartPlay());
+	CHECK(seen == game.PlayWorld());
+	CHECK(entitiesThen == 2);
+}

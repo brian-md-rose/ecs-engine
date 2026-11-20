@@ -31,6 +31,11 @@ namespace engine::editor
 
 		// Where scenes (.json files) are listed for Open, and written for Save.
 		std::filesystem::path sceneFolder;
+
+		// Called on the play world after its scene is loaded and afterLoad has run, before its first update, for a game
+		// that needs to start itself on what the scene holds (Tangle Run starts on its maze when the scene is one).
+		// False, or no hook, leaves the game to start as it would.
+		std::function<void(ecs::World&)> onPlay = nullptr;
 	};
 
 	// The standalone editor as a Game: it holds an edit world, a copy of the game with the scene being edited and

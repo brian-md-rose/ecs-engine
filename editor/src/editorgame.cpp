@@ -272,6 +272,7 @@ namespace engine::editor
 			return false;
 		}
 		if (config.afterLoad) config.afterLoad(game->world);
+		if (config.onPlay) config.onPlay(game->world);
 		play = std::move(game);
 		playMouse.Reset();
 		message.clear();

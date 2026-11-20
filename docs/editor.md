@@ -46,7 +46,7 @@ The **Scene** menu has New, Open (the `.json` files in `sceneFolder`; Tangle Run
 
 Saved scenes go to the source folder, and each game the editor makes (the edit world, and the copy for each Play) reads its scene files from that folder again, so an edited screen scene (title, pause and so on) shows in Play straight away. The game itself still reads the copy next to the executable.
 
-Limit: Play runs the game's own systems over the scene's entities, and a game that also spawns entities when a state is entered does that on top of the scene. Tangle Run's menu screens are scene files that their enter systems load with `SpawnScene`, and its playing field (maze, pellets, enemies, HUD) is still built from code. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
+`EditorGameConfig::onPlay` is called on the play world after the scene is loaded, so a game can start itself on what the scene holds; Tangle Run uses it to start on its maze when the scene is a maze scene (`level1.json`, see [maze format](maze-format.md#maze-scenes)): the game plays on the scene's tiles instead of spawning its own. Otherwise Play runs the game's own systems over the scene's entities, and a game that also spawns entities when a state is entered does that on top of the scene. Tangle Run's menu screens are scene files that their enter systems load with `SpawnScene`, and its playing field (maze, pellets, enemies, HUD) is still built from code. Play is most useful for scenes the game loads whole, such as `uidemo.json`.
 
 ## The viewport
 
