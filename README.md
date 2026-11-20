@@ -17,7 +17,9 @@ with enemies, scoring, a HUD, sound effects and music, sprites, mouse, keyboard 
 levels that get harder as you go. Phases 0 to 9 built the engine and the game; Phases 10 to 12 added what a
 second game (Project Babel, see [docs/babel-support.md](docs/babel-support.md)) needs: JSON and a
 seeded random number generator, mouse and text, camera zoom and clipping, UI building blocks, display
-settings, gamepads and audio files with a mixer and music.
+settings, gamepads and audio files with a mixer and music. Since then the engine has gained a type registry and JSON scenes (v0.6.0),
+an optional Dear ImGui overlay with Hierarchy and Inspector panels (v0.7.0), and a standalone editor with Play and Stop, a viewport and undo
+(v0.8.0), see [docs/editor.md](docs/editor.md).
 
 ## Versions and releases
 
@@ -62,7 +64,7 @@ target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for 
 - **Scenes**: components described at run time by a type registry, and entities saved to and loaded from JSON with
   ids remapped on load, in `engine::core` with no editor needed ([scenes](docs/scenes.md),
   [ADR 0004](docs/decisions/0004-reflection-and-scenes.md)).
-- **Editor overlay** (optional, off by default): a Dear ImGui overlay on a running game behind `ENGINE_BUILD_EDITOR`
+- **Editor** (optional, off by default, Windows only in CI): a Dear ImGui editor behind `ENGINE_BUILD_EDITOR`: an overlay on a running game, or a standalone editor with scene files, Play and Stop, a viewport with picking and moving, undo and redo, and Hierarchy and Inspector panels
   ([editor](docs/editor.md)).
 - **Platform**: an SDL3 window and an application loop with a fixed 60 Hz update and variable-rate
   rendering. SDL types stay out of the public headers.
@@ -103,7 +105,7 @@ target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for 
 - A difficulty curve read from `game/assets/levels.txt`, editable without rebuilding
   ([difficulty](docs/difficulty.md)).
 - Title screen, pause menu and HUD, with mouse-clickable buttons, and a scrolling how-to-play screen, all built from
-  the engine's UI module.
+  the engine's UI module. The menu screens are laid out by scene files in `game/assets/scenes/`, which open in the editor.
 - Options screen (sound, music, volume, starting lives, display), saved with the high score. Looping music
   (`game/assets/music/theme.ogg`) on the mixer's music bus, effects on the effects bus.
 - Arcade-style name entry for a new high score, shown on the title screen.
@@ -118,7 +120,7 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 | Arrow keys / WASD | D-pad or left stick   | Move; pick a menu item; change an option or a name letter (up/down), move between name slots or change an option (left/right) |
 | Enter / Space     | South button (A, Cross) | Choose a menu item or change an option; confirm a name; leave GAME OVER |
 | P / Esc           | Start or Back         | Pause; go back from the options and how-to-play screens |
-| F1                |                       | Toggle the rendering stress test             |
+| F1                |                       | Toggle the rendering stress test (in `tangle_run_editor --overlay`, the editor overlay instead) |
 | F3                |                       | Toggle the debug panel                       |
 
 The mouse works in every menu: hover a button to select it and click to act on it (on an option, a click steps it
@@ -131,13 +133,15 @@ the keys or pad buttons of whichever device you used last.
 engine/   static libraries (engine::core, engine::platform)
   include/  application/ audio/ core/ debug/ ecs/ graphics/ grid/ input/ ui/
   src/
+editor/   engine::editor, the optional Dear ImGui editor (ENGINE_BUILD_EDITOR)
 game/     Tangle Run, the game executable
-  assets/   mazes, levels, sprites and font, copied next to the executable on every build
+  assets/   mazes, levels, scenes, sprites, font and music, copied next to the executable on every build
   include/ src/
 tests/    Catch2 unit tests for the engine and the game's SDL-free logic
 benchmarks/  Catch2 benchmarks for Registry iteration and component add/remove churn
-docs/     roadmap, style guide, file formats, guides (UI, display, gamepads, audio), enemy design and decision records
+docs/     roadmap, style guide, file formats, guides (UI, scenes, editor, display, gamepads, audio), enemy design and decision records
 thirdparty/SDL   SDL3, as a git submodule
+thirdparty/imgui   Dear ImGui, as a git submodule (only needed with ENGINE_BUILD_EDITOR)
 thirdparty/stb_vorbis   the stb_vorbis Ogg Vorbis decoder (public domain / MIT), vendored
 ```
 
@@ -179,6 +183,7 @@ Options:
 - `-DENGINE_BUILD_BENCHMARKS=OFF` skips the benchmarks (with the tests also off, Catch2 isn't
   downloaded).
 - `-DENGINE_BUILD_GAME=OFF` builds the engine only.
+- `-DENGINE_BUILD_EDITOR=ON` builds the editor and `tangle_run_editor` (off by default; run `git submodule update --init thirdparty/imgui` first, see [docs/editor.md](docs/editor.md)).
 
 **Benchmarks:** `engine_benchmarks` times `Registry::Each` and component add/remove churn at
 1k, 10k and 100k entities. Timings only mean something in an optimized build, so they have

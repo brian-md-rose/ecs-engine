@@ -92,7 +92,7 @@ if (!result.Ok())
 Entities only. There are no resources, prefabs or asset references yet; textures and sounds belong in
 scenes as names, resolved after loading.
 
-## Example: Tangle Run's UI demo screen
+## Example: Tangle Run's screens
 
 The UI demo screen (OPTIONS, then UI DEMO) is built from `game/assets/scenes/uidemo.json`, loaded by
 `SpawnUiDemoScreen` when the screen opens. The file holds the panel, title, counter, three buttons and their
@@ -109,3 +109,5 @@ The game registers the engine's components and `RegisterGameComponents` (`scenes
 resource when it is built, and `LoadGameAssets` parses the scene files (every `.json` in `assets/scenes`) with the other assets. If the file is
 missing or broken the game doesn't start (as for any asset); if the scene itself fails to load, the screen opens
 empty and the errors, with their paths, go to the log.
+
+The title, how-to-play, options, name entry, level transition and pause screens are laid out the same way, by `title.json`, `help.json`, `options.json`, `nameentry.json`, `leveltransition.json` and `pause.json`, with their changing text written by `ScreenTextSystem` (see [screens.md](screens.md#layouts-are-scenes)). The playing field (maze, pellets, enemies, HUD) is still built from code.
