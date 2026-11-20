@@ -9,6 +9,7 @@
 #include <system_error>
 #include <utility>
 
+#include "core/files.hpp"
 #include "core/json.hpp"
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
@@ -180,9 +181,8 @@ namespace engine::editor
 		}
 		std::error_code ignored;
 		std::filesystem::create_directories(file.parent_path(), ignored);
-		std::ofstream out(file, std::ios::trunc);
-		out << SceneText() << '\n';
-		return static_cast<bool>(out);
+		// Atomically, so a crash in the middle leaves the last whole autosave and not half of one.
+		return core::WriteFileAtomic(file, SceneText() + '\n');
 	}
 
 	// After a scene is opened (or the editor starts on a new one): an autosave newer than the file is a crash or a
