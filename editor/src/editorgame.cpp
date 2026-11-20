@@ -291,6 +291,9 @@ namespace engine::editor
 	{
 		if (!play) return; // an edited scene is still
 		// The editor window takes the real mouse events, so the game gets the pointer over the viewport instead.
+		// If the viewport was not drawn (closed, behind another tab), nothing is held or hovered for the game.
+		if (!mouseFed) playMouse.Feed({}, view, {0, 0}, targetWidth, targetHeight);
+		mouseFed = false;
 		input::Input gameInput = input;
 		gameInput.mouse = playMouse.mouse;
 		play->Update(dt, gameInput, audio);
@@ -354,7 +357,8 @@ namespace engine::editor
 		}
 		if (ImGui::Button("Reset view")) view = ViewTransform{};
 		ImGui::SameLine();
-		ImGui::Text("%.0f%%   wheel zooms, middle or right drag pans, click selects",
+		ImGui::Text(play ? "%.0f%%   the game has the mouse; hold Ctrl to zoom and pan"
+		                 : "%.0f%%   wheel zooms, middle or right drag pans, click selects",
 		            static_cast<double>(view.zoom) * 100.0);
 
 		ImVec2 size = ImGui::GetContentRegionAvail();
@@ -388,6 +392,7 @@ namespace engine::editor
 				sample.down[i] = ImGui::IsMouseDown(static_cast<int>(i));
 			sample.wheel = io.MouseWheel;
 			playMouse.Feed(sample, view, origin, targetWidth, targetHeight);
+			mouseFed = true;
 		}
 
 		ImDrawList* const draw = ImGui::GetWindowDrawList();
