@@ -183,3 +183,72 @@ TEST_CASE("Moving an entity follows the camera zoom and the parent's local posit
 
 	CHECK_FALSE(engine::editor::MoveEntity(registry, Entity::Null, camera, {1, 1}));
 }
+
+TEST_CASE("PlayMouse maps the pointer into the picture and keeps a press until its release")
+{
+	using namespace engine;
+	using editor::PointerSample;
+	editor::PlayMouse play;
+	editor::ViewTransform view;
+	view.zoom = 2.0F;
+	view.panX = 10.0F;
+	const graphics::Position origin{100.0F, 50.0F};
+	constexpr int kWidth = 64;
+	constexpr int kHeight = 48;
+
+	// Picture pixel (8, 4) is at window x = 100 + 10 + 8 * 2, y = 50 + 4 * 2.
+	PointerSample sample;
+	sample.window = {126.0F, 58.0F};
+	sample.hovered = true;
+	play.Feed(sample, view, origin, kWidth, kHeight);
+	CHECK(play.mouse.inside);
+	CHECK(play.mouse.position.x == 8.0F);
+	CHECK(play.mouse.position.y == 4.0F);
+
+	sample.down[0] = true;
+	play.Feed(sample, view, origin, kWidth, kHeight);
+	CHECK(play.mouse.WasPressed(input::MouseButton::Left));
+	CHECK(play.mouse.IsDown(input::MouseButton::Left));
+	play.mouse.EndUpdate();
+
+	// The pointer leaves the viewport with the button held: the game still sees it, outside, then the release.
+	sample.hovered = false;
+	sample.window = {1000.0F, 58.0F};
+	play.Feed(sample, view, origin, kWidth, kHeight);
+	CHECK_FALSE(play.mouse.inside);
+	CHECK(play.mouse.IsDown(input::MouseButton::Left));
+	sample.down[0] = false;
+	play.Feed(sample, view, origin, kWidth, kHeight);
+	CHECK(play.mouse.WasReleased(input::MouseButton::Left));
+	CHECK_FALSE(play.mouse.IsDown(input::MouseButton::Left));
+	play.mouse.EndUpdate();
+}
+
+TEST_CASE("PlayMouse ignores a press that began outside the viewport, and the wheel outside it")
+{
+	using namespace engine;
+	editor::PlayMouse play;
+	const editor::ViewTransform view;
+
+	editor::PointerSample sample;
+	sample.hovered = false;
+	sample.down[0] = true; // held while the pointer is over another panel
+	sample.wheel = 2.0F;
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	CHECK_FALSE(play.mouse.IsDown(input::MouseButton::Left));
+	CHECK(play.mouse.wheel == 0.0F);
+
+	// Moving onto the viewport with it still held is not a press.
+	sample.hovered = true;
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	CHECK_FALSE(play.mouse.IsDown(input::MouseButton::Left));
+	CHECK(play.mouse.wheel == 2.0F);
+
+	// Outside the picture but over the viewport: not "inside".
+	sample.window = {100.0F, 10.0F};
+	play.Feed(sample, view, {0, 0}, 64, 48);
+	CHECK_FALSE(play.mouse.inside);
+
+	play.Reset();
+	CHECK(play.mouse.wheel == 0.0F);
+}

@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <optional>
 
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "graphics/camera.hpp"
+#include "input/mouse.hpp"
 
 namespace engine::editor
 {
@@ -63,5 +65,37 @@ namespace engine::editor
 
 		// Zooms by factor, keeping the picture pixel under the window point where it is.
 		void ZoomAt(float factor, graphics::Position window, graphics::Position origin) noexcept;
+	};
+} // namespace engine::editor
+
+namespace engine::editor
+{
+	// What the pointer did over the viewport this frame, for PlayMouse.
+	struct PointerSample
+	{
+		graphics::Position window{}; // window pixels
+		bool hovered = false;        // over the viewport's rectangle
+		std::array<bool, input::kMouseButtonCount> down{};
+		float wheel = 0; // notches this frame
+	};
+
+	// The mouse the game sees while it is played in the viewport. The editor's own window takes the real mouse events,
+	// so this is built from the viewport instead: positions are in the picture's pixels (the game's logical pixels),
+	// and a press that began over the viewport belongs to the game until it is released, even if the pointer leaves.
+	// Feed it every frame, give `mouse` to the game's Input, and call mouse.EndUpdate() after each game update.
+	class PlayMouse
+	{
+		std::array<bool, input::kMouseButtonCount> previous{};
+		std::array<bool, input::kMouseButtonCount> owned{}; // pressed over the viewport, not yet released
+
+	public:
+		input::Mouse mouse;
+
+		// origin is where the viewport's content starts, in window pixels; width and height are the picture's size.
+		void Feed(const PointerSample& sample, const ViewTransform& view, graphics::Position origin, int width,
+		          int height);
+		// Releases anything held and puts the pointer outside, for when Play starts or stops.
+		void Reset();
+		[[nodiscard]] bool AnyOwned() const noexcept;
 	};
 } // namespace engine::editor

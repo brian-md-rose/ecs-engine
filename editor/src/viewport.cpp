@@ -116,3 +116,57 @@ namespace engine::editor
 		panY = window.y - origin.y - picture.y * zoom;
 	}
 } // namespace engine::editor
+
+namespace engine::editor
+{
+	void PlayMouse::Feed(const PointerSample& sample, const ViewTransform& view, graphics::Position origin, int width,
+	                     int height)
+	{
+		for (std::size_t i = 0; i < input::kMouseButtonCount; ++i)
+		{
+			const auto button = static_cast<input::MouseButton>(i);
+			if (sample.down[i] && !previous[i])
+			{
+				if (sample.hovered)
+				{
+					owned[i] = true;
+					mouse.OnButton(button, true);
+				}
+			}
+			else if (!sample.down[i] && previous[i] && owned[i])
+			{
+				owned[i] = false;
+				mouse.OnButton(button, false);
+			}
+			previous[i] = sample.down[i];
+		}
+
+		if (sample.hovered || AnyOwned())
+		{
+			const graphics::Position picture = view.ToPicture(sample.window, origin);
+			const ScreenRect area{0, 0, static_cast<float>(width), static_cast<float>(height)};
+			mouse.OnMove(picture, sample.hovered && area.Contains(picture));
+		}
+		else if (mouse.inside)
+		{
+			mouse.OnMove(mouse.position, false);
+		}
+		if (sample.hovered && sample.wheel != 0.0F) mouse.OnWheel(sample.wheel);
+	}
+
+	void PlayMouse::Reset()
+	{
+		mouse.ReleaseAll();
+		mouse.OnMove(mouse.position, false);
+		mouse.EndUpdate();
+		previous.fill(false);
+		owned.fill(false);
+	}
+
+	bool PlayMouse::AnyOwned() const noexcept
+	{
+		for (const bool held : owned)
+			if (held) return true;
+		return false;
+	}
+} // namespace engine::editor

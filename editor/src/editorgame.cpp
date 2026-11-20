@@ -273,6 +273,7 @@ namespace engine::editor
 		}
 		if (config.afterLoad) config.afterLoad(game->world);
 		play = std::move(game);
+		playMouse.Reset();
 		message.clear();
 		panels->selected = ecs::Entity::Null;
 		return true;
@@ -281,6 +282,7 @@ namespace engine::editor
 	void EditorGame::StopPlay()
 	{
 		if (!play) return;
+		playMouse.Reset();
 		play.reset();
 		panels->selected = ecs::Entity::Null;
 	}
@@ -288,7 +290,14 @@ namespace engine::editor
 	void EditorGame::Update(double dt, const input::Input& input, audio::AudioDevice* audio)
 	{
 		if (!play) return; // an edited scene is still
-		play->Update(dt, input, audio);
+		// The editor window takes the real mouse events, so the game gets the pointer over the viewport instead.
+		// If the viewport was not drawn (closed, behind another tab), nothing is held or hovered for the game.
+		if (!mouseFed) playMouse.Feed({}, view, {0, 0}, targetWidth, targetHeight);
+		mouseFed = false;
+		input::Input gameInput = input;
+		gameInput.mouse = playMouse.mouse;
+		play->Update(dt, gameInput, audio);
+		playMouse.mouse.EndUpdate();
 		if (play->WantsToQuit()) StopPlay(); // the game's Quit ends the run, not the editor
 	}
 
@@ -348,7 +357,8 @@ namespace engine::editor
 		}
 		if (ImGui::Button("Reset view")) view = ViewTransform{};
 		ImGui::SameLine();
-		ImGui::Text("%.0f%%   wheel zooms, middle or right drag pans, click selects",
+		ImGui::Text(play ? "%.0f%%   the game has the mouse; hold Ctrl to zoom and pan"
+		                 : "%.0f%%   wheel zooms, middle or right drag pans, click selects",
 		            static_cast<double>(view.zoom) * 100.0);
 
 		ImVec2 size = ImGui::GetContentRegionAvail();
@@ -361,13 +371,28 @@ namespace engine::editor
 		const graphics::Position origin{min.x, min.y};
 		const ImGuiIO& io = ImGui::GetIO();
 
-		if (hovered && io.MouseWheel != 0.0F)
+		// While playing, the game gets the wheel and the buttons; hold Ctrl to zoom and pan the view instead.
+		const bool viewKeys = !play || io.KeyCtrl;
+		if (hovered && viewKeys && io.MouseWheel != 0.0F)
 			view.ZoomAt(std::pow(1.15F, io.MouseWheel), {io.MousePos.x, io.MousePos.y}, origin);
-		if (hovered && (ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F) ||
-		                ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0F)))
+		if (hovered && viewKeys &&
+		    (ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F) ||
+		     ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0F)))
 		{
 			view.panX += io.MouseDelta.x;
 			view.panY += io.MouseDelta.y;
+		}
+
+		if (play)
+		{
+			PointerSample sample;
+			sample.window = {io.MousePos.x, io.MousePos.y};
+			sample.hovered = hovered && !io.KeyCtrl;
+			for (std::size_t i = 0; i < sample.down.size(); ++i)
+				sample.down[i] = ImGui::IsMouseDown(static_cast<int>(i));
+			sample.wheel = io.MouseWheel;
+			playMouse.Feed(sample, view, origin, targetWidth, targetHeight);
+			mouseFed = true;
 		}
 
 		ImDrawList* const draw = ImGui::GetWindowDrawList();
@@ -384,14 +409,14 @@ namespace engine::editor
 		const graphics::Camera camera = CurrentCamera();
 		// Press selects what is under the pointer (or nothing); dragging from there moves it, so the selected
 		// entity can be dragged without a separate handle.
-		if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (!play && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			panels->selected = PickEntity(world.registry, camera, picture);
 			movingSelected = panels->selected != ecs::Entity::Null;
 		}
 		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
-		if (movingSelected && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
+		if (!play && movingSelected && ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
 			// The pointer's movement over the picture, in the picture's pixels.
 			(void)MoveEntity(world.registry, panels->selected, camera,

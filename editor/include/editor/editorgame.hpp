@@ -80,6 +80,8 @@ namespace engine::editor
 		int targetHeight = 0;
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
+		PlayMouse playMouse;   // the mouse the playing game sees, from the pointer over the viewport
+		bool mouseFed = false; // the viewport fed playMouse since the last game update
 		// Undo: the scene as text after each finished change (a drag, a typed value, a menu click), oldest first;
 		// historyPos is the one the world is at. Undo and Redo reload the neighbour, which re-creates the entities
 		// (their ids change, the selection is kept by position).
