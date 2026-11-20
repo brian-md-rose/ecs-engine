@@ -7,6 +7,8 @@
 #include "ecs/states.hpp"
 #include "enemysystems.hpp"
 #include "gameflow.hpp"
+#include "graphics/font.hpp"
+#include "hud.hpp"
 #include "input/input.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
@@ -80,6 +82,10 @@ TEST_CASE("Play on a maze scene starts a game on that maze")
 	CHECK(game.Count<game::PlayerControlled>() == 1);
 	CHECK(game.Count<game::Enemy>() == map.Find(game::Tile::EnemySpawn).size());
 	CHECK(game.maze.world.resources.Get<game::EnemyHouse>().house.has_value());
+
+	// The HUD is the scene's, not a second one: three labels and five fields.
+	CHECK(game.Count<game::HudText>() == 5);
+	CHECK(game.Count<engine::graphics::Text>() == 8);
 }
 
 TEST_CASE("the scene's maze goes away when the game returns to the title")
@@ -94,6 +100,8 @@ TEST_CASE("the scene's maze goes away when the game returns to the title")
 	game.Update(2);
 	CHECK(game.Count<game::Wall>() == 0);
 	CHECK(game.Count<game::MazeLayout>() == 0);
+	CHECK(game.Count<game::HudText>() == 0);
+	CHECK(game.Count<engine::graphics::Text>() == 0);
 	CHECK_FALSE(game::HasSceneMaze(game.maze.world.registry));
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "ecs/registry.hpp"
 #include "ecs/scheduler.hpp"
@@ -68,6 +69,17 @@ namespace game
 	// Setup: creates the HUD's labels and fields, the message centred across the middle row of
 	// a maze drawn at origin. Creates entities directly, so call it during setup.
 	void SpawnHud(engine::ecs::Registry& registry, const TileMap& map, engine::graphics::Position origin);
+
+	// The same HUD without the despawn scope, for saving into a level scene. Fields start with sample text (the
+	// HudSystem replaces it); returns the entities made.
+	[[nodiscard]] std::vector<engine::ecs::Entity> SpawnHudScene(engine::ecs::Registry& registry, const TileMap& map,
+	                                                             engine::graphics::Position origin);
+
+	// True if the registry holds a HUD from a level scene (any HudText).
+	[[nodiscard]] bool HasSceneHud(engine::ecs::Registry& registry);
+
+	// Scopes a level scene's texts to the world, as SpawnHud does for its own: they go when the Title is entered.
+	void ScopeSceneHud(engine::ecs::Registry& registry);
 
 	// LateUpdate (always, so the HUD shows the state after this update): raises the HighScore
 	// to the score, and updates every HudText's Text and Transform.

@@ -157,7 +157,10 @@ namespace game
 			SpawnMaze(world.registry, map, origin, clips);
 		SpawnPlayer(world.registry, map, origin, clips, LevelTuningOf(world).playerSpeed);
 		SpawnEnemies(world.registry, map, origin, clips);
-		SpawnHud(world.registry, map, origin);
+		if (flag.fromScene && HasSceneHud(world.registry))
+			ScopeSceneHud(world.registry);
+		else
+			SpawnHud(world.registry, map, origin);
 	}
 
 	void ResetActors(World& world)

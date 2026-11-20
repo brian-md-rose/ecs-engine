@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string_view>
+#include <vector>
 
 #include "assets.hpp"
 #include "ecs/entity.hpp"
@@ -34,21 +35,21 @@ namespace game
 			return static_cast<int>(text.size()) * kGlyphAdvance;
 		}
 
-		void SpawnLabel(Registry& registry, std::string_view label, float anchorX, Align align, float y)
+		Entity SpawnLabel(Registry& registry, std::string_view label, float anchorX, Align align, float y)
 		{
 			const Entity entity = registry.Create();
 			registry.Add<Transform>(entity, Position{AlignedX(anchorX, align, Width(label)), y});
 			registry.Add<Text>(entity, Text{.value = std::string(label), .color = kHudLabelColor, .layer = kHudLayer});
-			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
+			return entity;
 		}
 
-		void SpawnField(Registry& registry, HudField field, float anchorX, Align align, float y, Color color)
+		Entity SpawnField(Registry& registry, HudField field, float anchorX, Align align, float y, Color color)
 		{
 			const Entity entity = registry.Create();
 			registry.Add<Transform>(entity, Position{anchorX, y});
 			registry.Add<Text>(entity, Text{.color = color, .layer = kHudLayer});
 			registry.Add<HudText>(entity, HudText{.field = field, .anchorX = anchorX, .align = align});
-			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
+			return entity;
 		}
 	} // namespace
 
@@ -72,23 +73,64 @@ namespace game
 		return {};
 	}
 
-	void SpawnHud(Registry& registry, const TileMap& map, Position origin)
+	std::vector<Entity> SpawnHudScene(Registry& registry, const TileMap& map, Position origin)
 	{
+		const HudView sample{.lives = 3, .screen = Screen::Playing, .round = Round::Ready};
+		std::vector<Entity> made;
+		const auto label = [&](std::string_view text, float x, Align align, float y)
+		{
+			made.push_back(SpawnLabel(registry, text, x, align, y));
+		};
+		const auto field = [&](HudField which, float x, Align align, float y, Color color)
+		{
+			const Entity entity = SpawnField(registry, which, x, align, y, color);
+			registry.GetComponent<Text>(entity).value = HudLine(which, sample); // something to see in the editor
+			registry.GetComponent<Transform>(entity).position.x = AlignedX(x, align, Width(registry.GetComponent<Text>(entity).value));
+			made.push_back(entity);
+		};
 		constexpr float kLeft = kMargin;
 		constexpr float kCentre = static_cast<float>(kLogicalWidth) / 2.0f;
 		constexpr float kRight = static_cast<float>(kLogicalWidth) - kMargin;
 
-		SpawnLabel(registry, "SCORE", kLeft, Align::Left, kTopLine);
-		SpawnField(registry, HudField::Score, kLeft, Align::Left, kSecondLine, kHudValueColor);
-		SpawnLabel(registry, "HIGH SCORE", kCentre, Align::Centre, kTopLine);
-		SpawnField(registry, HudField::HighScore, kCentre, Align::Centre, kSecondLine, kHudValueColor);
-		SpawnLabel(registry, "LEVEL", kRight, Align::Right, kTopLine);
-		SpawnField(registry, HudField::Level, kRight, Align::Right, kSecondLine, kHudValueColor);
-		SpawnField(registry, HudField::Lives, kLeft, Align::Left, kBottomLine, kHudLivesColor);
+		label("SCORE", kLeft, Align::Left, kTopLine);
+		field(HudField::Score, kLeft, Align::Left, kSecondLine, kHudValueColor);
+		label("HIGH SCORE", kCentre, Align::Centre, kTopLine);
+		field(HudField::HighScore, kCentre, Align::Centre, kSecondLine, kHudValueColor);
+		label("LEVEL", kRight, Align::Right, kTopLine);
+		field(HudField::Level, kRight, Align::Right, kSecondLine, kHudValueColor);
+		field(HudField::Lives, kLeft, Align::Left, kBottomLine, kHudLivesColor);
 
 		// One pixel down from the top of the middle row, so the 7-pixel capitals sit centred in it.
 		const float middleRow = origin.y + static_cast<float>(map.Height() / 2) * kTileSize + 1.0f;
-		SpawnField(registry, HudField::Message, kCentre, Align::Centre, middleRow, kHudMessageColor);
+		field(HudField::Message, kCentre, Align::Centre, middleRow, kHudMessageColor);
+		return made;
+	}
+
+	void SpawnHud(Registry& registry, const TileMap& map, Position origin)
+	{
+		for (const Entity entity : SpawnHudScene(registry, map, origin))
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
+	}
+
+	bool HasSceneHud(Registry& registry)
+	{
+		bool found = false;
+		registry.Each<HudText>([&found](Entity, const HudText&)
+		{
+			found = true;
+		});
+		return found;
+	}
+
+	void ScopeSceneHud(Registry& registry)
+	{
+		std::vector<Entity> texts;
+		registry.Each<Text>([&texts](Entity entity, const Text&)
+		{
+			texts.push_back(entity);
+		});
+		for (const Entity entity : texts)
+			registry.Add<engine::ecs::DespawnOnEnter<Screen>>(entity, WorldScope());
 	}
 
 	void HudSystem(engine::ecs::World& world, const engine::ecs::FrameContext&)

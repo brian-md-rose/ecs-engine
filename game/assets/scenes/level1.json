@@ -15279,6 +15279,215 @@
         },
         "Wall": {}
       }
+    },
+    {
+      "id": 900,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 16.0,
+            "y": 0.0
+          }
+        },
+        "Text": {
+          "value": "SCORE",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        }
+      }
+    },
+    {
+      "id": 901,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 16.0,
+            "y": 8.0
+          }
+        },
+        "Text": {
+          "value": "0",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "HudText": {
+          "field": "Score",
+          "anchorX": 16.0,
+          "align": "Left"
+        }
+      }
+    },
+    {
+      "id": 902,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 82.0,
+            "y": 0.0
+          }
+        },
+        "Text": {
+          "value": "HIGH SCORE",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        }
+      }
+    },
+    {
+      "id": 903,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 109.0,
+            "y": 8.0
+          }
+        },
+        "Text": {
+          "value": "0",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "HudText": {
+          "field": "HighScore",
+          "anchorX": 112.0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 904,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 178.0,
+            "y": 0.0
+          }
+        },
+        "Text": {
+          "value": "LEVEL",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        }
+      }
+    },
+    {
+      "id": 905,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 202.0,
+            "y": 8.0
+          }
+        },
+        "Text": {
+          "value": "1",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "HudText": {
+          "field": "Level",
+          "anchorX": 208.0,
+          "align": "Right"
+        }
+      }
+    },
+    {
+      "id": 906,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 16.0,
+            "y": 280.0
+          }
+        },
+        "Text": {
+          "value": "@@@",
+          "color": [
+            80,
+            230,
+            210
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "HudText": {
+          "field": "Lives",
+          "anchorX": 16.0,
+          "align": "Left"
+        }
+      }
+    },
+    {
+      "id": 907,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 94.0,
+            "y": 145.0
+          }
+        },
+        "Text": {
+          "value": "READY!",
+          "color": [
+            255,
+            220,
+            90
+          ],
+          "layer": 10,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "HudText": {
+          "field": "Message",
+          "anchorX": 112.0,
+          "align": "Centre"
+        }
+      }
     }
   ]
 }
