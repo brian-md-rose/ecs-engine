@@ -72,3 +72,7 @@ This differs from the plan's per-component commands: each step is the whole scen
 With no host set, none of this costs anything. The overlay draws at real window pixels, not the game's logical size, so its text stays sharp: `Editor::Draw` turns the renderer's logical presentation off for the overlay's draw calls and back on after. It writes no `imgui.ini`.
 
 ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out another tag in `thirdparty/imgui` and commit.
+
+## Shortcuts
+
+In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop. While playing only F5 works. None of them act while a text box has focus, a drag is in progress or a dialog is open.

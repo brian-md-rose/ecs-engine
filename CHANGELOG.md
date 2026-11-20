@@ -9,6 +9,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- Keyboard shortcuts in the standalone editor: Ctrl+S (Save), Ctrl+Shift+S (Save as), Ctrl+N (New), Ctrl+D (duplicate the selected entity), Delete (delete it and everything under it) and F5 (Play or Stop), shown in the menus.
+
 ### Changed
 
 - In `tangle_run_editor`, Play uses the scene files in the source folder the editor saves to, so an edited screen shows in Play without a rebuild.

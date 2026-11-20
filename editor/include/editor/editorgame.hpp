@@ -102,6 +102,8 @@ namespace engine::editor
 		void Request(Action action, const std::string& name);
 		void DrawMenuBar();
 		void DrawDialogs();
+		void SaveOrAsk();
+		void HandleShortcuts();
 
 	public:
 		EditorGame(Editor& editorToUse, EditorGameConfig configToUse);
