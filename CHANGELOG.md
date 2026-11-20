@@ -45,7 +45,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - Undo and redo in the standalone editor (Edit menu, Ctrl+Z, Ctrl+Y): each finished change is a step, kept as the scene text; `EditorGame::Undo`, `Redo`, `CanUndo` and `CanRedo`.
 - A Viewport panel in the standalone editor: the game is drawn into a render target and shown with zoom and pan, click-to-pick (`PickEntity`, `EntityScreenRect`) and a selection outline, and drag to move (`MoveEntity`). `Renderer::CreateRenderTarget` and `SetRenderTarget`, and `Editor::SetPanelSize`.
 - `EditorGame` (`editor/editorgame.hpp`): the standalone editor, with an edit world and a play world, a Scene menu (New, Open, Save, Save as, unsaved-changes prompt) and Play/Stop that runs a copy and discards its changes. `tangle_run_editor` runs it by default; `--overlay` gives the old F1 overlay. `Editor::SetMenuBar` lets a host add to the menu bar, and `AddEntityPanels` can take a function that returns the current world.
@@ -54,7 +53,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - An optional editor overlay: Dear ImGui as a submodule (`thirdparty/imgui`), the `engine::editor` library, and `tangle_run_editor`, all behind `ENGINE_BUILD_EDITOR` (off by default). F1 shows the overlay. `Application::SetEditorHost` and `EditorHost` (`application/editorhost.hpp`) are the hook, and cost nothing without a host. See `docs/editor.md`.
 - Editor panels: `AddEntityPanels` adds a Hierarchy (tree, filter, drag to reparent, add child, duplicate, delete) and an Inspector (component fields as widgets from the type registry, add and remove components). `editor/entityops.hpp` has the operations behind them.
 - `RegisterEngineComponents` also registers `Text` and the UI components (`NinePatch`, `Hitbox`, `Interactable`, `FocusOrder`, `ScrollView`), so a scene can hold a screen's layout.
@@ -67,7 +65,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - `ecs::TypeRegistry` (`ecs/typeregistry.hpp`): component types described at run time, with a name and fields, that save to and load from `core::JsonValue`. One explicit registration block per component; `FieldCodec<T>` says how a field type is written (built in: bool, integers, floats, `std::string`, `Entity`, `std::vector<Entity>`, enums by name, and `Color`, `Position`, `PixelRect`). Entities are written as ids through `IEntityIds`, and problems come back with a JSON path. Opt-in: `Registry` is unchanged.
 - `ecs::Name`, and `ecs::RegisterEngineComponents` for the engine's own components.
 - `ecs::SaveScene`, `LoadScene`, `SaveSceneFile` and `LoadSceneFile` (`ecs/scene.hpp`): entities and their registered components as JSON (format 1), with scene-local ids remapped on load, `name` and `parent` keys, errors with JSON paths, unknown components as warnings, and a failed load undone whole. See `docs/scenes.md` and ADR 0004.
@@ -95,7 +92,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - `audio/soundfile.hpp`: `LoadSound(path)` returns a `SoundResult` (the `Sound`, or an error message; a bad file never
   crashes). `.wav` goes through `SDL_LoadWAV` and `.ogg` through the vendored stb_vorbis (`thirdparty/stb_vorbis`, built
   without the engine's warning flags). The `Sound` keeps the file's own sample rate and channel count.
@@ -118,7 +114,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - `graphics/display.hpp`: display settings. `DisplaySettings` (window mode `Windowed`, `Borderless` or `Fullscreen`, size, VSync,
   frame cap, `Scaling::Integer` or `Fit`), asked for through the `DisplayRequest` resource and reported in `DisplayInfo`,
   which `Application` applies and refreshes after each frame through the new `Game::Display()` hook (`ScheduledGame`
@@ -143,7 +138,6 @@ The JSON and random number work (Phase 10) and the UI work (Phase 11) of [docs/b
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - `core/log.hpp`: `LogSession` and `Log`/`LogInfo`/`LogWarning`/`LogError` write timestamped, levelled
   messages to a log file (the previous run's kept as `log.old.txt`) and, in Debug builds, the console.
   SDL's log is routed through it. The game logs to `log.txt` next to its save file.
@@ -214,7 +208,6 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
 
 ### Added
 
-- Copy and paste of entities in the standalone editor (Ctrl+C, Ctrl+V and the Edit menu): the selection and everything under it goes to the clipboard as scene JSON and can be pasted into any open scene (`CopyTrees` and `PasteTrees` in `editor/entityops.hpp`).
 - Engine version in `project(EcsEngine VERSION ...)`, exposed to code as `<core/version.hpp>`
   (`engine::kVersionString` and friends).
 - The engine can be consumed from another CMake project with `FetchContent` pinned to a tag;
