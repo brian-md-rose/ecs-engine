@@ -4,6 +4,7 @@
 #include <SDL3/SDL_main.h>
 
 #include <cstring>
+#include <filesystem>
 #include <memory>
 
 #include "application/application.hpp"
@@ -28,6 +29,19 @@ namespace
 		// The editor makes several games and throws them away; none may write the player's save file.
 		made->world.resources.Get<game::SaveFile>().path.clear();
 		return made;
+	}
+
+	// The folder the editor opens and saves scenes in: the source copy (game/assets/scenes, baked in by CMake) so
+	// edits land where they are committed and a rebuild's asset copy can't overwrite them. Falls back to the copy next
+	// to the executable when the source folder is gone (for example a built editor moved to another machine).
+	std::filesystem::path SceneFolder()
+	{
+#ifdef TANGLE_RUN_SOURCE_SCENES
+		std::error_code error;
+		const std::filesystem::path source = TANGLE_RUN_SOURCE_SCENES;
+		if (std::filesystem::is_directory(source, error)) return source;
+#endif
+		return engine::core::ExecutableDirectory() / "assets" / "scenes";
 	}
 
 	void ResolveAfterLoad(engine::ecs::World& world)
@@ -63,7 +77,7 @@ int main(int argc, char** argv)
 
 	engine::editor::EditorGame game(editor, {.makeGame = MakeEditedGame,
 	                                         .afterLoad = ResolveAfterLoad,
-	                                         .sceneFolder = engine::core::ExecutableDirectory() / "assets" / "scenes"});
+	                                         .sceneFolder = SceneFolder()});
 	if (!game.IsValid()) return 1;
 	editor.SetVisible(true);
 	app.SetEditorHost(&editor);
