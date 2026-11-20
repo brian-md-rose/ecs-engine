@@ -63,7 +63,7 @@ TEST_CASE("Play on a maze scene starts a game on that maze")
 	LevelGame game;
 	// What the editor does for Play: empty world, the scene loaded, then onPlay.
 	REQUIRE_FALSE(game::SpawnScene(game.maze.world, "level1").empty());
-	REQUIRE(game::AdoptSceneMaze(game.maze.world));
+	REQUIRE(game::AdoptSceneMaze(game.maze.world).empty());
 
 	const auto& map = game.maze.world.resources.Get<game::TileMap>();
 	CHECK(map.Width() == 28);
@@ -86,7 +86,7 @@ TEST_CASE("the scene's maze goes away when the game returns to the title")
 {
 	LevelGame game;
 	REQUIRE_FALSE(game::SpawnScene(game.maze.world, "level1").empty());
-	REQUIRE(game::AdoptSceneMaze(game.maze.world));
+	REQUIRE(game::AdoptSceneMaze(game.maze.world).empty());
 	game.Update(3);
 	REQUIRE(game.Count<game::Wall>() > 0);
 
@@ -108,7 +108,7 @@ TEST_CASE("a maze scene that is not valid is not adopted")
 	});
 	game.maze.world.registry.Destroy(player);
 
-	CHECK_FALSE(game::AdoptSceneMaze(game.maze.world));
+	CHECK(game::AdoptSceneMaze(game.maze.world).find("no player spawn") != std::string::npos);
 	CHECK(game.maze.world.resources.Get<game::TileMap>().Width() == 7); // the game's own maze is kept
 	CHECK_FALSE(game.maze.world.resources.Get<game::GameWorld>().fromScene);
 }

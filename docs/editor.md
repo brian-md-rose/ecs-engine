@@ -76,3 +76,9 @@ ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out
 ## Shortcuts
 
 In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop. While playing only F5 works. None of them act while a text box has focus, a drag is in progress or a dialog is open.
+
+## Painting a grid scene
+
+A game can give the standalone editor a `GridTool` (`editor/gridtool.hpp`, through `EditorGameConfig::gridTool`): a palette of tile kinds and functions to paint and erase a cell. When the scene being edited has a grid (Tangle Run's maze scenes, `game/assets/scenes/level1.json`), the Viewport shows a row of radio buttons: **Select** (the usual click and drag), one for each palette entry (Wall, Door, Pellet, Power pellet, Player start, Enemy start, Tunnel) and **Erase**. With a brush chosen, the grid is drawn over the picture, the cell under the pointer is outlined, and pressing and dragging with the left button paints every cell the pointer crosses (`CellLine`, so a fast drag leaves no gaps). Painting a cell replaces what is in it, painting what is already there changes nothing, and a maze has one player start, so painting a second moves it. After each frame that painted, the game's `refresh` runs (for the maze it places the tiles and joins the walls up again). A whole stroke is one undo step. What is wrong with the maze as it stands (no player start, a tunnel without its pair) is shown in orange above the picture, and Play refuses to start on a maze that isn't valid, saying why in the menu bar.
+
+The grid is laid over the picture at the game's own pixels, so it is right for a game whose camera is at its default (Tangle Run's is). The brush is off while playing.

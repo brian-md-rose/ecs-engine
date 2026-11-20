@@ -271,10 +271,12 @@ TEST_CASE("onPlay is called on the play world after the scene is loaded", "[edit
 	EditorGameConfig config = MakeConfig(TempFolder("onplay"));
 	engine::ecs::World* seen = nullptr;
 	std::size_t entitiesThen = 0;
+	std::string problem; // what the hook reports
 	config.onPlay = [&](engine::ecs::World& world)
 	{
 		seen = &world;
 		entitiesThen = world.registry.AllEntities().size();
+		return problem;
 	};
 	EditorGame game(editor, std::move(config));
 	REQUIRE(game.IsValid());
@@ -285,4 +287,11 @@ TEST_CASE("onPlay is called on the play world after the scene is loaded", "[edit
 	REQUIRE(game.StartPlay());
 	CHECK(seen == game.PlayWorld());
 	CHECK(entitiesThen == 2);
+
+	// A problem stops Play and is shown.
+	game.StopPlay();
+	problem = "the maze has no player start";
+	CHECK_FALSE(game.StartPlay());
+	CHECK_FALSE(game.IsPlaying());
+	CHECK(game.Message().find("no player start") != std::string::npos);
 }

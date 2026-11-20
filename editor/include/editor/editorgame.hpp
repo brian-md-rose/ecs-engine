@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -11,8 +12,11 @@
 #include "ecs/entity.hpp"
 #include "editor/editor.hpp"
 #include "editor/entitypanels.hpp"
+#include "editor/gridtool.hpp"
 #include "editor/viewport.hpp"
 #include "graphics/renderer.hpp"
+
+struct ImDrawList;
 
 namespace engine::editor
 {
@@ -34,8 +38,13 @@ namespace engine::editor
 
 		// Called on the play world after its scene is loaded and afterLoad has run, before its first update, for a game
 		// that needs to start itself on what the scene holds (Tangle Run starts on its maze when the scene is one).
-		// False, or no hook, leaves the game to start as it would.
-		std::function<void(ecs::World&)> onPlay = nullptr;
+		// Returns what is wrong, if the scene can't be played (shown in the menu bar, and Play does not start), or an
+		// empty string. No hook leaves the game to start as it would.
+		std::function<std::string(ecs::World&)> onPlay = nullptr;
+
+		// Paints a scene made of grid cells (a maze). The Viewport shows its palette while editing a scene it applies
+		// to.
+		GridTool gridTool = {};
 	};
 
 	// The standalone editor as a Game: it holds an edit world, a copy of the game with the scene being edited and
@@ -85,8 +94,14 @@ namespace engine::editor
 		int targetHeight = 0;
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
-		PlayMouse playMouse;   // the mouse the playing game sees, from the pointer over the viewport
-		bool mouseFed = false; // the viewport fed playMouse since the last game update
+		// The grid tool's brush: select (the usual click and drag), a palette entry (its index), or erase.
+		static constexpr int kBrushSelect = -1;
+		static constexpr int kBrushErase = -2;
+		int brush = kBrushSelect;
+		bool stroking = false;            // a paint or erase drag is in progress
+		std::optional<GridCell> lastCell; // the cell the stroke last touched, so a fast drag leaves no gaps
+		PlayMouse playMouse;              // the mouse the playing game sees, from the pointer over the viewport
+		bool mouseFed = false;            // the viewport fed playMouse since the last game update
 		// Undo: the scene as text after each finished change (a drag, a typed value, a menu click), oldest first;
 		// historyPos is the one the world is at. Undo and Redo reload the neighbour, which re-creates the entities
 		// (their ids change, the selection is kept by position).
@@ -101,6 +116,7 @@ namespace engine::editor
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
+		void PaintStroke(const GridInfo& grid, graphics::Position origin, ImDrawList* draw);
 
 		[[nodiscard]] ecs::World& CurrentWorld() { return play ? play->world : edit->world; }
 		[[nodiscard]] std::string SceneText();
