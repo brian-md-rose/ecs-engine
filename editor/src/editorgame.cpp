@@ -173,16 +173,18 @@ namespace engine::editor
 		lastAutosave = std::chrono::steady_clock::now();
 		const std::filesystem::path file = AutosavePath();
 		if (file.empty() || play) return false;
-		CheckDirty();
-		if (!dirty)
+		// Compared directly, not through CheckDirty, which would also add an undo step in the middle of an edit.
+		const std::string text = SceneText();
+		if (text == savedText)
 		{
 			DropAutosave(); // changes undone or saved: nothing left to bring back
+			autosaveWritten = false;
 			return false;
 		}
 		std::error_code ignored;
 		std::filesystem::create_directories(file.parent_path(), ignored);
 		// Atomically, so a crash in the middle leaves the last whole autosave and not half of one.
-		autosaveWritten = core::WriteFileAtomic(file, SceneText() + '\n');
+		autosaveWritten = core::WriteFileAtomic(file, text + '\n');
 		return autosaveWritten;
 	}
 
