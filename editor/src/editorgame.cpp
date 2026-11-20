@@ -182,7 +182,8 @@ namespace engine::editor
 		std::error_code ignored;
 		std::filesystem::create_directories(file.parent_path(), ignored);
 		// Atomically, so a crash in the middle leaves the last whole autosave and not half of one.
-		return core::WriteFileAtomic(file, SceneText() + '\n');
+		autosaveWritten = core::WriteFileAtomic(file, SceneText() + '\n');
+		return autosaveWritten;
 	}
 
 	// After a scene is opened (or the editor starts on a new one): an autosave newer than the file is a crash or a
@@ -225,7 +226,8 @@ namespace engine::editor
 			world.registry.Destroy(entity);
 		if (config.afterLoad) config.afterLoad(world);
 		ResetHistory();
-		CheckDirty(); // against the saved text, so the restored scene shows as unsaved
+		autosaveWritten = true; // the file is still there; it goes when the scene is clean again
+		CheckDirty();           // against the saved text, so the restored scene shows as unsaved
 		message.clear();
 		panels->Select(ecs::Entity::Null);
 		return true;
@@ -268,6 +270,11 @@ namespace engine::editor
 		framesSinceCheck = 0;
 		const std::string text = SceneText();
 		dirty = text != savedText;
+		if (!dirty && autosaveWritten)
+		{
+			DropAutosave(); // changes undone or saved: nothing left to bring back
+			autosaveWritten = false;
+		}
 		if (!play && !history.empty() && text != history[historyPos]) problemsStale = true;
 		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
 	}

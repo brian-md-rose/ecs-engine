@@ -474,3 +474,38 @@ TEST_CASE("An autosave older than the scene file is not offered", "[editor][game
 	CHECK_FALSE(game.RecoveryOffered());
 	CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "level.json"));
 }
+
+TEST_CASE("A restored autosave goes when the scene is clean again, none is written while playing, and a new scene "
+          "is recovered too",
+          "[editor][game]")
+{
+	const auto folder = TempFolder("autosavemore");
+	EditorGameConfig config = MakeConfig(folder);
+	config.autosaveFolder = folder / "autosave";
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config);
+		REQUIRE(game.IsValid());
+		AddMover(game.EditWorld(), "a", 5); // a new scene that is never saved
+		REQUIRE(game.WriteAutosave());
+		CHECK(std::filesystem::exists(config.autosaveFolder / "_untitled_.json"));
+		REQUIRE(game.StartPlay());
+		CHECK_FALSE(game.WriteAutosave()); // not while playing
+		game.StopPlay();
+	}
+	{
+		engine::editor::Editor editor;
+		EditorGame game(editor, config); // starts on a new scene, finds its autosave
+		REQUIRE(game.IsValid());
+		REQUIRE(game.RecoveryOffered());
+		REQUIRE(game.AcceptRecovery());
+		CHECK(game.EditWorld().registry.AllEntities().size() == 1);
+		CHECK(game.IsDirty());
+		// Taking the entity away again makes the scene match the (empty) saved text.
+		for (const Entity entity : game.EditWorld().registry.AllEntities())
+			game.EditWorld().registry.Destroy(entity);
+		game.CheckDirty();
+		CHECK_FALSE(game.IsDirty());
+		CHECK_FALSE(std::filesystem::exists(config.autosaveFolder / "_untitled_.json"));
+	}
+}

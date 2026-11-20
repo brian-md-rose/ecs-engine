@@ -95,6 +95,7 @@ namespace engine::editor
 
 		std::string sceneName; // the file name of the open scene, empty for a new one
 		std::chrono::steady_clock::time_point lastAutosave = std::chrono::steady_clock::now();
+		bool autosaveWritten = false;    // an autosave of the open scene may be on disk
 		std::vector<std::string> recent; // scene file names last opened or saved, newest first
 		std::string savedText;           // the scene as last saved or loaded, to see changes against
 		bool dirty = false;
