@@ -125,7 +125,7 @@ mechanisms; then window settings, gamepads and audio files. See
 
 ## Editor – type registry, scenes and an ImGui editor (v0.6.0 to v0.8.0)
 
-Plan: `plans/editor-plan.md` (steps E1 to E7). See [scenes.md](scenes.md), [editor.md](editor.md) and
+Steps E1 to E7 of the editor plan. See [scenes.md](scenes.md), [editor.md](editor.md) and
 [ADR 0004](decisions/0004-reflection-and-scenes.md).
 
 - [x] **E1** (v0.6.0): `ecs::TypeRegistry` and the engine's own components registered.

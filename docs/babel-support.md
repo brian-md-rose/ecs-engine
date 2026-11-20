@@ -4,7 +4,7 @@ This plan covers the engine work that the Project Babel port needs. The port its
 `project-rise/docs/babel-on-ecs-engine-plan.md`, and its decisions are referred to here as D1 to
 D10. That plan names three engine releases, E1, E2 and E3. This plan breaks each release into
 one PR per checkbox group. Each group lists the files it touches, an API sketch, its tests and a
-"Done when" line. The work continues [ROADMAP.md](ROADMAP.md) as Phases 10 to 12.
+"Done when" line. The work continues [ROADMAP.md](ROADMAP.md) as Phases 10 to 12. **Status: all of it shipped, as v0.2.0 to v0.5.0. The checkboxes below are the original plan and were not ticked off as it was built.**
 
 Facts below are from `v0.1.0` (commit `46b5caf`) and the vendored SDL in `thirdparty/SDL`.
 
