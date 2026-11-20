@@ -62,11 +62,15 @@ namespace game
 	// What a piece of changing screen text shows.
 	enum class TextKind : std::uint8_t
 	{
-		TitleItem,  // a title menu line, with its cursor
-		PauseItem,  // a pause menu line, with its cursor
-		HelpBack,   // the how-to-play screen's one button, always selected
-		OptionItem, // an options line (OptionText), with its cursor
-		NameSlot    // one character of the name being entered
+		TitleItem,      // a title menu line, with its cursor
+		PauseItem,      // a pause menu line, with its cursor
+		HelpBack,       // the how-to-play screen's one button, always selected
+		OptionItem,     // an options line (OptionText), with its cursor
+		NameSlot,       // one character of the name being entered
+		HighScoreLabel, // the title screen's "HIGH SCORE" caption: label while there is a record, nothing before
+		HighScoreValue, // the record holder's name and score, or nothing before there is one
+		ScoreLine,      // label followed by this game's score ("SCORE 120")
+		LevelLine       // label followed by the level now starting ("LEVEL 2")
 	};
 
 	// Component: text that follows the game's resources. item is the menu item or name slot it

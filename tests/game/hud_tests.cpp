@@ -10,6 +10,7 @@
 #include "mazegame.hpp"
 #include "scoring.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -82,7 +83,7 @@ TEST_CASE("HudLine's message follows the screen and the round", "[game][hud]")
 
 TEST_CASE("The HUD follows the score, the high score, the lives and the level", "[game][hud]")
 {
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	Update(maze);
 	CHECK(Shown(maze, HudField::Message).empty()); // the title screen has its own text
 

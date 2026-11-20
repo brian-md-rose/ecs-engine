@@ -11,6 +11,7 @@
 #include "input/input.hpp"
 #include "mazegame.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -34,7 +35,7 @@ namespace
 
 	struct Harness
 	{
-		game::MazeGame maze{TestMaze()};
+		game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 		engine::input::Input input;
 
 		void Update(int steps = 1)

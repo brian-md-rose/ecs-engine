@@ -12,6 +12,7 @@
 #include "options.hpp"
 #include "save.hpp"
 #include "scoring.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -106,7 +107,7 @@ TEST_CASE("A saved name is cleaned up, and settings out of range are ignored", "
 
 TEST_CASE("A loaded game puts its high score, name and settings in the world", "[game][save]")
 {
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	game::ApplySavedGame(maze.world,
 	                     {.highScore = 700, .highScoreName = "ADA", .settings = {.sound = false, .lives = 4}});
 
@@ -122,7 +123,7 @@ TEST_CASE("A loaded game puts its high score, name and settings in the world", "
 
 TEST_CASE("RecordScore sets the record only if the score beats it", "[game][save]")
 {
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	maze.world.resources.Get<game::HighScore>().record = 100;
 	maze.world.resources.Get<game::Score>().points = 100;
 	game::RecordScore(maze.world, "TIE");
@@ -137,7 +138,7 @@ TEST_CASE("RecordScore sets the record only if the score beats it", "[game][save
 TEST_CASE("The high score and its name are saved only if the record beats the saved one", "[game][save]")
 {
 	const TempSave save("ecs_engine_game_save_record");
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	maze.world.resources.Get<game::SaveFile>() = game::SaveFile{.path = save.file, .savedHighScore = 100};
 
 	maze.world.resources.Get<game::HighScore>().record = 50;
@@ -160,7 +161,7 @@ TEST_CASE("Saving keeps the other values in the save file", "[game][save]")
 	data.Set("colour", "7");
 	REQUIRE(engine::core::WriteSaveData(save.file, data));
 
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	maze.world.resources.Get<game::SaveFile>().path = save.file;
 	maze.world.resources.Get<game::HighScore>().record = 900;
 	game::SaveHighScore(maze.world);
@@ -176,7 +177,7 @@ TEST_CASE("Saving keeps the other values in the save file", "[game][save]")
 
 TEST_CASE("A game without a save path never writes", "[game][save]")
 {
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	maze.world.resources.Get<game::HighScore>().record = 500;
 	game::SaveHighScore(maze.world);
 	game::SaveSettings(maze.world);

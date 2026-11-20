@@ -21,6 +21,7 @@
 #include "screens.hpp"
 #include "sounds.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 #include "ui/ui.hpp"
 
@@ -47,7 +48,7 @@ namespace
 
 	struct Menus
 	{
-		game::MazeGame maze{TestMaze()};
+		game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 		engine::input::Input input;
 
 		Menus() { Update(2); }

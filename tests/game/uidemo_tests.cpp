@@ -21,6 +21,7 @@
 #include "mazegame.hpp"
 #include "options.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 #include "ui/ninepatch.hpp"
 #include "ui/ui.hpp"
@@ -52,20 +53,9 @@ namespace
 		return *result.map;
 	}
 
-	// Assets with only the demo's scene file, read from the source tree.
-	[[nodiscard]] game::GameAssets TestAssets()
-	{
-		game::GameAssets assets;
-		engine::core::JsonResult scene =
-		    engine::core::LoadJson(std::filesystem::path(GAME_ASSETS_DIR) / "scenes" / "uidemo.json");
-		REQUIRE(scene.value.has_value());
-		assets.uiDemoScene = std::move(*scene.value);
-		return assets;
-	}
-
 	struct Demo
 	{
-		game::MazeGame maze{TestMaze(), TestAssets()};
+		game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 		engine::input::Input input;
 
 		Demo()
@@ -449,8 +439,8 @@ TEST_CASE("The demo's scene file loads without a problem", "[game][uidemo][scene
 	game::RegisterUiDemoComponents(types);
 	engine::ecs::Registry registry;
 
-	const game::GameAssets assets = TestAssets();
-	const auto result = engine::ecs::LoadScene(registry, types, assets.uiDemoScene);
+	const game::GameAssets assets = gametest::SceneAssets();
+	const auto result = engine::ecs::LoadScene(registry, types, assets.scenes.find("uidemo")->second);
 	CHECK(result.Ok());
 	CHECK(result.issues.warnings.empty());
 	CHECK(result.entities.size() == 15);

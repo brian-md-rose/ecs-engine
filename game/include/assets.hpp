@@ -1,6 +1,8 @@
 #pragma once
 #include <array>
 #include <filesystem>
+#include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,6 +21,9 @@
 // the font and the animation clips cut from it, and how hard each level is.
 namespace game
 {
+	// The scene files (assets/scenes/*.json), parsed, by file name without the extension.
+	using SceneFiles = std::map<std::string, engine::core::JsonValue, std::less<>>;
+
 	inline constexpr int kGlyphAdvance = 6;    // pixels from one character to the next
 	inline constexpr int kGlyphLineHeight = 8; // and from one line to the next
 
@@ -52,7 +57,7 @@ namespace game
 		engine::graphics::BitmapFont font;
 		SpriteClips clips;
 		DifficultyTable difficulty = FallbackDifficulty(); // assets/levels.txt once loaded
-		engine::core::JsonValue uiDemoScene;               // assets/scenes/uidemo.json once loaded; null if not
+		SceneFiles scenes;                                 // assets/scenes/*.json once loaded; empty if not
 	};
 
 	// The sprites the game needs that spriteSheet doesn't have.

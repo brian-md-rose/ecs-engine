@@ -105,7 +105,7 @@ labels, the list's frame, view and content, the two hint lines and the mouse cur
 - spawns the 30 text rows of the scrolling list under the scene's "List content" entity, since each row's
   position depends on how tall the ones before it wrap, and sets the scroll view's content height.
 
-The game registers the engine's components and `RegisterUiDemoComponents` (the demo's own) in a `TypeRegistry`
-resource when it is built, and `LoadGameAssets` parses the scene file with the other assets. If the file is
+The game registers the engine's components and `RegisterGameComponents` (`scenes.hpp`: the demo's and the menu screens' own) in a `TypeRegistry`
+resource when it is built, and `LoadGameAssets` parses the scene files (every `.json` in `assets/scenes`) with the other assets. If the file is
 missing or broken the game doesn't start (as for any asset); if the scene itself fails to load, the screen opens
 empty and the errors, with their paths, go to the log.

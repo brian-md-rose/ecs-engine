@@ -1,0 +1,244 @@
+{
+  "format": 1,
+  "engine": "0.8.0",
+  "entities": [
+    {
+      "id": 1,
+      "name": "PAUSED",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 104.0
+          }
+        },
+        "Text": {
+          "value": "PAUSED",
+          "color": [
+            255,
+            200,
+            70
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Panel",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 51.0,
+            "y": 136.0
+          }
+        },
+        "ScreenSpace": {},
+        "NinePatch": {
+          "source": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "left": 2,
+          "right": 2,
+          "top": 2,
+          "bottom": 2,
+          "width": 122,
+          "height": 46,
+          "tint": [
+            255,
+            255,
+            255
+          ],
+          "layer": 20
+        },
+        "ClipName": {
+          "value": "panel"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "Button CONTINUE",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 59.0,
+            "y": 144.0
+          }
+        },
+        "ScreenSpace": {},
+        "NinePatch": {
+          "source": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "left": 2,
+          "right": 2,
+          "top": 2,
+          "bottom": 2,
+          "width": 106,
+          "height": 14,
+          "tint": [
+            255,
+            255,
+            255
+          ],
+          "layer": 21
+        },
+        "Hitbox": {
+          "width": 106.0,
+          "height": 14.0,
+          "layer": 21,
+          "blocksBelow": true
+        },
+        "Interactable": {
+          "enabled": true
+        },
+        "FocusOrder": {
+          "order": 0
+        },
+        "ClipName": {
+          "value": "button"
+        },
+        "MenuButton": {
+          "menu": "Pause",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "CONTINUE",
+      "parent": 3,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 67.0,
+            "y": 147.0
+          }
+        },
+        "LocalTransform": {
+          "position": {
+            "x": 8.0,
+            "y": 3.0
+          }
+        },
+        "ScreenSpace": {},
+        "Text": {
+          "value": "> CONTINUE",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "PauseItem",
+          "label": "CONTINUE",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "Button QUIT TO TITLE",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 59.0,
+            "y": 160.0
+          }
+        },
+        "ScreenSpace": {},
+        "NinePatch": {
+          "source": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "left": 2,
+          "right": 2,
+          "top": 2,
+          "bottom": 2,
+          "width": 106,
+          "height": 14,
+          "tint": [
+            255,
+            255,
+            255
+          ],
+          "layer": 21
+        },
+        "Hitbox": {
+          "width": 106.0,
+          "height": 14.0,
+          "layer": 21,
+          "blocksBelow": true
+        },
+        "Interactable": {
+          "enabled": true
+        },
+        "FocusOrder": {
+          "order": 1
+        },
+        "ClipName": {
+          "value": "button"
+        },
+        "MenuButton": {
+          "menu": "Pause",
+          "item": 1
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "QUIT TO TITLE",
+      "parent": 5,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 67.0,
+            "y": 163.0
+          }
+        },
+        "LocalTransform": {
+          "position": {
+            "x": 8.0,
+            "y": 3.0
+          }
+        },
+        "ScreenSpace": {},
+        "Text": {
+          "value": "  QUIT TO TITLE",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "PauseItem",
+          "label": "QUIT TO TITLE",
+          "item": 1
+        }
+      }
+    }
+  ]
+}

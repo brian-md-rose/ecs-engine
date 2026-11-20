@@ -23,6 +23,7 @@
 #include "options.hpp"
 #include "scoring.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -54,7 +55,7 @@ namespace
 	// events go through a Keyboard the way Application feeds them.
 	struct Harness
 	{
-		game::MazeGame maze{TestMaze()};
+		game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 		engine::input::Input input;
 
 		// Chooses START on the title screen, then waits for the round to be under way, past the
@@ -553,7 +554,7 @@ TEST_CASE("Clearing a level shows the level screen, then starts the next level",
 
 TEST_CASE("A game starts with the lives chosen in the options", "[game][systems][gameflow]")
 {
-	game::MazeGame maze{TestMaze()};
+	game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 	engine::input::Input input;
 	maze.world.resources.Get<game::Settings>().lives = 5;
 	input.keyboard.OnKeyDown(Key::Enter);

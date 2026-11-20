@@ -18,6 +18,7 @@
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "stage.hpp"
+#include "testassets.hpp"
 #include "tilemap.hpp"
 
 namespace
@@ -42,7 +43,7 @@ namespace
 	// The game with a keyboard, as in systems_tests.cpp.
 	struct Harness
 	{
-		game::MazeGame maze{TestMaze()};
+		game::MazeGame maze{TestMaze(), gametest::SceneAssets()};
 		engine::input::Input input;
 
 		[[nodiscard]] Stage CurrentStage() const { return gametest::StageOf(maze); }

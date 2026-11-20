@@ -1,0 +1,234 @@
+{
+  "format": 1,
+  "engine": "0.8.0",
+  "entities": [
+    {
+      "id": 1,
+      "parent": 2,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 20.0,
+            "y": 48.0
+          }
+        },
+        "LocalTransform": {
+          "position": {
+            "x": 0.0,
+            "y": -0.0
+          }
+        },
+        "ScreenSpace": {}
+      }
+    },
+    {
+      "id": 2,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 20.0,
+            "y": 48.0
+          }
+        },
+        "ClipRect": {
+          "rect": {
+            "x": 20,
+            "y": 48,
+            "width": 184,
+            "height": 172
+          }
+        },
+        "ScreenSpace": {},
+        "Hitbox": {
+          "width": 184.0,
+          "height": 172.0,
+          "layer": 21,
+          "blocksBelow": true
+        },
+        "ScrollView": {
+          "content": 1,
+          "viewHeight": 172.0,
+          "contentHeight": 0.0,
+          "offset": 0.0,
+          "wheelStep": 12.0,
+          "dragThreshold": 4.0,
+          "padSpeed": 120.0
+        },
+        "HelpList": {}
+      }
+    },
+    {
+      "id": 3,
+      "name": "Panel",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 12.0,
+            "y": 40.0
+          }
+        },
+        "ScreenSpace": {},
+        "NinePatch": {
+          "source": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "left": 2,
+          "right": 2,
+          "top": 2,
+          "bottom": 2,
+          "width": 200,
+          "height": 188,
+          "tint": [
+            255,
+            255,
+            255
+          ],
+          "layer": 20
+        },
+        "ClipName": {
+          "value": "panel"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "HOW TO PLAY",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 16.0
+          }
+        },
+        "Text": {
+          "value": "HOW TO PLAY",
+          "color": [
+            255,
+            200,
+            70
+          ],
+          "layer": 22,
+          "scale": 2,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "WHEEL OR R STICK: SCROLL",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 112.0,
+            "y": 264.0
+          }
+        },
+        "Text": {
+          "value": "WHEEL OR R STICK: SCROLL",
+          "color": [
+            120,
+            200,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Centre"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "BACK",
+      "parent": 7,
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 94.0,
+            "y": 241.0
+          }
+        },
+        "LocalTransform": {
+          "position": {
+            "x": 8.0,
+            "y": 3.0
+          }
+        },
+        "ScreenSpace": {},
+        "Text": {
+          "value": "> BACK",
+          "color": [
+            255,
+            255,
+            255
+          ],
+          "layer": 22,
+          "scale": 1,
+          "wrapWidth": 0,
+          "align": "Left"
+        },
+        "ScreenText": {
+          "kind": "HelpBack",
+          "label": "BACK",
+          "item": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Button BACK",
+      "components": {
+        "Transform": {
+          "position": {
+            "x": 86.0,
+            "y": 238.0
+          }
+        },
+        "ScreenSpace": {},
+        "NinePatch": {
+          "source": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "left": 2,
+          "right": 2,
+          "top": 2,
+          "bottom": 2,
+          "width": 52,
+          "height": 14,
+          "tint": [
+            255,
+            255,
+            255
+          ],
+          "layer": 21
+        },
+        "Hitbox": {
+          "width": 52.0,
+          "height": 14.0,
+          "layer": 21,
+          "blocksBelow": true
+        },
+        "Interactable": {
+          "enabled": true
+        },
+        "FocusOrder": {
+          "order": 0
+        },
+        "ClipName": {
+          "value": "button"
+        },
+        "MenuButton": {
+          "menu": "Help",
+          "item": 0
+        }
+      }
+    }
+  ]
+}
