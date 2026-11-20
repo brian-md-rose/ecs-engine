@@ -123,8 +123,10 @@ namespace engine::editor
 		std::vector<DraggedEntity> dragged;         // what a drag in the Viewport is moving
 		graphics::Position dragPixels{};            // how far the pointer has moved since it began, in picture pixels
 		std::optional<graphics::Position> boxStart; // where a box selection began, in picture pixels
-		std::vector<ecs::Entity> boxBase;           // what was selected when the box began, kept if it adds
-		bool snapToGrid = false; // moves land on multiples of snapSize (Ctrl flips this while dragging)
+		ecs::Entity collapseTo =
+		    ecs::Entity::Null;            // a click on part of a multiple selection narrows to this on release
+		std::vector<ecs::Entity> boxBase; // what was selected when the box began, kept if it adds
+		bool snapToGrid = false;          // moves land on multiples of snapSize (Ctrl flips this while dragging)
 		int snapSize = 8;
 		bool viewportActive = false; // the Viewport had the pointer or focus last frame (arrow keys nudge only then)
 		ecs::Entity shownSelection =

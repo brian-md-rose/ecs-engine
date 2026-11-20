@@ -567,8 +567,17 @@ namespace engine::editor
 					if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
 			}
 			dragPixels = {};
+			// A plain click on part of a multiple selection keeps it, so the group can be dragged; if the button comes
+			// up without a drag, the click narrows the selection to that entity.
+			collapseTo = !add && movingSelected && !panels->extra.empty() ? picked : ecs::Entity::Null;
 		}
-		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) movingSelected = false;
+		if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			if (!collapseTo.IsNull() && dragPixels.x == 0.0F && dragPixels.y == 0.0F && panels->IsSelected(collapseTo))
+				panels->Select(collapseTo);
+			collapseTo = ecs::Entity::Null;
+			movingSelected = false;
+		}
 		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen. While
 		// playing the selection is only noted, so Stop does not scroll to a change made during Play.
 		if (panels->selected != shownSelection)
