@@ -10,6 +10,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ## [Unreleased]
 
 ### Added
+- Editor: an Inspector search box for components and fields, and Copy values / Paste values on a component's header.
 
 - **Restart** (F6) next to Stop in the standalone editor, and a message when the game quits itself during Play.
 - Autosave and crash recovery in the standalone editor: unsaved changes are written to `EditorGameConfig::autosaveFolder` every minute, and opening a scene with a newer autosave offers to restore it.

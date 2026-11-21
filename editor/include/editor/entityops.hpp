@@ -82,6 +82,20 @@ namespace engine::editor
 	// chain loops (from a hand-edited scene, say), is made a root too, so it can still be selected and fixed.
 	[[nodiscard]] Tree BuildTree(const ecs::Registry& registry);
 
+	// True if text contains filter, ignoring case. An empty filter matches everything.
+	[[nodiscard]] bool ContainsNoCase(const std::string& text, const std::string& filter);
+
+	// The values of one component of entity as JSON text ({"type": ..., "fields": {...}}), for the clipboard.
+	// Empty, with the reason in error, if the entity lacks the component or a field can't be saved.
+	[[nodiscard]] std::string CopyComponent(const ecs::Registry& registry, const ecs::TypeInfo& type,
+	                                        ecs::Entity entity, std::string& error);
+
+	// Puts text (from CopyComponent) onto entity: adds the component if it has none, then loads every field the
+	// text holds. Fields it does not hold keep their values. False, with the reason in error, if text is not a
+	// component copy, names a type that is not registered, or a field does not load (nothing is changed then).
+	[[nodiscard]] bool PasteComponent(ecs::Registry& registry, const ecs::TypeRegistry& types, ecs::Entity entity,
+	                                  std::string_view text, std::string& error);
+
 	// True if the entity's label contains filter, ignoring case. An empty filter matches everything.
 	[[nodiscard]] bool MatchesFilter(const ecs::Registry& registry, ecs::Entity entity, const std::string& filter);
 

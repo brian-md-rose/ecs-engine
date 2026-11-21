@@ -192,3 +192,52 @@ TEST_CASE("The filter matches names ignoring case, and keeps ancestors of a matc
 	CHECK_FALSE(engine::editor::SubtreeMatches(registry, tree, other, "button"));
 	CHECK(engine::editor::SubtreeMatches(registry, tree, other, "")); // an empty filter keeps everything
 }
+
+TEST_CASE("Component values copy onto another entity, adding the component if needed", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	const Entity b = CreateEntity(registry, "b");
+	registry.Add<Target>(a, Target{b, 7});
+	const engine::ecs::TypeInfo* type = types.Find("Target");
+	REQUIRE(type != nullptr);
+
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *type, a, error);
+	REQUIRE_FALSE(text.empty());
+	CHECK(engine::editor::PasteComponent(registry, types, b, text, error));
+	REQUIRE(registry.TryGetComponent<Target>(b) != nullptr);
+	CHECK(registry.GetComponent<Target>(b).weight == 7);
+	CHECK(registry.GetComponent<Target>(b).who == b); // the reference means the same entity it did
+
+	registry.GetComponent<Target>(a).weight = 2;
+	CHECK(engine::editor::PasteComponent(registry, types, a, text, error)); // onto one that has it
+	CHECK(registry.GetComponent<Target>(a).weight == 7);
+}
+
+TEST_CASE("Component copy and paste say why they can't", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	const engine::ecs::TypeInfo* type = types.Find("Target");
+	REQUIRE(type != nullptr);
+
+	std::string error;
+	CHECK(engine::editor::CopyComponent(registry, *type, a, error).empty());
+	CHECK_FALSE(error.empty());
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, "not json", error));
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, R"({"type":"Nope","fields":{}})", error));
+	// A field that does not load changes nothing, and does not leave the component behind.
+	CHECK_FALSE(
+	    engine::editor::PasteComponent(registry, types, a, R"({"type":"Target","fields":{"weight":"x"}})", error));
+	CHECK_FALSE(registry.HasComponent<Target>(a));
+}
+
+TEST_CASE("Names are matched ignoring case", "[editor][ops]")
+{
+	CHECK(engine::editor::ContainsNoCase("Position X", "pos"));
+	CHECK(engine::editor::ContainsNoCase("anything", ""));
+	CHECK_FALSE(engine::editor::ContainsNoCase("weight", "who"));
+}

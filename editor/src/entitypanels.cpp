@@ -450,8 +450,11 @@ namespace engine::editor
 		{
 			void* component = type.Get(registry, entity);
 			if (component == nullptr) return;
+			// A filter that matches the component's name shows all its fields; otherwise only the matching ones.
+			const bool wholeType = ContainsNoCase(type.Name(), state.fieldFilter);
 			for (const FieldInfo& field : type.Fields())
 			{
+				if (!wholeType && !ContainsNoCase(field.name, state.fieldFilter)) continue;
 				JsonValue value;
 				std::string error;
 				if (!field.save(component, ids, value, error))
@@ -504,6 +507,8 @@ namespace engine::editor
 				ImGui::TextDisabled("%u more selected; changes here apply to this entity only",
 				                    static_cast<unsigned>(state.extra.size()));
 			if (!state.status.empty()) ImGui::TextColored(ImVec4(1.0F, 0.4F, 0.4F, 1.0F), "%s", state.status.c_str());
+			ImGui::SetNextItemWidth(-FLT_MIN);
+			ImGui::InputTextWithHint("##fieldfilter", "search components and fields", &state.fieldFilter);
 			ImGui::Separator();
 
 			const std::vector<Entity> all = registry.AllEntities();
@@ -513,12 +518,41 @@ namespace engine::editor
 			{
 				const TypeInfo& type = types->At(i);
 				if (type.IsRuntime() || !type.Has(registry, entity)) continue;
+				if (!state.fieldFilter.empty() && !ContainsNoCase(type.Name(), state.fieldFilter))
+				{
+					const auto& fields = type.Fields();
+					const bool any = std::any_of(fields.begin(), fields.end(), [&](const FieldInfo& field)
+					{
+						return ContainsNoCase(field.name, state.fieldFilter);
+					});
+					if (!any) continue;
+				}
 				ImGui::PushID(static_cast<int>(i));
 				bool keep = true;
-				if (ImGui::CollapsingHeader(type.Name().c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen))
+				const bool open = ImGui::CollapsingHeader(type.Name().c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen);
+				if (ImGui::BeginPopupContextItem("component menu"))
 				{
-					DrawComponent(registry, type, entity, state, all, ids);
+					if (ImGui::MenuItem("Copy values"))
+					{
+						std::string error;
+						const std::string text = CopyComponent(registry, type, entity, error);
+						if (text.empty())
+							state.status = error;
+						else
+							ImGui::SetClipboardText(text.c_str());
+					}
+					if (ImGui::MenuItem("Paste values"))
+					{
+						std::string error;
+						const char* clip = ImGui::GetClipboardText();
+						if (!PasteComponent(registry, *types, entity, clip != nullptr ? clip : "", error))
+							state.status = error;
+						else
+							state.status.clear();
+					}
+					ImGui::EndPopup();
 				}
+				if (open) DrawComponent(registry, type, entity, state, all, ids);
 				if (!keep) toRemove = &type;
 				ImGui::PopID();
 			}

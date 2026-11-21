@@ -14,7 +14,10 @@
 namespace engine::editor
 {
 	using ecs::Entity;
+	using ecs::FieldInfo;
 	using ecs::Registry;
+	using ecs::TypeInfo;
+	using ecs::TypeRegistry;
 
 	LiveIds::LiveIds(const Registry& world) : registry(world)
 	{
@@ -245,18 +248,101 @@ namespace engine::editor
 		return tree;
 	}
 
-	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
+	bool ContainsNoCase(const std::string& text, const std::string& filter)
 	{
 		if (filter.empty()) return true;
-		const auto lower = [](std::string text)
+		const auto lower = [](std::string value)
 		{
-			std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c)
+			std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
 			{
 				return static_cast<char>(std::tolower(c));
 			});
-			return text;
+			return value;
 		};
-		return lower(LabelOf(registry, entity)).find(lower(filter)) != std::string::npos;
+		return lower(text).find(lower(filter)) != std::string::npos;
+	}
+
+	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
+	{
+		return ContainsNoCase(LabelOf(registry, entity), filter);
+	}
+
+	std::string CopyComponent(const Registry& registry, const TypeInfo& type, Entity entity, std::string& error)
+	{
+		const void* component = type.Get(registry, entity);
+		if (component == nullptr)
+		{
+			error = "the entity has no " + type.Name();
+			return {};
+		}
+		const LiveIds ids(registry);
+		core::JsonValue fields = core::JsonValue::Object();
+		for (const FieldInfo& field : type.Fields())
+		{
+			core::JsonValue value;
+			if (!field.save(component, ids, value, error))
+			{
+				error = type.Name() + "." + field.name + ": " + error;
+				return {};
+			}
+			fields.Set(field.name, std::move(value));
+		}
+		core::JsonValue root = core::JsonValue::Object();
+		root.Set("type", core::JsonValue(std::string(type.Name())));
+		root.Set("fields", std::move(fields));
+		return core::FormatJson(root);
+	}
+
+	bool PasteComponent(Registry& registry, const TypeRegistry& types, Entity entity, std::string_view text,
+	                    std::string& error)
+	{
+		const core::JsonResult parsed = core::ParseJson(text);
+		const core::JsonValue* typeName = parsed.value ? parsed.value->Find("type") : nullptr;
+		const core::JsonValue* fields = parsed.value ? parsed.value->Find("fields") : nullptr;
+		if (typeName == nullptr || !typeName->AsString() || fields == nullptr || fields->AsObject() == nullptr)
+		{
+			error = "the clipboard does not hold a copied component";
+			return false;
+		}
+		const TypeInfo* type = types.Find(*typeName->AsString());
+		if (type == nullptr || type->IsRuntime())
+		{
+			error = "unknown component " + std::string(*typeName->AsString());
+			return false;
+		}
+		const LiveIds ids(registry);
+		// Load into a scratch copy first, so a bad field leaves the entity as it was.
+		const bool had = type->Has(registry, entity);
+		if (!had) type->AddDefault(registry, entity);
+		void* component = type->Get(registry, entity);
+		std::vector<std::pair<const FieldInfo*, core::JsonValue>> todo;
+		for (const FieldInfo& field : type->Fields())
+		{
+			if (const core::JsonValue* value = fields->Find(field.name)) todo.emplace_back(&field, *value);
+		}
+		core::JsonValue before = core::JsonValue::Object();
+		for (const FieldInfo& field : type->Fields())
+		{
+			core::JsonValue value;
+			std::string ignored;
+			if (field.save(component, ids, value, ignored)) before.Set(field.name, std::move(value));
+		}
+		for (const auto& [field, value] : todo)
+		{
+			if (field->load(component, value, ids, error)) continue;
+			error = type->Name() + "." + field->name + ": " + error;
+			for (const FieldInfo& undo : type->Fields())
+			{
+				if (const core::JsonValue* old = before.Find(undo.name))
+				{
+					std::string ignored;
+					static_cast<void>(undo.load(component, *old, ids, ignored));
+				}
+			}
+			if (!had) type->Remove(registry, entity);
+			return false;
+		}
+		return true;
 	}
 
 	bool SubtreeMatches(const Registry& registry, const Tree& tree, Entity entity, const std::string& filter)
