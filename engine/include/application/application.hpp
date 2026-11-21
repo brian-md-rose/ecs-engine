@@ -124,6 +124,8 @@ namespace engine::application
 		std::filesystem::path screenshotFolder;                    // where screenshots go
 		std::optional<input::Key> screenshotKey = input::Key::F12; // the key that takes one, if any
 		bool screenshotAsked = false;                              // the key was pressed since the last frame
+		int screenshotAfter = 0; // save the screenshot at this frame, then quit (0: off)
+		int framesDrawn = 0;
 
 		// Drains pending SDL events, feeding keyboard, text and mouse events to input. Returns false once the
 		// window has been asked to close.
@@ -140,7 +142,8 @@ namespace engine::application
 		void ApplyDisplay(const graphics::DisplaySettings& wanted);
 		// Saves the frame drawn so far as a PNG in screenshotFolder, and reports it to link.result. Called after the
 		// frame is drawn and before it is presented.
-		void SaveScreenshot(const ScreenshotLink& link);
+		// Returns whether a file was written.
+		[[nodiscard]] bool SaveScreenshot(const ScreenshotLink& link);
 
 	public:
 		explicit Application(const ApplicationConfig& config);
@@ -161,6 +164,14 @@ namespace engine::application
 		// The key that takes a screenshot (F12 to start with), or nullopt for none. With an editor overlay the picture
 		// is the whole window, panels included; without one it is the game's picture at its logical size.
 		void SetScreenshotKey(std::optional<input::Key> key) noexcept { screenshotKey = key; }
+
+		// For scripts: takes a screenshot of frame number frames (counting from 1) and then closes the application. Run
+		// returns 1 instead of 0 if the file could not be saved. 0 or less turns it off.
+		void SetScreenshotAfter(int frames) noexcept { screenshotAfter = frames; }
+
+		// Applies the command-line options of graphics::ParseScreenshotArgs: a directory replaces the screenshot
+		// folder, and a frame count is SetScreenshotAfter. A bad option is logged and ignored.
+		void SetScreenshotArgs(const graphics::ScreenshotArgs& args);
 
 		// Takes a screenshot of the next frame, as the key does.
 		void RequestScreenshot() noexcept { screenshotAsked = true; }

@@ -10,7 +10,7 @@
 
 using engine::application::Application;
 
-int main(int, char**) // SDL_main.h renames this to SDL_main and calls it with argc and argv
+int main(int argc, char** argv) // SDL_main.h renames this to SDL_main and calls it with argc and argv
 {
 	// Next to the save file. The game is a GUI app in Release, where nobody sees the console.
 	const std::filesystem::path logFolder =
@@ -21,6 +21,7 @@ int main(int, char**) // SDL_main.h renames this to SDL_main and calls it with a
 
 	Application app(game::MazeGame::kConfig);
 	app.SetScreenshotFolder(engine::graphics::ScreenshotDirectory(logFolder));
+	app.SetScreenshotArgs(engine::graphics::ParseScreenshotArgs(argc, argv));
 	game::MazeGame game;
 	if (!game.IsValid()) return 1; // the maze couldn't be loaded; the error is in the log
 	return app.Run(game);

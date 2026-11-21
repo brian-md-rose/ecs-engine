@@ -149,3 +149,51 @@ TEST_CASE("Resizing handles empty images, bad sizes and growing", "[screenshot]"
 	REQUIRE(grown.Height() == 2);
 	CHECK(grown.At(2, 1) == kRed);
 }
+
+TEST_CASE("Screenshot options are read from the command line", "[screenshot]")
+{
+	using engine::graphics::ParseScreenshotArgs;
+	using engine::graphics::ScreenshotArgWidth;
+
+	const char* const separate[] = {"game", "--screenshot-after", "30", "--screenshot-dir", "/tmp/shots"};
+	const auto a = ParseScreenshotArgs(5, separate);
+	CHECK(a.afterFrames == 30);
+	CHECK(a.directory == std::filesystem::path("/tmp/shots"));
+	CHECK(a.error.empty());
+
+	const char* const joined[] = {"game", "scene.json", "--screenshot-after=7", "--screenshot-dir=out", "--other"};
+	const auto b = ParseScreenshotArgs(5, joined);
+	CHECK(b.afterFrames == 7);
+	CHECK(b.directory == std::filesystem::path("out"));
+	CHECK(b.error.empty());
+
+	const char* const none[] = {"game", "--overlay"};
+	const auto c = ParseScreenshotArgs(2, none);
+	CHECK(c.afterFrames == 0);
+	CHECK(c.directory.empty());
+	CHECK(c.error.empty());
+
+	CHECK(ScreenshotArgWidth("--screenshot-after") == 2);
+	CHECK(ScreenshotArgWidth("--screenshot-dir") == 2);
+	CHECK(ScreenshotArgWidth("--screenshot-dir=x") == 1);
+	CHECK(ScreenshotArgWidth("--screenshot-directory") == 0);
+	CHECK(ScreenshotArgWidth("--overlay") == 0);
+}
+
+TEST_CASE("Bad screenshot options are reported and left off", "[screenshot]")
+{
+	using engine::graphics::ParseScreenshotArgs;
+
+	for (const char* bad : {"abc", "0", "-3", "12x", ""})
+	{
+		const char* const argv[] = {"game", "--screenshot-after", bad};
+		const auto args = ParseScreenshotArgs(3, argv);
+		CHECK(args.afterFrames == 0);
+		CHECK_FALSE(args.error.empty());
+	}
+
+	const char* const missing[] = {"game", "--screenshot-dir"};
+	const auto args = ParseScreenshotArgs(2, missing);
+	CHECK(args.directory.empty());
+	CHECK_FALSE(args.error.empty());
+}
