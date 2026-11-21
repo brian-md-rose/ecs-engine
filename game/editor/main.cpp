@@ -19,6 +19,7 @@
 #include "editor/editorgame.hpp"
 #include "editor/entitypanels.hpp"
 #include "editor/gridtool.hpp"
+#include "graphics/screenshot.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
 #include "save.hpp"
@@ -132,6 +133,7 @@ int main(int argc, char** argv)
 	}
 
 	Application app(game::MazeGame::kConfig);
+	app.SetScreenshotFolder(engine::graphics::ScreenshotDirectory(logFolder));
 	engine::editor::Editor editor;
 	// Panel positions and the scenes last opened are kept with the log, so the next start picks up where this left off.
 	if (!logFolder.empty()) editor.SetLayoutFile(logFolder / "editor-layout.ini");

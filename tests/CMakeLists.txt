@@ -15,6 +15,7 @@ list(REMOVE_ITEM ENGINE_TEST_SOURCES ${EDITOR_TEST_SOURCES})
 # Tests of the platform library (paths: SDL_GetBasePath; debug panel: the renderer; sheet
 # manifests: image files).
 set(PLATFORM_TEST_NAMES
+    application/screenshot_tests.cpp
     audio/audiodevice_tests.cpp
     audio/soundfile_tests.cpp
     core/paths_tests.cpp

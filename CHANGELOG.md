@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- **Screenshots**: F12 saves a PNG of the game at its logical size (the whole window, panels included, with the editor overlay) to the repository's `screenshot/` folder in development builds, or `screenshots/` next to `log.txt` otherwise. New: `Renderer::ReadWindowPixels` and `ReadLogicalPixels`, `Application::SetScreenshotFolder`, `SetScreenshotKey` and `RequestScreenshot`, `Game::Screenshot()` with `ScreenshotRequest` and `ScreenshotResult`, and `graphics/screenshot.hpp`. See [docs/screenshots.md](docs/screenshots.md).
 - **Scene settings**: an optional `settings` object in a scene file (camera position and zoom, background colour) as `ecs::SceneSettings`, a **Scene** panel in the standalone editor to edit it, and Tangle Run applies it.
 - **`FieldHints::choices`** for a String field: the Inspector shows it as a list to pick from (used by `ClipName` in Tangle Run).
 - **Inspector search** for components and fields, and *Copy values* / *Paste values* on a component's header (a paste only applies to the same component type).

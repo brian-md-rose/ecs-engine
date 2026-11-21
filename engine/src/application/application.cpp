@@ -2,10 +2,14 @@
 
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <filesystem>
 #include <optional>
+#include <string>
+#include <system_error>
 
 #include "core/fixedtimestep.hpp"
 #include "core/sdllog.hpp"
+#include "graphics/imagefile.hpp"
 #include "input/input.hpp"
 #include "input/mouse.hpp"
 
@@ -289,6 +293,11 @@ namespace engine::application
 
 			game.Render(renderer, timestep.Alpha());
 			if (editor != nullptr) editor->Draw();
+			if (const ScreenshotLink screenshot = game.Screenshot();
+			    screenshotAsked || (screenshot.request != nullptr && screenshot.request->pending))
+			{
+				SaveScreenshot(screenshot);
+			}
 			renderer.Present();
 
 			UpdateDisplay(game);
@@ -303,6 +312,64 @@ namespace engine::application
 		if (editor != nullptr) editor->Detach();
 		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
 		return 0;
+	}
+
+	void Application::SaveScreenshot(const ScreenshotLink& link)
+	{
+		screenshotAsked = false;
+		if (link.request != nullptr) link.request->pending = false;
+
+		const auto fail = [&link](const std::string& why)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "screenshot failed: %s", why.c_str());
+			if (link.result != nullptr) link.result->lastError = why;
+		};
+		if (screenshotFolder.empty())
+		{
+			fail("no folder to save screenshots in");
+			return;
+		}
+		std::error_code error;
+		std::filesystem::create_directories(screenshotFolder, error);
+		if (error)
+		{
+			fail("can't make " + screenshotFolder.string() + ": " + error.message());
+			return;
+		}
+
+		// With the editor the picture is the whole window, panels included; otherwise the game at its own size.
+		const graphics::Image picture = editor != nullptr ? renderer.ReadWindowPixels() : renderer.ReadLogicalPixels();
+		if (picture.IsEmpty())
+		{
+			fail("the frame could not be read back");
+			return;
+		}
+
+		graphics::ScreenshotTime time;
+		SDL_Time now = 0;
+		SDL_DateTime date{};
+		if (SDL_GetCurrentTime(&now) && SDL_TimeToDateTime(now, &date, true))
+		{
+			time = {.year = date.year,
+			        .month = date.month,
+			        .day = date.day,
+			        .hour = date.hour,
+			        .minute = date.minute,
+			        .second = date.second};
+		}
+		const std::filesystem::path file = graphics::UniqueScreenshotPath(screenshotFolder, time);
+		if (!graphics::SaveImage(picture, file))
+		{
+			fail("can't write " + file.string());
+			return;
+		}
+		SDL_Log("screenshot saved: %s", file.string().c_str());
+		if (link.result != nullptr)
+		{
+			link.result->lastFile = file;
+			link.result->lastError.clear();
+			++link.result->count;
+		}
 	}
 
 	void Application::ApplyDisplay(const graphics::DisplaySettings& wanted)
@@ -367,6 +434,7 @@ namespace engine::application
 			case SDL_EVENT_KEY_DOWN:
 				if (const std::optional<input::Key> key = ToKey(event.key.scancode))
 				{
+					if (screenshotKey && *key == *screenshotKey && !event.key.repeat) screenshotAsked = true;
 					input.keyboard.OnKeyDown(*key);
 					input.lastUsed = input::Device::Keyboard;
 				}

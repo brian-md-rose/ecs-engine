@@ -3,6 +3,7 @@
 #include <cstdlib>
 
 #include "graphics/display.hpp"
+#include "graphics/image.hpp"
 #include "graphics/renderer.hpp"
 #include "graphics/window.hpp"
 
@@ -67,4 +68,23 @@ TEST_CASE("A window can switch between its modes without failing", "[window][dis
 		CHECK(size.width > 0);
 		CHECK(size.height > 0);
 	}
+}
+
+TEST_CASE("The renderer reads back the window and the logical picture", "[window][screenshot]")
+{
+	Window window("test", 320, 180);
+	if (!window.IsValid()) SKIP("no offscreen video driver");
+	Renderer renderer(window, 80, 45, Scaling::Integer); // 4x in a 320x180 window
+	if (!renderer.IsValid()) SKIP("no renderer");
+
+	renderer.Clear(200, 100, 50);
+	const engine::graphics::Image whole = renderer.ReadWindowPixels();
+	REQUIRE_FALSE(whole.IsEmpty());
+	CHECK(whole.At(0, 0) == engine::graphics::Rgba{200, 100, 50, 255});
+
+	const engine::graphics::Image logical = renderer.ReadLogicalPixels();
+	REQUIRE_FALSE(logical.IsEmpty());
+	CHECK(logical.Width() == 80);
+	CHECK(logical.Height() == 45);
+	CHECK(logical.At(79, 44) == engine::graphics::Rgba{200, 100, 50, 255});
 }
