@@ -274,7 +274,8 @@ TEST_CASE("A paste for one component type refuses another's values", "[editor][o
 	registry.Add<Target>(a, Target{Entity::Null, 5});
 	const engine::ecs::TypeInfo* target = types.Find("Target");
 	const engine::ecs::TypeInfo* name = types.Find("Name");
-	REQUIRE((target != nullptr && name != nullptr));
+	REQUIRE(target != nullptr);
+	REQUIRE(name != nullptr);
 	std::string error;
 	const std::string text = engine::editor::CopyComponent(registry, *target, a, error);
 	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, text, error, name));
