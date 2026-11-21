@@ -241,3 +241,27 @@ TEST_CASE("Names are matched ignoring case", "[editor][ops]")
 	CHECK(engine::editor::ContainsNoCase("anything", ""));
 	CHECK_FALSE(engine::editor::ContainsNoCase("weight", "who"));
 }
+
+TEST_CASE("A paste with a bad field changes nothing, even after a good one", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	registry.Add<Target>(a, Target{Entity::Null, 3});
+	int adds = 0;
+	registry.OnAdd<Target>([&adds](Entity, Target&)
+	{
+		++adds;
+	});
+	std::string error;
+	// "who" is fine, "weight" is not
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a,
+	                                           R"({"type":"Target","fields":{"who":0,"weight":"x"}})", error));
+	CHECK(registry.GetComponent<Target>(a).weight == 3);
+	CHECK(registry.GetComponent<Target>(a).who == Entity::Null);
+
+	const Entity b = CreateEntity(registry, "b");
+	CHECK_FALSE(
+	    engine::editor::PasteComponent(registry, types, b, R"({"type":"Target","fields":{"weight":"x"}})", error));
+	CHECK(adds == 0); // a refused paste never adds the component, so no hook sees it
+}

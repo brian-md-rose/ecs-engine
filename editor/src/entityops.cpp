@@ -311,36 +311,25 @@ namespace engine::editor
 			return false;
 		}
 		const LiveIds ids(registry);
-		// Load into a scratch copy first, so a bad field leaves the entity as it was.
-		const bool had = type->Has(registry, entity);
-		if (!had) type->AddDefault(registry, entity);
-		void* component = type->Get(registry, entity);
-		std::vector<std::pair<const FieldInfo*, core::JsonValue>> todo;
+		// Try every field on a scratch copy first, in a registry of its own with no hooks, so a bad field changes
+		// nothing in the scene and a refused paste never fires the real registry's OnAdd and OnRemove hooks.
+		Registry scratch;
+		const Entity probe = scratch.Create();
+		type->AddDefault(scratch, probe);
+		void* probed = type->Get(scratch, probe);
 		for (const FieldInfo& field : type->Fields())
 		{
-			if (const core::JsonValue* value = fields->Find(field.name)) todo.emplace_back(&field, *value);
-		}
-		core::JsonValue before = core::JsonValue::Object();
-		for (const FieldInfo& field : type->Fields())
-		{
-			core::JsonValue value;
-			std::string ignored;
-			if (field.save(component, ids, value, ignored)) before.Set(field.name, std::move(value));
-		}
-		for (const auto& [field, value] : todo)
-		{
-			if (field->load(component, value, ids, error)) continue;
-			error = type->Name() + "." + field->name + ": " + error;
-			for (const FieldInfo& undo : type->Fields())
-			{
-				if (const core::JsonValue* old = before.Find(undo.name))
-				{
-					std::string ignored;
-					static_cast<void>(undo.load(component, *old, ids, ignored));
-				}
-			}
-			if (!had) type->Remove(registry, entity);
+			const core::JsonValue* value = fields->Find(field.name);
+			if (value == nullptr || field.load(probed, *value, ids, error)) continue;
+			error = type->Name() + "." + field.name + ": " + error;
 			return false;
+		}
+		if (!type->Has(registry, entity)) type->AddDefault(registry, entity);
+		void* component = type->Get(registry, entity);
+		for (const FieldInfo& field : type->Fields())
+		{
+			if (const core::JsonValue* value = fields->Find(field.name))
+				static_cast<void>(field.load(component, *value, ids, error));
 		}
 		return true;
 	}
