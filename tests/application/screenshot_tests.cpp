@@ -150,7 +150,7 @@ TEST_CASE("The screenshot key can be turned off, and RequestScreenshot still wor
 	CHECK(game.result.count == 1);
 }
 
-TEST_CASE("--screenshot-after saves that frame and closes the game", "[screenshot][application]")
+TEST_CASE("The screenshot-after option saves that frame and closes the game", "[screenshot][application]")
 {
 	const TempFolder folder("ecs_screenshot_after");
 	Application app(SmallConfig());
@@ -167,7 +167,7 @@ TEST_CASE("--screenshot-after saves that frame and closes the game", "[screensho
 	CHECK(std::filesystem::exists(game.result.lastFile));
 }
 
-TEST_CASE("--screenshot-after fails the run when the file cannot be saved", "[screenshot][application]")
+TEST_CASE("The screenshot-after option fails the run when the file cannot be saved", "[screenshot][application]")
 {
 	Application app(SmallConfig()); // no folder
 	app.SetScreenshotAfter(2);
@@ -198,7 +198,7 @@ TEST_CASE("SetScreenshotArgs applies the folder and the frame count", "[screensh
 	CHECK(game.result.lastFile.parent_path() == folder.path);
 }
 
-TEST_CASE("--screenshot-after fails the run when the game closes first", "[screenshot][application]")
+TEST_CASE("The screenshot-after option fails the run when the game closes first", "[screenshot][application]")
 {
 	const TempFolder folder("ecs_screenshot_early");
 	Application app(SmallConfig());
