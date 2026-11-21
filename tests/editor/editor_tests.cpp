@@ -259,9 +259,12 @@ TEST_CASE("The inspector draws a text field with choices as a list, and a value 
 	engine::ecs::World world;
 	auto& types = world.resources.Emplace<engine::ecs::TypeRegistry>();
 	types.Register<Picture>("Picture").Field("clip", &Picture::clip, {.choices = {"panel", "button"}});
-	REQUIRE(types.Find("Picture") != nullptr);
-	REQUIRE(types.Find("Picture")->Fields().size() == 1);
-	CHECK(types.Find("Picture")->Fields()[0].hints.choices.size() == 2);
+	const engine::ecs::TypeInfo* picture = types.Find("Picture");
+	REQUIRE(picture != nullptr);
+	const auto& pictureFields = picture->Fields();
+	REQUIRE(pictureFields.size() == 1);
+	const std::size_t choiceCount = pictureFields.front().hints.choices.size();
+	CHECK(choiceCount == 2);
 	const engine::ecs::Entity one = engine::editor::CreateEntity(world.registry, "one");
 	const engine::ecs::Entity two = engine::editor::CreateEntity(world.registry, "two");
 	world.registry.Add<Picture>(one, Picture{"panel"});
