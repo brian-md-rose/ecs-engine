@@ -3,7 +3,9 @@
 #include <cstddef>
 
 #include "components.hpp"
+#include "core/json.hpp"
 #include "ecs/entity.hpp"
+#include "ecs/scene.hpp"
 #include "ecs/states.hpp"
 #include "enemysystems.hpp"
 #include "gameflow.hpp"
@@ -134,4 +136,27 @@ TEST_CASE("scoping a scene's HUD leaves other texts alone")
 
 	CHECK_FALSE(registry.HasComponent<engine::ecs::DespawnOnEnter<game::Screen>>(stray));
 	CHECK(game.Count<game::HudText>() == 5);
+}
+
+TEST_CASE("A scene with settings sets them on the world, and one without leaves them alone")
+{
+	LevelGame game;
+	auto& world = game.maze.world;
+	auto& scenes = world.resources.Get<game::GameScenes>();
+	const auto parsed = engine::core::ParseJson(
+	    R"({"format": 1, "entities": [], "settings": {"camera": {"x": 3, "y": 4, "zoom": 2}, "background": [9, 8, 7]}})");
+	REQUIRE(parsed.value.has_value());
+	scenes.files["lookscene"] = *parsed.value;
+	scenes.files["plainscene"] = *engine::core::ParseJson(R"({"format": 1, "entities": []})").value;
+
+	static_cast<void>(game::SpawnScene(world, "lookscene"));
+	const auto* settings = world.resources.TryGet<engine::ecs::SceneSettings>();
+	REQUIRE(settings != nullptr);
+	REQUIRE(settings->camera.has_value());
+	CHECK(settings->camera->zoom == 2);
+	REQUIRE(settings->background.has_value());
+	CHECK((*settings->background)[0] == 9);
+
+	static_cast<void>(game::SpawnScene(world, "plainscene"));
+	CHECK(world.resources.Get<engine::ecs::SceneSettings>().camera.has_value()); // not cleared by a scene without
 }

@@ -4,8 +4,11 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
+#include <optional>
 #include <system_error>
 #include <utility>
 
@@ -23,6 +26,13 @@ namespace engine::editor
 	{
 		constexpr int kFramesBetweenDirtyChecks = 20;
 		constexpr std::size_t kMaxHistory = 100;
+
+		// The world's scene settings, made (empty) if it has none yet.
+		ecs::SceneSettings& SettingsOf(ecs::World& world)
+		{
+			if (ecs::SceneSettings* settings = world.resources.TryGet<ecs::SceneSettings>()) return *settings;
+			return world.resources.Emplace<ecs::SceneSettings>();
+		}
 
 		ecs::TypeRegistry& EnsureTypes(ecs::World& world)
 		{
@@ -89,6 +99,10 @@ namespace engine::editor
 		{
 			DrawIssues();
 		});
+		editor.AddPanel("Scene", [this]
+		{
+			DrawSceneSettings();
+		});
 		editor.SetPanelSize("Viewport", 700, 480);
 		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
@@ -132,6 +146,38 @@ namespace engine::editor
 		for (const ecs::Issue& issue : issues.warnings)
 			shownIssues.push_back({false, issue.path, issue.message});
 		if (!shownIssues.empty()) editor.SetPanelOpen("Issues", true);
+	}
+
+	void EditorGame::DrawSceneSettings()
+	{
+		ecs::SceneSettings& settings = SettingsOf(edit->world);
+		if (play) ImGui::BeginDisabled();
+		ImGui::TextDisabled("How the scene is drawn. Left off, the game decides.");
+		bool hasCamera = settings.camera.has_value();
+		if (ImGui::Checkbox("Camera", &hasCamera))
+			settings.camera = hasCamera ? std::optional(ecs::SceneCamera{}) : std::nullopt;
+		if (settings.camera)
+		{
+			ecs::SceneCamera& camera = *settings.camera;
+			ImGui::DragFloat("x", &camera.x, 0.5F);
+			ImGui::DragFloat("y", &camera.y, 0.5F);
+			ImGui::SliderInt("zoom", &camera.zoom, 1, 8);
+		}
+		bool hasBackground = settings.background.has_value();
+		if (ImGui::Checkbox("Background colour", &hasBackground))
+			settings.background = hasBackground ? std::optional(std::array<std::uint8_t, 3>{}) : std::nullopt;
+		if (settings.background)
+		{
+			std::array<std::uint8_t, 3>& color = *settings.background;
+			float channels[3] = {static_cast<float>(color[0]) / 255.0F, static_cast<float>(color[1]) / 255.0F,
+			                     static_cast<float>(color[2]) / 255.0F};
+			if (ImGui::ColorEdit3("##background", channels))
+			{
+				for (std::size_t i = 0; i < 3; ++i)
+					color[i] = static_cast<std::uint8_t>(std::clamp(channels[i], 0.0F, 1.0F) * 255.0F + 0.5F);
+			}
+		}
+		if (play) ImGui::EndDisabled();
 	}
 
 	void EditorGame::DrawIssues()
@@ -217,7 +263,9 @@ namespace engine::editor
 		if (file.empty()) return false;
 		ecs::World& world = edit->world;
 		const std::vector<ecs::Entity> before = world.registry.AllEntities();
-		const ecs::SceneLoadResult loaded = ecs::LoadSceneFile(world.registry, EnsureTypes(world), file);
+		ecs::SceneSettings loadedSettings;
+		const ecs::SceneLoadResult loaded =
+		    ecs::LoadSceneFile(world.registry, EnsureTypes(world), file, &loadedSettings);
 		if (!loaded.Ok())
 		{
 			message = "can't restore the autosave: " + FirstProblem(loaded.issues);
@@ -226,6 +274,7 @@ namespace engine::editor
 		}
 		for (const ecs::Entity entity : before)
 			world.registry.Destroy(entity);
+		SettingsOf(world) = loadedSettings;
 		if (config.afterLoad) config.afterLoad(world);
 		ResetHistory();
 		autosaveWritten = true; // the file is still there; it goes when the scene is clean again
@@ -257,7 +306,8 @@ namespace engine::editor
 	std::string EditorGame::SceneText()
 	{
 		ecs::Issues issues;
-		const core::JsonValue scene = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
+		core::JsonValue scene = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
+		ecs::WriteSceneSettings(scene, SettingsOf(edit->world));
 		return core::FormatJson(scene);
 	}
 
@@ -325,6 +375,8 @@ namespace engine::editor
 		}
 		for (const ecs::Entity entity : before)
 			world.registry.Destroy(entity);
+		ecs::Issues ignoredSettingsIssues;
+		SettingsOf(world) = ecs::ReadSceneSettings(*parsed.value, ignoredSettingsIssues);
 		if (config.afterLoad) config.afterLoad(world);
 
 		panels->Select(ecs::Entity::Null);
@@ -365,6 +417,7 @@ namespace engine::editor
 		if (play) StopPlay();
 		DropAutosave(); // the changes were given up (or saved) by now
 		ClearWorld(edit->world);
+		SettingsOf(edit->world) = ecs::SceneSettings{};
 		if (config.afterLoad) config.afterLoad(edit->world);
 		sceneName.clear();
 		savedText = SceneText();
@@ -385,8 +438,9 @@ namespace engine::editor
 		}
 		ecs::World& world = edit->world;
 		const std::vector<ecs::Entity> before = world.registry.AllEntities();
+		ecs::SceneSettings loadedSettings;
 		const ecs::SceneLoadResult loaded =
-		    ecs::LoadSceneFile(world.registry, EnsureTypes(world), config.sceneFolder / name);
+		    ecs::LoadSceneFile(world.registry, EnsureTypes(world), config.sceneFolder / name, &loadedSettings);
 		if (!loaded.Ok())
 		{
 			message = "can't open " + name + ": " + FirstProblem(loaded.issues);
@@ -395,6 +449,7 @@ namespace engine::editor
 		}
 		for (const ecs::Entity entity : before)
 			world.registry.Destroy(entity);
+		SettingsOf(world) = loadedSettings;
 		if (config.afterLoad) config.afterLoad(world);
 		if (dirty || !sceneName.empty()) DropAutosave(); // the old scene's changes were given up
 		sceneName = name;
@@ -428,7 +483,8 @@ namespace engine::editor
 		std::error_code ignored;
 		std::filesystem::create_directories(config.sceneFolder, ignored);
 		ecs::Issues issues;
-		if (!ecs::SaveSceneFile(edit->world.registry, EnsureTypes(edit->world), config.sceneFolder / file, issues))
+		if (!ecs::SaveSceneFile(edit->world.registry, EnsureTypes(edit->world), config.sceneFolder / file, issues,
+		                        &SettingsOf(edit->world)))
 		{
 			message = "can't save " + file + ": " + FirstProblem(issues);
 			ShowIssues("saving " + file, issues);
@@ -450,7 +506,7 @@ namespace engine::editor
 		if (play) return true;
 		CheckDirty(); // so the prompt on New and Open while playing knows about edits made before Play
 		ecs::Issues issues;
-		const core::JsonValue snapshot = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
+		core::JsonValue snapshot = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
 		if (!issues.Ok())
 		{
 			message = "can't play: " + FirstProblem(issues);
@@ -464,6 +520,7 @@ namespace engine::editor
 			return false;
 		}
 		ClearWorld(game->world);
+		SettingsOf(game->world) = SettingsOf(edit->world);
 		const ecs::SceneLoadResult loaded = ecs::LoadScene(game->world.registry, EnsureTypes(game->world), snapshot);
 		if (!loaded.Ok())
 		{

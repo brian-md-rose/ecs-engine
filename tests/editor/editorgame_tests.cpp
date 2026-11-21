@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -9,6 +11,7 @@
 #include "application/scheduledgame.hpp"
 #include "ecs/enginecomponents.hpp"
 #include "ecs/name.hpp"
+#include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
@@ -537,4 +540,45 @@ TEST_CASE("A game that quits stops Play with a message, and Restart plays again 
 	CHECK_FALSE(game.IsPlaying());
 	CHECK(game.Message() == "the game quit, so Play stopped");
 	CHECK(game.EditWorld().registry.AllEntities().size() == 1);
+}
+
+TEST_CASE("Scene settings are part of the scene: dirty, saved, undone and played", "[editor][game]")
+{
+	const auto folder = TempFolder("settings");
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(folder));
+	REQUIRE(game.IsValid());
+	const auto settingsOf = [](engine::ecs::World& world) -> engine::ecs::SceneSettings&
+	{
+		auto* settings = world.resources.TryGet<engine::ecs::SceneSettings>();
+		REQUIRE(settings != nullptr);
+		return *settings;
+	};
+	CHECK(settingsOf(game.EditWorld()).Empty());
+	CHECK_FALSE(game.IsDirty());
+
+	// Changing only the settings makes the scene dirty, and an undo step.
+	settingsOf(game.EditWorld()).background = std::array<std::uint8_t, 3>{1, 2, 3};
+	game.CheckDirty();
+	CHECK(game.IsDirty());
+	settingsOf(game.EditWorld()).camera = engine::ecs::SceneCamera{4.0F, 5.0F, 2};
+	game.CheckDirty();
+	CHECK(game.Undo());
+	CHECK_FALSE(settingsOf(game.EditWorld()).camera.has_value());
+	CHECK(settingsOf(game.EditWorld()).background.has_value());
+	CHECK(game.Redo());
+	CHECK(settingsOf(game.EditWorld()).camera.has_value());
+
+	// Save, start over, open: they come back. A new scene has none.
+	CHECK(game.SaveSceneAs("look"));
+	const engine::ecs::SceneSettings saved = settingsOf(game.EditWorld());
+	game.NewScene();
+	CHECK(settingsOf(game.EditWorld()).Empty());
+	CHECK(game.OpenScene("look.json"));
+	CHECK(settingsOf(game.EditWorld()) == saved);
+	CHECK_FALSE(game.IsDirty());
+
+	// The play world gets a copy.
+	REQUIRE(game.StartPlay());
+	CHECK(settingsOf(*game.PlayWorld()) == saved);
 }

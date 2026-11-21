@@ -167,6 +167,7 @@ namespace engine::editor
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
 		void DrawIssues();
+		void DrawSceneSettings();
 		[[nodiscard]] std::filesystem::path AutosavePath() const;
 		void DropAutosave();
 		void OfferRecovery();

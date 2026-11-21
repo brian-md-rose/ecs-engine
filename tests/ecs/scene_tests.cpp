@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -269,4 +271,63 @@ TEST_CASE("SaveSceneFile ignores errors the caller already had", "[ecs][scene]")
 	issues.errors.push_back({"old", "from before"});
 	CHECK(SaveSceneFile(registry, types, dir / "empty.json", issues));
 	std::filesystem::remove_all(dir);
+}
+
+TEST_CASE("Scene settings round-trip through a scene file and are optional", "[ecs][scene]")
+{
+	const TypeRegistry types = MakeTypes();
+	const auto dir = std::filesystem::temp_directory_path() / "ecs-engine-scene-settings-tests";
+	std::filesystem::create_directories(dir);
+	const auto file = dir / "scene.json";
+	Registry source;
+	static_cast<void>(source.Create());
+
+	engine::ecs::SceneSettings settings;
+	settings.camera = engine::ecs::SceneCamera{12.5F, -3.0F, 2};
+	settings.background = std::array<std::uint8_t, 3>{10, 20, 30};
+	Issues issues;
+	REQUIRE(SaveSceneFile(source, types, file, issues, &settings));
+
+	Registry loaded;
+	engine::ecs::SceneSettings back;
+	const auto result = LoadSceneFile(loaded, types, file, &back);
+	REQUIRE(result.Ok());
+	CHECK(back == settings);
+
+	// A file written without settings reads as empty, and saving empty settings leaves the entry out.
+	const engine::ecs::SceneSettings none;
+	REQUIRE(SaveSceneFile(source, types, file, issues, &none));
+	Registry again;
+	back = settings;
+	REQUIRE(LoadSceneFile(again, types, file, &back).Ok());
+	CHECK(back.Empty());
+	std::filesystem::remove_all(dir);
+}
+
+TEST_CASE("Bad scene settings are left out with a warning", "[ecs][scene]")
+{
+	const auto parse = [](const char* text)
+	{
+		const auto parsed = engine::core::ParseJson(text);
+		REQUIRE(parsed.value.has_value());
+		return *parsed.value;
+	};
+	Issues issues;
+	CHECK(engine::ecs::ReadSceneSettings(parse(R"({"entities": []})"), issues).Empty());
+	CHECK(issues.warnings.empty());
+
+	const auto bad = engine::ecs::ReadSceneSettings(
+	    parse(R"({"settings": {"camera": {"x": 1}, "background": [1, 2, 300]}})"), issues);
+	CHECK(bad.Empty());
+	CHECK(issues.warnings.size() == 2);
+
+	const auto good = engine::ecs::ReadSceneSettings(parse(R"({"settings": {"camera": {"x": 1, "y": 2}}})"), issues);
+	REQUIRE(good.camera.has_value());
+	CHECK(good.camera->zoom == 1); // zoom may be left out
+	CHECK_FALSE(good.background.has_value());
+
+	engine::core::JsonValue scene = parse(R"({"format": 1, "entities": [], "settings": {"background": [1, 2, 3]}})");
+	engine::ecs::WriteSceneSettings(scene, engine::ecs::SceneSettings{});
+	CHECK(scene.Find("settings") == nullptr);
+	CHECK(scene.Find("entities") != nullptr);
 }
