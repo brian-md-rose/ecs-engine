@@ -40,9 +40,17 @@ namespace engine::graphics
 
 	std::filesystem::path ScreenshotDirectory(const std::filesystem::path& saveDirectory)
 	{
-		const std::filesystem::path repository = ENGINE_SCREENSHOT_DIR;
+		return ScreenshotDirectory(saveDirectory, ENGINE_SCREENSHOT_DIR);
+	}
+
+	std::filesystem::path ScreenshotDirectory(const std::filesystem::path& saveDirectory,
+	                                          const std::filesystem::path& repositoryDirectory)
+	{
 		std::error_code error;
-		if (!repository.empty() && std::filesystem::is_directory(repository, error)) return repository;
+		if (!repositoryDirectory.empty() && std::filesystem::is_directory(repositoryDirectory, error))
+		{
+			return repositoryDirectory;
+		}
 		if (saveDirectory.empty()) return {};
 		return saveDirectory / "screenshots";
 	}

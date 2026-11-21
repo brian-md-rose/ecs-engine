@@ -50,6 +50,10 @@ namespace engine::graphics
 	// saveDirectory / "screenshots", next to the log, or empty if saveDirectory is empty.
 	[[nodiscard]] std::filesystem::path ScreenshotDirectory(const std::filesystem::path& saveDirectory);
 
+	// As above with the repository folder given, so the choice can be tested whatever this build was configured with.
+	[[nodiscard]] std::filesystem::path ScreenshotDirectory(const std::filesystem::path& saveDirectory,
+	                                                        const std::filesystem::path& repositoryDirectory);
+
 	// image scaled to width x height by averaging the source pixels each new pixel covers, alpha included.
 	// Shrinking by a whole number (a 4x integer-scaled picture back to its logical size) gives back the original
 	// pixels exactly. An empty image, or a non-positive size, gives an empty image.

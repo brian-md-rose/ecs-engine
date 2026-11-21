@@ -72,13 +72,16 @@ TEST_CASE("Two screenshots in one second get different files", "[screenshot]")
 	CHECK(UniqueScreenshotPath(folder.path, time).filename() == "screenshot-20260102-030405-3.png");
 }
 
-TEST_CASE("The screenshot folder falls back to the save folder's screenshots folder", "[screenshot]")
+TEST_CASE("Screenshots go to the repository folder when it exists, else next to the log", "[screenshot]")
 {
-	// A development build may answer with the repository's folder instead, so only check what is always true.
-	const std::filesystem::path none = engine::graphics::ScreenshotDirectory({});
-	CHECK((none.empty() || std::filesystem::is_directory(none)));
-	const std::filesystem::path result = engine::graphics::ScreenshotDirectory("/nowhere/save");
-	CHECK(!result.empty());
+	const TempFolder repository("ecs_screenshot_repo");
+	const std::filesystem::path save = "/nowhere/save";
+
+	CHECK(engine::graphics::ScreenshotDirectory(save, repository.path) == repository.path);
+	CHECK(engine::graphics::ScreenshotDirectory(save, repository.path / "missing") == save / "screenshots");
+	CHECK(engine::graphics::ScreenshotDirectory(save, {}) == save / "screenshots");
+	CHECK(engine::graphics::ScreenshotDirectory({}, {}).empty());
+	CHECK(engine::graphics::ScreenshotDirectory({}, repository.path) == repository.path);
 }
 
 TEST_CASE("Cropping keeps the pixels inside the rectangle and clips the rest", "[screenshot]")
