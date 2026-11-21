@@ -310,6 +310,27 @@ namespace engine::editor
 			return false;
 		}
 
+		// A text field picked from a list. A value that is not in the list is shown as it is, marked, and stays
+		// until another is picked.
+		bool EditChoice(const char* label, const std::vector<std::string>& choices, JsonValue& value)
+		{
+			const std::string current(value.AsString().value_or(""));
+			const bool known = std::find(choices.begin(), choices.end(), current) != choices.end();
+			const std::string shown = known || current.empty() ? current : current + " (not in the list)";
+			bool changed = false;
+			if (ImGui::BeginCombo(label, shown.c_str()))
+			{
+				for (const std::string& choice : choices)
+				{
+					if (!ImGui::Selectable(choice.c_str(), choice == current)) continue;
+					value = JsonValue(choice);
+					changed = true;
+				}
+				ImGui::EndCombo();
+			}
+			return changed;
+		}
+
 		// One field, by its registered kind. True if the user changed it, with the new value in `value`.
 		bool EditField(const FieldInfo& field, JsonValue& value, const Registry& registry,
 		               const std::vector<Entity>& all)
@@ -319,8 +340,15 @@ namespace engine::editor
 			if (field.hints.readOnly) ImGui::BeginDisabled();
 			switch (field.kind)
 			{
-			case FieldKind::Bool:
 			case FieldKind::String:
+				if (!field.hints.choices.empty())
+				{
+					changed = EditChoice(label, field.hints.choices, value);
+					break;
+				}
+				changed = EditJson(label, value, 0);
+				break;
+			case FieldKind::Bool:
 				changed = EditJson(label, value, 0);
 				break;
 			case FieldKind::Int:

@@ -245,3 +245,42 @@ TEST_CASE("The hierarchy and inspector panels draw a world without changing it",
 	CHECK(game.renders > 0);
 	CHECK(world.registry.EntityCount() == 4);
 }
+
+namespace
+{
+	struct Picture
+	{
+		std::string clip = "button";
+	};
+} // namespace
+
+TEST_CASE("The inspector draws a text field with choices as a list, and a value outside it", "[editor][application]")
+{
+	engine::ecs::World world;
+	auto& types = world.resources.Emplace<engine::ecs::TypeRegistry>();
+	types.Register<Picture>("Picture").Field("clip", &Picture::clip, {.choices = {"panel", "button"}});
+	REQUIRE(types.Find("Picture") != nullptr);
+	REQUIRE(types.Find("Picture")->Fields().size() == 1);
+	CHECK(types.Find("Picture")->Fields()[0].hints.choices.size() == 2);
+	const engine::ecs::Entity one = engine::editor::CreateEntity(world.registry, "one");
+	const engine::ecs::Entity two = engine::editor::CreateEntity(world.registry, "two");
+	world.registry.Add<Picture>(one, Picture{"panel"});
+	world.registry.Add<Picture>(two, Picture{"gone"}); // not in the list
+
+	Application app(TestConfig());
+	ScriptedGame game;
+	game.pressF1 = false;
+	engine::editor::Editor editor;
+	const auto panels = engine::editor::AddEntityPanels(editor, world);
+	game.onUpdate = [&](int update)
+	{
+		panels->selected = update % 2 == 0 ? one : two; // both are drawn over the run
+	};
+	editor.SetVisible(true);
+	app.SetEditorHost(&editor);
+	if (app.Run(game) != 0) SKIP("no offscreen video driver");
+
+	CHECK(game.renders > 0);
+	CHECK(world.registry.GetComponent<Picture>(one).clip == "panel");
+	CHECK(world.registry.GetComponent<Picture>(two).clip == "gone"); // drawing never changes it
+}
