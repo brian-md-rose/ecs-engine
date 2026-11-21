@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "graphics/display.hpp"
+#include "graphics/image.hpp"
 
 // SDL types are only forward-declared here: SDL is linked PRIVATE to the engine, so its headers
 // are not visible to the game or tests. Only engine .cpp files include <SDL3/...>.
@@ -11,7 +12,6 @@ struct SDL_Texture;
 
 namespace engine::graphics
 {
-	class Image;
 	class Window;
 
 	// Names a texture the Renderer owns. 0 (kNoTexture) is never a texture.
@@ -73,6 +73,13 @@ namespace engine::graphics
 		[[nodiscard]] SDL_Renderer* GetRendererHandle() const noexcept { return renderer; }
 		// nullptr for kNoTexture or a texture that no longer exists.
 		[[nodiscard]] SDL_Texture* GetTextureHandle(TextureId texture) const noexcept;
+
+		// The frame drawn so far, read back from the renderer, so call it after drawing and before Present. Both give
+		// an empty Image (the reason logged) if SDL refused. ReadWindowPixels is the whole window as it will appear,
+		// black bars and anything drawn over the logical scaling included. ReadLogicalPixels is just the game's
+		// picture, without the bars, shrunk to exactly the logical width x height.
+		[[nodiscard]] Image ReadWindowPixels();
+		[[nodiscard]] Image ReadLogicalPixels();
 
 		void Present();
 	};

@@ -2,8 +2,10 @@
 
 #include <SDL3/SDL.h>
 #include <cstddef>
+#include <memory>
 
 #include "graphics/image.hpp"
+#include "graphics/screenshot.hpp"
 #include "graphics/window.hpp"
 
 namespace engine::graphics
@@ -153,6 +155,76 @@ namespace engine::graphics
 	{
 		if (texture == kNoTexture || texture > textures.size()) return nullptr;
 		return textures[texture - 1];
+	}
+
+	namespace
+	{
+		struct SurfaceFree
+		{
+			void operator()(SDL_Surface* surface) const noexcept { SDL_DestroySurface(surface); }
+		};
+
+		// An opaque Image of surface's pixels, or an empty one.
+		[[nodiscard]] Image ImageOfSurface(SDL_Surface* surface)
+		{
+			if (surface == nullptr) return {};
+			const std::unique_ptr<SDL_Surface, SurfaceFree> rgba(SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32));
+			if (!rgba)
+			{
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_ConvertSurface failed: %s", SDL_GetError());
+				return {};
+			}
+			Image image(rgba->w, rgba->h);
+			const auto* bytes = static_cast<const unsigned char*>(rgba->pixels);
+			for (int y = 0; y < rgba->h; ++y)
+			{
+				const unsigned char* row = bytes + static_cast<std::ptrdiff_t>(y) * rgba->pitch;
+				for (int x = 0; x < rgba->w; ++x)
+				{
+					const unsigned char* pixel = row + static_cast<std::ptrdiff_t>(x) * 4;
+					image.Set(x, y, Rgba{pixel[0], pixel[1], pixel[2], 255}); // the backbuffer has no alpha
+				}
+			}
+			return image;
+		}
+	} // namespace
+
+	Image Renderer::ReadWindowPixels()
+	{
+		if (renderer == nullptr) return {};
+		// The logical scaling would read only the scaled picture, so switch it off for the read, as the editor does
+		// to draw its windows.
+		int width = 0;
+		int height = 0;
+		SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+		SDL_GetRenderLogicalPresentation(renderer, &width, &height, &mode);
+		SDL_SetRenderLogicalPresentation(renderer, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
+		SDL_Surface* surface = SDL_RenderReadPixels(renderer, nullptr);
+		if (surface == nullptr)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_RenderReadPixels failed: %s", SDL_GetError());
+		}
+		SDL_SetRenderLogicalPresentation(renderer, width, height, mode);
+		const std::unique_ptr<SDL_Surface, SurfaceFree> owned(surface);
+		return ImageOfSurface(surface);
+	}
+
+	Image Renderer::ReadLogicalPixels()
+	{
+		if (renderer == nullptr) return {};
+		SDL_FRect area{};
+		if (!SDL_GetRenderLogicalPresentationRect(renderer, &area))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GetRenderLogicalPresentationRect failed: %s",
+			             SDL_GetError());
+			return {};
+		}
+		const Image window = ReadWindowPixels();
+		const PixelRect rect{.x = static_cast<int>(SDL_roundf(area.x)),
+		                     .y = static_cast<int>(SDL_roundf(area.y)),
+		                     .width = static_cast<int>(SDL_roundf(area.w)),
+		                     .height = static_cast<int>(SDL_roundf(area.h))};
+		return ResizeImage(CropImage(window, rect), logicalWidth, logicalHeight);
 	}
 
 	void Renderer::Present()

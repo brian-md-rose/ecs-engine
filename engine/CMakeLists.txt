@@ -52,6 +52,11 @@ target_include_directories(engine_core PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_
 target_compile_features(engine_core PUBLIC cxx_std_20)
 target_link_libraries(engine_core PRIVATE engine::warnings)
 
+# Where ScreenshotDirectory looks first: the repository's screenshot folder, for development builds. Set
+# -DENGINE_SCREENSHOT_DIR= (empty) for a build you ship, so it always uses the user's save folder.
+set(ENGINE_SCREENSHOT_DIR "${PROJECT_SOURCE_DIR}/screenshot" CACHE PATH "Folder F12 screenshots go to in development builds; empty for none")
+target_compile_definitions(engine_core PRIVATE ENGINE_SCREENSHOT_DIR="${ENGINE_SCREENSHOT_DIR}")
+
 # Generated version header (<core/version.hpp>), filled in from project(... VERSION ...).
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/core/version.hpp.in

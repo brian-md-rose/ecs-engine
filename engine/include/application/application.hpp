@@ -3,12 +3,16 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <optional>
+#include <utility>
 
 #include "application/editorhost.hpp"
 #include "audio/audiodevice.hpp"
 #include "core/clock.hpp"
 #include "graphics/display.hpp"
 #include "graphics/renderer.hpp"
+#include "graphics/screenshot.hpp"
 #include "graphics/window.hpp"
 #include "input/input.hpp"
 
@@ -43,6 +47,13 @@ namespace engine::application
 		graphics::DisplayInfo* info = nullptr;       // written: the settings in force and the supported sizes
 	};
 
+	// The two resources Application reads and writes for screenshots. Either can be null.
+	struct ScreenshotLink
+	{
+		graphics::ScreenshotRequest* request = nullptr; // read, then cleared, after each frame
+		graphics::ScreenshotResult* result = nullptr;   // written: the last file, the last error and a count
+	};
+
 	// What the game provides. Application calls these from its main loop.
 	class Game
 	{
@@ -73,6 +84,10 @@ namespace engine::application
 		// pending request (window mode and size, VSync, frame cap, scaling), clears it and refreshes the info. A
 		// game that never changes these needn't override it.
 		[[nodiscard]] virtual DisplayLink Display() { return {}; }
+
+		// Asked each frame: where the game keeps its ScreenshotRequest and ScreenshotResult. A game that never takes
+		// a screenshot from code needn't override it; F12 works without it.
+		[[nodiscard]] virtual ScreenshotLink Screenshot() { return {}; }
 	};
 
 	// Owns the platform (SDL, window, renderer, audio) and runs the main loop.
@@ -103,9 +118,12 @@ namespace engine::application
 		std::array<std::uint32_t, input::kMaxPads> padIds{};
 		double updateStep;
 		int maxUpdatesPerFrame;
-		graphics::DisplaySettings display; // what is in force
-		bool displayInfoStale = true;      // DisplayInfo needs refreshing
-		EditorHost* editor = nullptr;      // the overlay, when there is one (not owned)
+		graphics::DisplaySettings display;                         // what is in force
+		bool displayInfoStale = true;                              // DisplayInfo needs refreshing
+		EditorHost* editor = nullptr;                              // the overlay, when there is one (not owned)
+		std::filesystem::path screenshotFolder;                    // where screenshots go
+		std::optional<input::Key> screenshotKey = input::Key::F12; // the key that takes one, if any
+		bool screenshotAsked = false;                              // the key was pressed since the last frame
 
 		// Drains pending SDL events, feeding keyboard, text and mouse events to input. Returns false once the
 		// window has been asked to close.
@@ -120,6 +138,9 @@ namespace engine::application
 		// Applies a pending DisplayRequest of game, and refreshes its DisplayInfo when something changed.
 		void UpdateDisplay(Game& game);
 		void ApplyDisplay(const graphics::DisplaySettings& wanted);
+		// Saves the frame drawn so far as a PNG in screenshotFolder, and reports it to link.result. Called after the
+		// frame is drawn and before it is presented.
+		void SaveScreenshot(const ScreenshotLink& link);
 
 	public:
 		explicit Application(const ApplicationConfig& config);
@@ -132,6 +153,17 @@ namespace engine::application
 
 		// Sets the editor overlay (not owned; it must outlive Run), or none with nullptr. See EditorHost.
 		void SetEditorHost(EditorHost* host) noexcept { editor = host; }
+
+		// Where screenshots go, made if it does not exist (see graphics::ScreenshotDirectory). Empty, the start state,
+		// turns screenshots off.
+		void SetScreenshotFolder(std::filesystem::path folder) { screenshotFolder = std::move(folder); }
+
+		// The key that takes a screenshot (F12 to start with), or nullopt for none. With an editor overlay the picture
+		// is the whole window, panels included; without one it is the game's picture at its logical size.
+		void SetScreenshotKey(std::optional<input::Key> key) noexcept { screenshotKey = key; }
+
+		// Takes a screenshot of the next frame, as the key does.
+		void RequestScreenshot() noexcept { screenshotAsked = true; }
 
 		// Runs until the window is closed or the game asks to quit. Returns 0 on a normal exit, 1 if the window or
 		// renderer couldn't be created.
