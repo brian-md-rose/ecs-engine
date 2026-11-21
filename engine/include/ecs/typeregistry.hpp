@@ -75,6 +75,9 @@ namespace engine::ecs
 		std::optional<double> max = std::nullopt;
 		std::string tooltip = {};
 		bool readOnly = false;
+		// For a String field: the values worth picking (clip names, sound names), shown by an editor as a list
+		// instead of a text box. Loading accepts any text, so a value outside the list still works.
+		std::vector<std::string> choices = {};
 	};
 
 	enum class FieldKind : std::uint8_t

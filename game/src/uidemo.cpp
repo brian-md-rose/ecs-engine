@@ -243,7 +243,10 @@ namespace game
 		types.RegisterTag<DemoCursor>("DemoCursor");
 		types.RegisterTag<DemoListFrame>("DemoListFrame");
 		types.Register<DemoHint>("DemoHint").Field("line", &DemoHint::line);
-		types.Register<ClipName>("ClipName").Field("value", &ClipName::value);
+		types.Register<ClipName>("ClipName")
+		    .Field("value", &ClipName::value,
+		           {.tooltip = "which picture of the atlas to draw",
+		            .choices = {"panel", "button", "buttonHover", "buttonPressed", "cursor"}});
 	}
 
 	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips)
