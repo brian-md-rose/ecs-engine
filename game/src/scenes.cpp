@@ -112,6 +112,19 @@ namespace game
 		}
 		if (!loaded.Ok()) return {};
 
+		// A scene that says how it is drawn sets the camera and background; one that does not leaves them as they are.
+		engine::ecs::Issues settingsIssues;
+		const engine::ecs::SceneSettings settings = engine::ecs::ReadSceneSettings(*json, settingsIssues);
+		for (const engine::ecs::Issue& issue : settingsIssues.warnings)
+			engine::core::LogWarning(source + ": " + issue.path + ": " + issue.message);
+		if (!settings.Empty())
+		{
+			if (auto* current = world.resources.TryGet<engine::ecs::SceneSettings>())
+				*current = settings;
+			else
+				world.resources.Emplace<engine::ecs::SceneSettings>(settings);
+		}
+
 		ResolveClipNames(world.registry, world.resources.Get<SpriteClips>());
 		return loaded.entities;
 	}

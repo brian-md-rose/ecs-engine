@@ -9,6 +9,7 @@
 #include "core/random.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
+#include "ecs/scene.hpp"
 #include "ecs/states.hpp"
 #include "enemymodes.hpp"
 #include "enemysystems.hpp"
@@ -349,7 +350,17 @@ namespace game
 		engine::graphics::Renderer& renderer = *context.renderer;
 		auto& renderer2D = world.resources.Get<engine::graphics::Renderer2D>();
 
-		renderer.Clear(0, 0, 0);
+		// What the scene says about how it is drawn (see ecs::SceneSettings): the last scene that had settings wins.
+		const auto* settings = world.resources.TryGet<engine::ecs::SceneSettings>();
+		if (settings != nullptr && settings->camera)
+		{
+			renderer2D.camera.position = {settings->camera->x, settings->camera->y};
+			renderer2D.camera.zoom = settings->camera->zoom;
+		}
+		if (settings != nullptr && settings->background)
+			renderer.Clear((*settings->background)[0], (*settings->background)[1], (*settings->background)[2]);
+		else
+			renderer.Clear(0, 0, 0);
 		// Behind the screens that sit on top of the game the game is dimmed; their text, above it,
 		// is not.
 		const bool behindScreen =

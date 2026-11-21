@@ -63,6 +63,16 @@ inspector), and `Save` and `Load` for one component.
 - `format` is the file layout version (1). A file with another number is refused. `engine` is for diagnostics.
 - Resources (the maze, the score) are not part of a scene. Prefabs are not supported yet.
 
+## Scene settings
+
+A scene may also say how it is drawn, in an optional `settings` object beside `entities`. Both parts are optional and a reader that does not know them ignores them, so the format number stays 1:
+
+```json
+"settings": { "camera": { "x": 0, "y": 0, "zoom": 2 }, "background": [20, 20, 40] }
+```
+
+`ecs::SceneSettings` is that object as a value (`ReadSceneSettings` and `WriteSceneSettings` convert it; `LoadSceneFile` and `SaveSceneFile` take an optional pointer). A wrong-shaped part is left out with a warning, so it never stops a scene from loading. The engine only reads and writes it: a game keeps the value as a resource and applies it. Tangle Run's `SpawnScene` sets the resource from a scene that has settings (one without leaves it as it was), and its render system moves the camera and clears to the background colour. The logical resolution is fixed when the game starts, so it is not a scene setting.
+
 ## Saving and loading
 
 ```cpp

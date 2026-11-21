@@ -280,8 +280,90 @@ namespace engine::ecs
 		return result;
 	}
 
-	SceneLoadResult LoadSceneFile(Registry& registry, const TypeRegistry& types, const std::filesystem::path& file)
+	SceneSettings ReadSceneSettings(const core::JsonValue& scene, Issues& issues)
 	{
+		SceneSettings settings;
+		const core::JsonValue* json = scene.Find("settings");
+		if (json == nullptr) return settings;
+		if (json->AsObject() == nullptr)
+		{
+			issues.warnings.push_back({"settings", "not an object, ignored"});
+			return settings;
+		}
+		if (const core::JsonValue* camera = json->Find("camera"))
+		{
+			const core::JsonValue* x = camera->Find("x");
+			const core::JsonValue* y = camera->Find("y");
+			const core::JsonValue* zoom = camera->Find("zoom");
+			const auto number = [](const core::JsonValue* value) -> std::optional<double>
+			{
+				if (value == nullptr) return std::nullopt;
+				if (const auto whole = value->AsInt()) return static_cast<double>(*whole);
+				return value->AsDouble();
+			};
+			const auto cx = number(x);
+			const auto cy = number(y);
+			const auto cz = zoom != nullptr ? zoom->AsInt() : std::optional<std::int64_t>(1);
+			if (!cx || !cy || !cz || *cz < 1 || *cz > 64)
+				issues.warnings.push_back(
+				    {"settings.camera", "needs numbers x and y and a zoom from 1 to 64, ignored"});
+			else
+				settings.camera = SceneCamera{static_cast<float>(*cx), static_cast<float>(*cy), static_cast<int>(*cz)};
+		}
+		if (const core::JsonValue* background = json->Find("background"))
+		{
+			const core::JsonArray* parts = background->AsArray();
+			std::array<std::uint8_t, 3> color{};
+			bool good = parts != nullptr && parts->size() == 3;
+			for (std::size_t i = 0; good && i < 3; ++i)
+			{
+				const auto channel = (*parts)[i].AsInt();
+				good = channel && *channel >= 0 && *channel <= 255;
+				if (good) color[i] = static_cast<std::uint8_t>(*channel);
+			}
+			if (good)
+				settings.background = color;
+			else
+				issues.warnings.push_back({"settings.background", "needs three numbers from 0 to 255, ignored"});
+		}
+		return settings;
+	}
+
+	void WriteSceneSettings(core::JsonValue& scene, const SceneSettings& settings)
+	{
+		const core::JsonObject* members = scene.AsObject();
+		if (members == nullptr) return;
+		if (scene.Find("settings") != nullptr)
+		{
+			core::JsonObject kept;
+			for (const auto& member : *members)
+				if (member.first != "settings") kept.push_back(member);
+			scene = core::JsonValue(std::move(kept));
+		}
+		if (settings.Empty()) return;
+		core::JsonValue json = core::JsonValue::Object();
+		if (settings.camera)
+		{
+			core::JsonValue camera = core::JsonValue::Object();
+			camera.Set("x", core::JsonValue(static_cast<double>(settings.camera->x)));
+			camera.Set("y", core::JsonValue(static_cast<double>(settings.camera->y)));
+			camera.Set("zoom", core::JsonValue(static_cast<std::int64_t>(settings.camera->zoom)));
+			json.Set("camera", std::move(camera));
+		}
+		if (settings.background)
+		{
+			core::JsonValue color = core::JsonValue::Array();
+			for (const std::uint8_t channel : *settings.background)
+				color.Append(core::JsonValue(static_cast<std::int64_t>(channel)));
+			json.Set("background", std::move(color));
+		}
+		scene.Set("settings", std::move(json));
+	}
+
+	SceneLoadResult LoadSceneFile(Registry& registry, const TypeRegistry& types, const std::filesystem::path& file,
+	                              SceneSettings* settings)
+	{
+		if (settings != nullptr) *settings = SceneSettings{};
 		const core::JsonResult parsed = core::LoadJson(file);
 		if (!parsed.value)
 		{
@@ -289,14 +371,17 @@ namespace engine::ecs
 			result.issues.errors.push_back({"", core::FormatError(file.string(), parsed.error)});
 			return result;
 		}
-		return LoadScene(registry, types, *parsed.value);
+		SceneLoadResult result = LoadScene(registry, types, *parsed.value);
+		if (settings != nullptr && result.Ok()) *settings = ReadSceneSettings(*parsed.value, result.issues);
+		return result;
 	}
 
 	bool SaveSceneFile(const Registry& registry, const TypeRegistry& types, const std::filesystem::path& file,
-	                   Issues& issues)
+	                   Issues& issues, const SceneSettings* settings)
 	{
 		const std::size_t errorsBefore = issues.errors.size();
-		const core::JsonValue scene = SaveScene(registry, types, issues);
+		core::JsonValue scene = SaveScene(registry, types, issues);
+		if (settings != nullptr) WriteSceneSettings(scene, *settings);
 		if (issues.errors.size() != errorsBefore) return false;
 		if (!core::WriteJson(file, scene))
 		{

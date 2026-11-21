@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- **Scene settings**: an optional `settings` object in a scene file (camera position and zoom, background colour) as `ecs::SceneSettings`, a **Scene** panel in the standalone editor to edit it, and Tangle Run applies it.
 - **`FieldHints::choices`** for a String field: the Inspector shows it as a list to pick from (used by `ClipName` in Tangle Run).
 - **Inspector search** for components and fields, and *Copy values* / *Paste values* on a component's header (a paste only applies to the same component type).
 - **Restart** (F6) next to Stop in the standalone editor, and a message when the game quits itself during Play.
