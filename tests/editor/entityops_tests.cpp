@@ -280,3 +280,21 @@ TEST_CASE("A paste for one component type refuses another's values", "[editor][o
 	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, text, error, name));
 	CHECK(engine::editor::PasteComponent(registry, types, a, text, error, target));
 }
+
+TEST_CASE("Pasting a Parent never makes a loop", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity top = CreateEntity(registry, "top");
+	const Entity child = CreateEntity(registry, "child", top);
+	const engine::ecs::TypeInfo* parent = types.Find("Parent");
+	REQUIRE(parent != nullptr);
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *parent, child, error); // child's parent is top
+	REQUIRE_FALSE(text.empty());
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, top, text, error)); // top under its own child
+	CHECK_FALSE(registry.HasComponent<Parent>(top));
+	const Entity other = CreateEntity(registry, "other");
+	CHECK(engine::editor::PasteComponent(registry, types, other, text, error)); // a sibling is fine
+	CHECK(registry.GetComponent<Parent>(other).entity == top);
+}

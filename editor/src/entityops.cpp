@@ -325,12 +325,24 @@ namespace engine::editor
 			error = type->Name() + "." + field.name + ": " + error;
 			return false;
 		}
-		if (!type->Has(registry, entity)) type->AddDefault(registry, entity);
+		// A pasted Parent must not make a loop, which would hang anything that walks up the hierarchy.
+		if (const ecs::Parent* parent = scratch.TryGetComponent<ecs::Parent>(probe);
+		    parent != nullptr && !parent->entity.IsNull() && WouldMakeLoop(registry, entity, parent->entity))
+		{
+			error = "can't parent " + LabelOf(registry, entity) + " to itself or something under it";
+			return false;
+		}
+		const bool had = type->Has(registry, entity);
+		if (!had) type->AddDefault(registry, entity);
 		void* component = type->Get(registry, entity);
 		for (const FieldInfo& field : type->Fields())
 		{
-			if (const core::JsonValue* value = fields->Find(field.name))
-				static_cast<void>(field.load(component, *value, ids, error));
+			const core::JsonValue* value = fields->Find(field.name);
+			if (value == nullptr || field.load(component, *value, ids, error)) continue;
+			// Not expected after the dry run; report it, and drop a component that was only just added.
+			error = type->Name() + "." + field.name + ": " + error;
+			if (!had) type->Remove(registry, entity);
+			return false;
 		}
 		return true;
 	}
