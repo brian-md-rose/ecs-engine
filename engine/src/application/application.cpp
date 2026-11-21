@@ -268,7 +268,9 @@ namespace engine::application
 
 		UpdateDisplay(game); // so the game sees the display's settings and sizes from its first update
 
-		while (PumpEvents() && !game.WantsToQuit())
+		bool automationDone = false; // the --screenshot-after picture has been taken
+		int exitCode = 0;
+		while (PumpEvents() && !game.WantsToQuit() && !automationDone)
 		{
 			const double now = clock.Now();
 			const int updates = timestep.Advance(now - previous);
@@ -293,10 +295,17 @@ namespace engine::application
 
 			game.Render(renderer, timestep.Alpha());
 			if (editor != nullptr) editor->Draw();
+			++framesDrawn;
+			const bool automatic = screenshotAfter > 0 && framesDrawn == screenshotAfter;
 			if (const ScreenshotLink screenshot = game.Screenshot();
-			    screenshotAsked || (screenshot.request != nullptr && screenshot.request->pending))
+			    automatic || screenshotAsked || (screenshot.request != nullptr && screenshot.request->pending))
 			{
-				SaveScreenshot(screenshot);
+				const bool saved = SaveScreenshot(screenshot);
+				if (automatic)
+				{
+					automationDone = true;
+					if (!saved) exitCode = 1;
+				}
 			}
 			renderer.Present();
 
@@ -311,10 +320,17 @@ namespace engine::application
 
 		if (editor != nullptr) editor->Detach();
 		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
-		return 0;
+		return exitCode;
 	}
 
-	void Application::SaveScreenshot(const ScreenshotLink& link)
+	void Application::SetScreenshotArgs(const graphics::ScreenshotArgs& args)
+	{
+		if (!args.error.empty()) SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "bad option: %s", args.error.c_str());
+		if (!args.directory.empty()) screenshotFolder = args.directory;
+		if (args.afterFrames > 0) screenshotAfter = args.afterFrames;
+	}
+
+	bool Application::SaveScreenshot(const ScreenshotLink& link)
 	{
 		screenshotAsked = false;
 		if (link.request != nullptr) link.request->pending = false;
@@ -327,14 +343,14 @@ namespace engine::application
 		if (screenshotFolder.empty())
 		{
 			fail("no folder to save screenshots in");
-			return;
+			return false;
 		}
 		std::error_code error;
 		std::filesystem::create_directories(screenshotFolder, error);
 		if (error)
 		{
 			fail("can't make " + screenshotFolder.string() + ": " + error.message());
-			return;
+			return false;
 		}
 
 		// With the editor the picture is the whole window, panels included; otherwise the game at its own size.
@@ -342,7 +358,7 @@ namespace engine::application
 		if (picture.IsEmpty())
 		{
 			fail("the frame could not be read back");
-			return;
+			return false;
 		}
 
 		graphics::ScreenshotTime time;
@@ -361,7 +377,7 @@ namespace engine::application
 		if (!graphics::SaveImage(picture, file))
 		{
 			fail("can't write " + file.string());
-			return;
+			return false;
 		}
 		SDL_Log("screenshot saved: %s", file.string().c_str());
 		if (link.result != nullptr)
@@ -370,6 +386,7 @@ namespace engine::application
 			link.result->lastError.clear();
 			++link.result->count;
 		}
+		return true;
 	}
 
 	void Application::ApplyDisplay(const graphics::DisplaySettings& wanted)

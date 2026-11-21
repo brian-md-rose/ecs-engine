@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 #include "graphics/image.hpp"
 
@@ -61,4 +62,22 @@ namespace engine::graphics
 
 	// The part of image inside rect, which is clipped to the image. Empty if nothing is left.
 	[[nodiscard]] Image CropImage(const Image& image, PixelRect rect);
+
+	// The command-line options that take a screenshot without anyone pressing a key, for scripts and for a Claude
+	// session that cannot drive the window: --screenshot-after N (save the Nth frame, then exit) and --screenshot-dir
+	// PATH (save there instead of the usual folder). Either may also be written --name=value.
+	struct ScreenshotArgs
+	{
+		int afterFrames = 0;             // 0: no automatic screenshot
+		std::filesystem::path directory; // empty: the usual folder
+		std::string error;               // what was wrong with an option, empty if nothing
+	};
+
+	// How many entries of the command line arg takes up if it is one of the options above: 2 for the form with a
+	// separate value, 1 for --name=value, 0 for anything else. A program with its own arguments uses this to skip them.
+	[[nodiscard]] int ScreenshotArgWidth(std::string_view arg) noexcept;
+
+	// Reads the options above out of argv[1..argc). Other arguments are ignored. A bad value is reported in
+	// ScreenshotArgs::error and leaves that option off.
+	[[nodiscard]] ScreenshotArgs ParseScreenshotArgs(int argc, const char* const* argv);
 } // namespace engine::graphics

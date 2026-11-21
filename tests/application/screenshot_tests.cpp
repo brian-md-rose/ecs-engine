@@ -33,14 +33,18 @@ namespace
 	// Draws a flat colour for a few frames and then quits. Optionally asks for a screenshot on its first update.
 	class FlatGame final : public engine::application::Game
 	{
-		int frames = 0;
+		int drawn = 0;
+		int quitAt;
 		bool ask;
 
 	public:
 		engine::graphics::ScreenshotRequest request;
 		engine::graphics::ScreenshotResult result;
 
-		explicit FlatGame(bool askOnFirstUpdate) : ask(askOnFirstUpdate) {}
+		explicit FlatGame(bool askOnFirstUpdate, int quitAfterFrames = 3)
+		    : quitAt(quitAfterFrames), ask(askOnFirstUpdate)
+		{
+		}
 
 		void Update(double, const engine::input::Input&, engine::audio::AudioDevice*) override
 		{
@@ -53,9 +57,10 @@ namespace
 		void Render(engine::graphics::Renderer& renderer, double) override
 		{
 			renderer.Clear(10, 200, 30);
-			++frames;
+			++drawn;
 		}
-		[[nodiscard]] bool WantsToQuit() const override { return frames >= 3; }
+		[[nodiscard]] bool WantsToQuit() const override { return drawn >= quitAt; }
+		[[nodiscard]] int frames() const noexcept { return drawn; }
 		[[nodiscard]] ScreenshotLink Screenshot() override { return {.request = &request, .result = &result}; }
 	};
 
@@ -136,4 +141,49 @@ TEST_CASE("The screenshot key can be turned off, and RequestScreenshot still wor
 	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
 
 	CHECK(game.result.count == 1);
+}
+
+TEST_CASE("--screenshot-after saves that frame and closes the game", "[screenshot][application]")
+{
+	const TempFolder folder("ecs_screenshot_after");
+	Application app(SmallConfig());
+	app.SetScreenshotFolder(folder.path);
+	app.SetScreenshotAfter(5);
+	FlatGame game(false, 1000); // would run for a long time if the screenshot did not end it
+	const SteppingClock clock;
+	const int exitCode = app.Run(game, clock);
+	if (exitCode != 0 && game.result.lastError.empty()) SKIP("no offscreen video driver");
+
+	CHECK(exitCode == 0);
+	CHECK(game.result.count == 1);
+	CHECK(game.frames() == 5);
+	CHECK(std::filesystem::exists(game.result.lastFile));
+}
+
+TEST_CASE("--screenshot-after fails the run when the file cannot be saved", "[screenshot][application]")
+{
+	Application app(SmallConfig()); // no folder
+	app.SetScreenshotAfter(2);
+	FlatGame game(false, 1000);
+	const SteppingClock clock;
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver");
+
+	CHECK(exitCode == 1);
+	CHECK(game.frames() == 2);
+	CHECK_FALSE(game.result.lastError.empty());
+}
+
+TEST_CASE("SetScreenshotArgs applies the folder and the frame count", "[screenshot][application]")
+{
+	const TempFolder folder("ecs_screenshot_args");
+	Application app(SmallConfig());
+	const char* const argv[] = {"game", "--screenshot-after", "2", "--screenshot-dir", folder.path.c_str()};
+	app.SetScreenshotArgs(engine::graphics::ParseScreenshotArgs(5, argv));
+	FlatGame game(false, 1000);
+	const SteppingClock clock;
+	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
+
+	CHECK(game.result.count == 1);
+	CHECK(game.result.lastFile.parent_path() == folder.path);
 }

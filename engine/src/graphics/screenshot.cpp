@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstddef>
 #include <cstdio>
 #include <string_view>
@@ -114,5 +115,75 @@ namespace engine::graphics
 			}
 		}
 		return result;
+	}
+
+	namespace
+	{
+		constexpr std::string_view kAfterFlag = "--screenshot-after";
+		constexpr std::string_view kDirFlag = "--screenshot-dir";
+
+		[[nodiscard]] bool StartsWithFlag(std::string_view arg, std::string_view flag) noexcept
+		{
+			return arg.substr(0, flag.size()) == flag;
+		}
+	} // namespace
+
+	int ScreenshotArgWidth(std::string_view arg) noexcept
+	{
+		for (const std::string_view flag : {kAfterFlag, kDirFlag})
+		{
+			if (arg == flag) return 2;
+			if (StartsWithFlag(arg, flag) && arg.size() > flag.size() && arg[flag.size()] == '=') return 1;
+		}
+		return 0;
+	}
+
+	ScreenshotArgs ParseScreenshotArgs(int argc, const char* const* argv)
+	{
+		ScreenshotArgs args;
+		for (int i = 1; i < argc; ++i)
+		{
+			const std::string_view arg = argv[i] != nullptr ? argv[i] : "";
+			const int width = ScreenshotArgWidth(arg);
+			if (width == 0) continue;
+
+			const bool isAfter = StartsWithFlag(arg, kAfterFlag);
+			std::string_view value;
+			if (width == 1)
+			{
+				value = arg.substr(arg.find('=') + 1);
+			}
+			else if (i + 1 < argc && argv[i + 1] != nullptr)
+			{
+				value = argv[++i];
+			}
+			else
+			{
+				args.error = std::string(arg) + " needs a value";
+				continue;
+			}
+
+			if (isAfter)
+			{
+				int frames = 0;
+				const auto [end, code] = std::from_chars(value.data(), value.data() + value.size(), frames);
+				if (code != std::errc() || end != value.data() + value.size() || frames <= 0)
+				{
+					args.error = std::string(kAfterFlag) + " needs a whole number of frames above 0, not '" +
+					             std::string(value) + "'";
+					continue;
+				}
+				args.afterFrames = frames;
+			}
+			else if (value.empty())
+			{
+				args.error = std::string(kDirFlag) + " needs a folder";
+			}
+			else
+			{
+				args.directory = std::filesystem::path(std::string(value));
+			}
+		}
+		return args;
 	}
 } // namespace engine::graphics

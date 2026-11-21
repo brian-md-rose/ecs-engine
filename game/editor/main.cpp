@@ -126,6 +126,11 @@ int main(int argc, char** argv)
 	std::string openScene; // the first argument that is not a flag: a scene in the scene folder
 	for (int i = 1; i < argc; ++i)
 	{
+		if (const int width = engine::graphics::ScreenshotArgWidth(argv[i]); width > 0)
+		{
+			i += width - 1; // a screenshot option and its value, read by Application::SetScreenshotArgs
+			continue;
+		}
 		if (std::strcmp(argv[i], "--overlay") == 0)
 			overlay = true;
 		else if (argv[i][0] != '-' && openScene.empty())
@@ -134,6 +139,7 @@ int main(int argc, char** argv)
 
 	Application app(game::MazeGame::kConfig);
 	app.SetScreenshotFolder(engine::graphics::ScreenshotDirectory(logFolder));
+	app.SetScreenshotArgs(engine::graphics::ParseScreenshotArgs(argc, argv));
 	engine::editor::Editor editor;
 	// Panel positions and the scenes last opened are kept with the log, so the next start picks up where this left off.
 	if (!logFolder.empty()) editor.SetLayoutFile(logFolder / "editor-layout.ini");
