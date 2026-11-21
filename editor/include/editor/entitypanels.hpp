@@ -28,7 +28,8 @@ namespace engine::editor
 		ecs::Entity selected = ecs::Entity::Null; // the primary selection, the one the Inspector shows
 		std::vector<ecs::Entity> extra;           // the rest of a multiple selection (Ctrl or Shift click, drag box)
 		std::string filter;
-		std::string status; // the last thing that was refused
+		std::string fieldFilter; // the Inspector's search: shows only components and fields whose name contains it
+		std::string status;      // the last thing that was refused
 
 		// The whole selection: the primary first, then the others. Empty if nothing is selected.
 		[[nodiscard]] std::vector<ecs::Entity> All() const;

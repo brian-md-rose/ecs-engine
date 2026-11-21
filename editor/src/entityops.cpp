@@ -14,7 +14,10 @@
 namespace engine::editor
 {
 	using ecs::Entity;
+	using ecs::FieldInfo;
 	using ecs::Registry;
+	using ecs::TypeInfo;
+	using ecs::TypeRegistry;
 
 	LiveIds::LiveIds(const Registry& world) : registry(world)
 	{
@@ -245,18 +248,103 @@ namespace engine::editor
 		return tree;
 	}
 
-	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
+	bool ContainsNoCase(const std::string& text, const std::string& filter)
 	{
 		if (filter.empty()) return true;
-		const auto lower = [](std::string text)
+		const auto same = [](char left, char right)
 		{
-			std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c)
-			{
-				return static_cast<char>(std::tolower(c));
-			});
-			return text;
+			return std::tolower(static_cast<unsigned char>(left)) == std::tolower(static_cast<unsigned char>(right));
 		};
-		return lower(LabelOf(registry, entity)).find(lower(filter)) != std::string::npos;
+		return std::search(text.begin(), text.end(), filter.begin(), filter.end(), same) != text.end();
+	}
+
+	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
+	{
+		return ContainsNoCase(LabelOf(registry, entity), filter);
+	}
+
+	std::string CopyComponent(const Registry& registry, const TypeInfo& type, Entity entity, std::string& error)
+	{
+		const void* component = type.Get(registry, entity);
+		if (component == nullptr)
+		{
+			error = "the entity has no " + type.Name();
+			return {};
+		}
+		const LiveIds ids(registry);
+		core::JsonValue fields = core::JsonValue::Object();
+		for (const FieldInfo& field : type.Fields())
+		{
+			core::JsonValue value;
+			if (!field.save(component, ids, value, error))
+			{
+				error = type.Name() + "." + field.name + ": " + error;
+				return {};
+			}
+			fields.Set(field.name, std::move(value));
+		}
+		core::JsonValue root = core::JsonValue::Object();
+		root.Set("type", core::JsonValue(std::string(type.Name())));
+		root.Set("fields", std::move(fields));
+		return core::FormatJson(root);
+	}
+
+	bool PasteComponent(Registry& registry, const TypeRegistry& types, Entity entity, std::string_view text,
+	                    std::string& error, const TypeInfo* only)
+	{
+		const core::JsonResult parsed = core::ParseJson(text);
+		const core::JsonValue* typeName = parsed.value ? parsed.value->Find("type") : nullptr;
+		const core::JsonValue* fields = parsed.value ? parsed.value->Find("fields") : nullptr;
+		if (typeName == nullptr || !typeName->AsString() || fields == nullptr || fields->AsObject() == nullptr)
+		{
+			error = "the clipboard does not hold a copied component";
+			return false;
+		}
+		const TypeInfo* type = types.Find(*typeName->AsString());
+		if (type != nullptr && only != nullptr && type != only)
+		{
+			error = "the clipboard holds " + type->Name() + " values, not " + only->Name();
+			return false;
+		}
+		if (type == nullptr || type->IsRuntime())
+		{
+			error = "unknown component " + std::string(*typeName->AsString());
+			return false;
+		}
+		const LiveIds ids(registry);
+		// Try every field on a scratch copy first, in a registry of its own with no hooks, so a bad field changes
+		// nothing in the scene and a refused paste never fires the real registry's OnAdd and OnRemove hooks.
+		Registry scratch;
+		const Entity probe = scratch.Create();
+		type->AddDefault(scratch, probe);
+		void* probed = type->Get(scratch, probe);
+		for (const FieldInfo& field : type->Fields())
+		{
+			const core::JsonValue* value = fields->Find(field.name);
+			if (value == nullptr || field.load(probed, *value, ids, error)) continue;
+			error = type->Name() + "." + field.name + ": " + error;
+			return false;
+		}
+		// A pasted Parent must not make a loop, which would hang anything that walks up the hierarchy.
+		if (const ecs::Parent* parent = scratch.TryGetComponent<ecs::Parent>(probe);
+		    parent != nullptr && !parent->entity.IsNull() && WouldMakeLoop(registry, entity, parent->entity))
+		{
+			error = "can't parent " + LabelOf(registry, entity) + " to itself or something under it";
+			return false;
+		}
+		const bool had = type->Has(registry, entity);
+		if (!had) type->AddDefault(registry, entity);
+		void* component = type->Get(registry, entity);
+		for (const FieldInfo& field : type->Fields())
+		{
+			const core::JsonValue* value = fields->Find(field.name);
+			if (value == nullptr || field.load(component, *value, ids, error)) continue;
+			// Not expected after the dry run; report it, and drop a component that was only just added.
+			error = type->Name() + "." + field.name + ": " + error;
+			if (!had) type->Remove(registry, entity);
+			return false;
+		}
+		return true;
 	}
 
 	bool SubtreeMatches(const Registry& registry, const Tree& tree, Entity entity, const std::string& filter)

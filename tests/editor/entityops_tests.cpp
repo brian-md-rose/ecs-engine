@@ -192,3 +192,110 @@ TEST_CASE("The filter matches names ignoring case, and keeps ancestors of a matc
 	CHECK_FALSE(engine::editor::SubtreeMatches(registry, tree, other, "button"));
 	CHECK(engine::editor::SubtreeMatches(registry, tree, other, "")); // an empty filter keeps everything
 }
+
+TEST_CASE("Component values copy onto another entity, adding the component if needed", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	const Entity b = CreateEntity(registry, "b");
+	registry.Add<Target>(a, Target{b, 7});
+	const engine::ecs::TypeInfo* type = types.Find("Target");
+	REQUIRE(type != nullptr);
+
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *type, a, error);
+	REQUIRE_FALSE(text.empty());
+	CHECK(engine::editor::PasteComponent(registry, types, b, text, error));
+	REQUIRE(registry.TryGetComponent<Target>(b) != nullptr);
+	CHECK(registry.GetComponent<Target>(b).weight == 7);
+	CHECK(registry.GetComponent<Target>(b).who == b); // the reference means the same entity it did
+
+	registry.GetComponent<Target>(a).weight = 2;
+	CHECK(engine::editor::PasteComponent(registry, types, a, text, error)); // onto one that has it
+	CHECK(registry.GetComponent<Target>(a).weight == 7);
+}
+
+TEST_CASE("Component copy and paste say why they can't", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	const engine::ecs::TypeInfo* type = types.Find("Target");
+	REQUIRE(type != nullptr);
+
+	std::string error;
+	CHECK(engine::editor::CopyComponent(registry, *type, a, error).empty());
+	CHECK_FALSE(error.empty());
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, "not json", error));
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, R"({"type":"Nope","fields":{}})", error));
+	// A field that does not load changes nothing, and does not leave the component behind.
+	CHECK_FALSE(
+	    engine::editor::PasteComponent(registry, types, a, R"({"type":"Target","fields":{"weight":"x"}})", error));
+	CHECK_FALSE(registry.HasComponent<Target>(a));
+}
+
+TEST_CASE("Names are matched ignoring case", "[editor][ops]")
+{
+	CHECK(engine::editor::ContainsNoCase("Position X", "pos"));
+	CHECK(engine::editor::ContainsNoCase("anything", ""));
+	CHECK_FALSE(engine::editor::ContainsNoCase("weight", "who"));
+}
+
+TEST_CASE("A paste with a bad field changes nothing, even after a good one", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	registry.Add<Target>(a, Target{Entity::Null, 3});
+	int adds = 0;
+	registry.OnAdd<Target>([&adds](Entity, Target&)
+	{
+		++adds;
+	});
+	std::string error;
+	// "who" is fine, "weight" is not
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a,
+	                                           R"({"type":"Target","fields":{"who":0,"weight":"x"}})", error));
+	CHECK(registry.GetComponent<Target>(a).weight == 3);
+	CHECK(registry.GetComponent<Target>(a).who == Entity::Null);
+
+	const Entity b = CreateEntity(registry, "b");
+	CHECK_FALSE(
+	    engine::editor::PasteComponent(registry, types, b, R"({"type":"Target","fields":{"weight":"x"}})", error));
+	CHECK(adds == 0); // a refused paste never adds the component, so no hook sees it
+}
+
+TEST_CASE("A paste for one component type refuses another's values", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	registry.Add<Target>(a, Target{Entity::Null, 5});
+	const engine::ecs::TypeInfo* target = types.Find("Target");
+	const engine::ecs::TypeInfo* name = types.Find("Name");
+	REQUIRE(target != nullptr);
+	REQUIRE(name != nullptr);
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *target, a, error);
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, text, error, name));
+	CHECK(engine::editor::PasteComponent(registry, types, a, text, error, target));
+}
+
+TEST_CASE("Pasting a Parent never makes a loop", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity top = CreateEntity(registry, "top");
+	const Entity child = CreateEntity(registry, "child", top);
+	const engine::ecs::TypeInfo* parent = types.Find("Parent");
+	REQUIRE(parent != nullptr);
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *parent, child, error); // child's parent is top
+	REQUIRE_FALSE(text.empty());
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, top, text, error)); // top under its own child
+	CHECK_FALSE(registry.HasComponent<Parent>(top));
+	const Entity other = CreateEntity(registry, "other");
+	CHECK(engine::editor::PasteComponent(registry, types, other, text, error)); // a sibling is fine
+	CHECK(registry.GetComponent<Parent>(other).entity == top);
+}
