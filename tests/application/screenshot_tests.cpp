@@ -189,3 +189,18 @@ TEST_CASE("SetScreenshotArgs applies the folder and the frame count", "[screensh
 	CHECK(game.result.count == 1);
 	CHECK(game.result.lastFile.parent_path() == folder.path);
 }
+
+TEST_CASE("--screenshot-after fails the run when the game closes first", "[screenshot][application]")
+{
+	const TempFolder folder("ecs_screenshot_early");
+	Application app(SmallConfig());
+	app.SetScreenshotFolder(folder.path);
+	app.SetScreenshotAfter(5);
+	FlatGame game(false, 2); // quits after 2 frames, before the 5th
+	const SteppingClock clock;
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver");
+
+	CHECK(exitCode == 1);
+	CHECK(game.result.count == 0);
+}

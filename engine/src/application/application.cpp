@@ -319,6 +319,12 @@ namespace engine::application
 			}
 		}
 
+		if (screenshotAfter > 0 && !automationDone)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "closed before frame %d, so no screenshot was taken",
+			             screenshotAfter);
+			exitCode = 1;
+		}
 		if (editor != nullptr) editor->Detach();
 		if (!cursorShown) SDL_ShowCursor(); // the pointer belongs to the user after the game
 		return exitCode;
