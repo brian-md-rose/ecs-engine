@@ -102,7 +102,9 @@ TEST_CASE("A game's screenshot request saves a PNG at the logical size", "[scree
 	app.SetScreenshotFolder(folder.path);
 	FlatGame game(true);
 	const SteppingClock clock;
-	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver"); // Run gave up before drawing
+	CHECK(exitCode == 0);
 
 	CHECK(game.result.lastError.empty());
 	REQUIRE(game.result.count == 1);
@@ -123,7 +125,9 @@ TEST_CASE("Without a folder a screenshot fails with a reason and writes nothing"
 	Application app(SmallConfig());
 	FlatGame game(true);
 	const SteppingClock clock;
-	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver"); // Run gave up before drawing
+	CHECK(exitCode == 0);
 
 	CHECK(game.result.count == 0);
 	CHECK_FALSE(game.result.lastError.empty());
@@ -139,7 +143,9 @@ TEST_CASE("The screenshot key can be turned off, and RequestScreenshot still wor
 	app.RequestScreenshot();
 	FlatGame game(false);
 	const SteppingClock clock;
-	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver"); // Run gave up before drawing
+	CHECK(exitCode == 0);
 
 	CHECK(game.result.count == 1);
 }
@@ -184,7 +190,9 @@ TEST_CASE("SetScreenshotArgs applies the folder and the frame count", "[screensh
 	app.SetScreenshotArgs(engine::graphics::ParseScreenshotArgs(5, argv));
 	FlatGame game(false, 1000);
 	const SteppingClock clock;
-	if (app.Run(game, clock) != 0) SKIP("no offscreen video driver");
+	const int exitCode = app.Run(game, clock);
+	if (game.frames() == 0) SKIP("no offscreen video driver"); // Run gave up before drawing
+	CHECK(exitCode == 0);
 
 	CHECK(game.result.count == 1);
 	CHECK(game.result.lastFile.parent_path() == folder.path);
