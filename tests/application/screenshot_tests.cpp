@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <string>
 
 #include "application/application.hpp"
 #include "core/clock.hpp"
@@ -178,7 +179,8 @@ TEST_CASE("SetScreenshotArgs applies the folder and the frame count", "[screensh
 {
 	const TempFolder folder("ecs_screenshot_args");
 	Application app(SmallConfig());
-	const char* const argv[] = {"game", "--screenshot-after", "2", "--screenshot-dir", folder.path.c_str()};
+	const std::string dir = folder.path.string(); // path::c_str() is wide on Windows
+	const char* const argv[] = {"game", "--screenshot-after", "2", "--screenshot-dir", dir.c_str()};
 	app.SetScreenshotArgs(engine::graphics::ParseScreenshotArgs(5, argv));
 	FlatGame game(false, 1000);
 	const SteppingClock clock;

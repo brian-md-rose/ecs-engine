@@ -268,6 +268,7 @@ namespace engine::application
 
 		UpdateDisplay(game); // so the game sees the display's settings and sizes from its first update
 
+		framesDrawn = 0;
 		bool automationDone = false; // the --screenshot-after picture has been taken
 		int exitCode = 0;
 		while (PumpEvents() && !game.WantsToQuit() && !automationDone)
