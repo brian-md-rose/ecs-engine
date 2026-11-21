@@ -251,15 +251,11 @@ namespace engine::editor
 	bool ContainsNoCase(const std::string& text, const std::string& filter)
 	{
 		if (filter.empty()) return true;
-		const auto lower = [](std::string value)
+		const auto same = [](char left, char right)
 		{
-			std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
-			{
-				return static_cast<char>(std::tolower(c));
-			});
-			return value;
+			return std::tolower(static_cast<unsigned char>(left)) == std::tolower(static_cast<unsigned char>(right));
 		};
-		return lower(text).find(lower(filter)) != std::string::npos;
+		return std::search(text.begin(), text.end(), filter.begin(), filter.end(), same) != text.end();
 	}
 
 	bool MatchesFilter(const Registry& registry, Entity entity, const std::string& filter)
@@ -294,7 +290,7 @@ namespace engine::editor
 	}
 
 	bool PasteComponent(Registry& registry, const TypeRegistry& types, Entity entity, std::string_view text,
-	                    std::string& error)
+	                    std::string& error, const TypeInfo* only)
 	{
 		const core::JsonResult parsed = core::ParseJson(text);
 		const core::JsonValue* typeName = parsed.value ? parsed.value->Find("type") : nullptr;
@@ -305,6 +301,11 @@ namespace engine::editor
 			return false;
 		}
 		const TypeInfo* type = types.Find(*typeName->AsString());
+		if (type != nullptr && only != nullptr && type != only)
+		{
+			error = "the clipboard holds " + type->Name() + " values, not " + only->Name();
+			return false;
+		}
 		if (type == nullptr || type->IsRuntime())
 		{
 			error = "unknown component " + std::string(*typeName->AsString());

@@ -265,3 +265,18 @@ TEST_CASE("A paste with a bad field changes nothing, even after a good one", "[e
 	    engine::editor::PasteComponent(registry, types, b, R"({"type":"Target","fields":{"weight":"x"}})", error));
 	CHECK(adds == 0); // a refused paste never adds the component, so no hook sees it
 }
+
+TEST_CASE("A paste for one component type refuses another's values", "[editor][ops]")
+{
+	const engine::ecs::TypeRegistry types = MakeTypes();
+	Registry registry;
+	const Entity a = CreateEntity(registry, "a");
+	registry.Add<Target>(a, Target{Entity::Null, 5});
+	const engine::ecs::TypeInfo* target = types.Find("Target");
+	const engine::ecs::TypeInfo* name = types.Find("Name");
+	REQUIRE((target != nullptr && name != nullptr));
+	std::string error;
+	const std::string text = engine::editor::CopyComponent(registry, *target, a, error);
+	CHECK_FALSE(engine::editor::PasteComponent(registry, types, a, text, error, name));
+	CHECK(engine::editor::PasteComponent(registry, types, a, text, error, target));
+}

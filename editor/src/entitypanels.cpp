@@ -545,7 +545,7 @@ namespace engine::editor
 					{
 						std::string error;
 						const char* clip = ImGui::GetClipboardText();
-						if (!PasteComponent(registry, *types, entity, clip != nullptr ? clip : "", error))
+						if (!PasteComponent(registry, *types, entity, clip != nullptr ? clip : "", error, &type))
 							state.status = error;
 						else
 							state.status.clear();
