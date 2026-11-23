@@ -81,7 +81,7 @@ TEST_CASE("A scene is written in a stable, readable shape", "[ecs][scene]")
 	Registry registry;
 	const Entity player = registry.Create();
 	registry.Add<Name>(player, Name{"Player"});
-	registry.Add<Transform>(player, Transform{{16.0f, 24.5f}});
+	registry.Add<Transform>(player, Transform{.position = {16.0f, 24.5f}});
 	registry.Add<Cache>(player);         // not registered: left out
 	registry.Add<Interpolation>(player); // Runtime: left out
 	const Entity label = registry.Create();
@@ -109,7 +109,7 @@ TEST_CASE("A scene round-trips through save and load", "[ecs][scene]")
 	source.Add<Shape>(a, Shape{ShapeKind::Circle, 0, 0, 3.0f, Color{1, 2, 3}, 4});
 	source.Add<Follow>(a, Follow{b, 2.0f});
 	source.Add<Parent>(b, Parent{a});
-	source.Add<Transform>(b, Transform{{1.0f, 2.0f}});
+	source.Add<Transform>(b, Transform{.position = {1.0f, 2.0f}});
 
 	Issues saveIssues;
 	const JsonValue scene = SaveScene(source, types, saveIssues);
@@ -234,7 +234,7 @@ TEST_CASE("A scene file round-trips and a missing file is an error", "[ecs][scen
 	Registry source;
 	const Entity e = source.Create();
 	source.Add<Name>(e, Name{"Saved"});
-	source.Add<Transform>(e, Transform{{3.0f, 4.0f}});
+	source.Add<Transform>(e, Transform{.position = {3.0f, 4.0f}});
 	Issues issues;
 	REQUIRE(SaveSceneFile(source, types, file, issues));
 

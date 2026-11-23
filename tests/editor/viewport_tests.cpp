@@ -31,7 +31,7 @@ namespace
 	Entity AddBox(Registry& registry, float x, float y, float size, std::uint8_t layer = 0)
 	{
 		const Entity entity = registry.Create();
-		registry.Add<Transform>(entity, Transform{{x, y}});
+		registry.Add<Transform>(entity, Transform{.position = {x, y}});
 		registry.Add<Shape>(entity, Shape{.width = size, .height = size, .layer = layer});
 		return entity;
 	}
@@ -288,7 +288,7 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 	const Camera camera = MakeCamera();
 
 	const Entity label = registry.Create();
-	registry.Add<Transform>(label, Transform{{20, 10}});
+	registry.Add<Transform>(label, Transform{.position = {20, 10}});
 	registry.Add<engine::graphics::Text>(label, engine::graphics::Text{.value = "HELLO", .scale = 2});
 	// Five letters, 6 pixels each, at scale 2: 60 wide; one line of 8, at scale 2: 16 tall.
 	const auto textRect = EntityScreenRect(registry, label, camera);
@@ -301,13 +301,13 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 
 	// Centred text is drawn around its Transform, so its rectangle starts to the left of it.
 	const Entity centred = registry.Create();
-	registry.Add<Transform>(centred, Transform{{100, 50}});
+	registry.Add<Transform>(centred, Transform{.position = {100, 50}});
 	registry.Add<engine::graphics::Text>(
 	    centred, engine::graphics::Text{.value = "AB", .align = engine::graphics::Align::Centre});
 	CHECK(EntityScreenRect(registry, centred, camera)->x == 94.0F);
 
 	const Entity panel = registry.Create();
-	registry.Add<Transform>(panel, Transform{{200, 100}});
+	registry.Add<Transform>(panel, Transform{.position = {200, 100}});
 	registry.Add<engine::ui::NinePatch>(panel, engine::ui::NinePatch{.width = 40, .height = 30});
 	CHECK(PickEntity(registry, camera, {210, 110}) == panel);
 }

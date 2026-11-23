@@ -79,7 +79,7 @@ namespace
 	Entity AddMover(engine::ecs::World& world, const std::string& name, float x)
 	{
 		const Entity entity = engine::editor::CreateEntity(world.registry, name);
-		world.registry.Add<Transform>(entity, Transform{{x, 0}});
+		world.registry.Add<Transform>(entity, Transform{.position = {x, 0}});
 		world.registry.Add<Mover>(entity);
 		return entity;
 	}
