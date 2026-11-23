@@ -4,6 +4,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/hierarchy.hpp"
 #include "ecs/registry.hpp"
+#include "graphics/shape.hpp"
 #include "graphics/transform.hpp"
 
 namespace
@@ -138,4 +139,24 @@ TEST_CASE("UpdateWorldTransforms carries rotation and scale to children", "[grap
 	CHECK(world.scale.y == Catch::Approx(6.0f));
 	// The parent is untouched.
 	CHECK(registry.GetComponent<Transform>(parent).rotation == 90.0f);
+}
+
+TEST_CASE("A turned parent carries its children about its centre", "[graphics][transform]")
+{
+	using engine::graphics::Shape;
+	Registry registry;
+	const Entity parent = Spawn(registry, {100.0f, 50.0f});
+	registry.Add<Shape>(parent, Shape{.width = 20.0f, .height = 10.0f});
+	registry.GetComponent<Transform>(parent).rotation = 90.0f;
+	const Entity child = SpawnChild(registry, parent, {0.0f, 0.0f});
+	registry.Add<Shape>(child, Shape{.width = 4.0f, .height = 4.0f});
+
+	engine::graphics::UpdateWorldTransforms(registry);
+
+	// The parent's centre is (110, 55); the child's centre starts 8 left and 3 above it, and a quarter
+	// turn takes that to 3 right and 8 above: (113, 47), so its top-left is (111, 45).
+	const Transform& world = registry.GetComponent<Transform>(child);
+	CHECK(world.position.x == Catch::Approx(111.0f));
+	CHECK(world.position.y == Catch::Approx(45.0f));
+	CHECK(world.rotation == Catch::Approx(90.0f));
 }

@@ -62,7 +62,7 @@ inspector), and `Save` and `Load` for one component.
 - `name` is the `Name` component and `parent` the `Parent` component; neither appears under `components`.
 - `format` is the file layout version (1). A file with another number is refused. `engine` is for diagnostics.
 - Resources (the maze, the score) are not part of a scene. Prefabs are not supported yet.
-- `Transform` and `LocalTransform` also have `rotation` (degrees, clockwise on screen) and `scale` (`{"x", "y"}`, default 1). A scene written before they existed omits them and loads unchanged, as every missing field keeps its default; saving now writes them. Shapes and sprites rotate and scale about their top-left corner (the `position`); text ignores both. A child gets its parent's rotation added and its scale multiplied, and its `position` is stretched and turned by the parent's first.
+- `Transform` and `LocalTransform` also have `rotation` (degrees, clockwise on screen) and `scale` (`{"x", "y"}`, default 1). A scene written before they existed omits them and loads unchanged, as every missing field keeps its default; saving now writes them. Shapes and sprites rotate and scale about the centre of their box (`position` stays the top-left of the box before it is turned); text ignores both. A parent and its children turn and stretch together about the parent's centre (its position if it has no Shape or Sprite): rotations add and scales multiply.
 
 ## Scene settings
 

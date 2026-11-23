@@ -1,6 +1,7 @@
 #include "graphics/drawbatch.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 #include <utility>
@@ -38,36 +39,70 @@ namespace engine::graphics
 			return {std::floor(position.x + 0.5f), std::floor(position.y + 0.5f)};
 		}
 
-		// The corner at (dx, dy) from origin of a box turned by an angle (cosine c, sine s) and stretched by k.
-		[[nodiscard]] Position Corner(Position origin, float c, float s, Scale k, float dx, float dy)
-		{
-			const float sx = dx * k.x;
-			const float sy = dy * k.y;
-			return {origin.x + sx * c - sy * s, origin.y + sx * s + sy * c};
-		}
-
 		[[nodiscard]] float Radians(float degrees)
 		{
 			return degrees * (std::numbers::pi_v<float> / 180.0f);
 		}
 
-		// The box (top-left and size) that surrounds a width x height box at origin after it is turned
-		// and stretched. Untouched when there is neither.
+		[[nodiscard]] bool IsPlain(float rotation, Scale k)
+		{
+			return rotation == 0.0f && k.x == 1.0f && k.y == 1.0f;
+		}
+
+		// A turn: the cosine and sine of rotation degrees.
+		struct Turn
+		{
+			float c = 1.0f;
+			float s = 0.0f;
+		};
+		[[nodiscard]] Turn TurnOf(float rotation)
+		{
+			if (rotation == 0.0f) return {};
+			return {std::cos(Radians(rotation)), std::sin(Radians(rotation))};
+		}
+
+		// The point at (dx, dy) from centre, stretched by k and then turned.
+		[[nodiscard]] Position FromCentre(Position centre, Turn turn, Scale k, float dx, float dy)
+		{
+			const float sx = dx * k.x;
+			const float sy = dy * k.y;
+			return {centre.x + sx * turn.c - sy * turn.s, centre.y + sx * turn.s + sy * turn.c};
+		}
+
+		// The corners (top-left, top-right, bottom-right, bottom-left) of a width x height box at topLeft
+		// after it is stretched and turned about its centre. Exactly the box's own corners when plain.
+		[[nodiscard]] std::array<Position, 4> BoxCorners(Position topLeft, float width, float height, float rotation,
+		                                                 Scale k)
+		{
+			if (IsPlain(rotation, k))
+			{
+				return {{{topLeft.x, topLeft.y},
+				         {topLeft.x + width, topLeft.y},
+				         {topLeft.x + width, topLeft.y + height},
+				         {topLeft.x, topLeft.y + height}}};
+			}
+			const Turn turn = TurnOf(rotation);
+			const float halfWidth = width * 0.5f;
+			const float halfHeight = height * 0.5f;
+			const Position centre{topLeft.x + halfWidth, topLeft.y + halfHeight};
+			return {{FromCentre(centre, turn, k, -halfWidth, -halfHeight),
+			         FromCentre(centre, turn, k, halfWidth, -halfHeight),
+			         FromCentre(centre, turn, k, halfWidth, halfHeight),
+			         FromCentre(centre, turn, k, -halfWidth, halfHeight)}};
+		}
+
+		// The box (top-left and size) that surrounds a width x height box at topLeft after it is stretched
+		// and turned about its centre. The box itself when there is neither.
 		struct Extent
 		{
 			Position topLeft;
 			float width;
 			float height;
 		};
-		[[nodiscard]] Extent Surround(Position origin, float width, float height, float rotation, Scale k)
+		[[nodiscard]] Extent Surround(Position topLeft, float width, float height, float rotation, Scale k)
 		{
-			if (rotation == 0.0f && k.x == 1.0f && k.y == 1.0f) return {origin, width, height};
-			const float c = std::cos(Radians(rotation));
-			const float s = std::sin(Radians(rotation));
-			const Position a = Corner(origin, c, s, k, 0.0f, 0.0f);
-			const Position b = Corner(origin, c, s, k, width, 0.0f);
-			const Position d = Corner(origin, c, s, k, width, height);
-			const Position e = Corner(origin, c, s, k, 0.0f, height);
+			if (IsPlain(rotation, k)) return {topLeft, width, height};
+			const auto [a, b, d, e] = BoxCorners(topLeft, width, height, rotation, k);
 			const float left = std::min({a.x, b.x, d.x, e.x});
 			const float right = std::max({a.x, b.x, d.x, e.x});
 			const float top = std::min({a.y, b.y, d.y, e.y});
@@ -262,15 +297,12 @@ namespace engine::graphics
 	void DrawBatch::AddRectangle(const Entry& entry, Position uv)
 	{
 		const int first = static_cast<int>(vertices.size());
-		const float c = std::cos(Radians(entry.rotation));
-		const float s = std::sin(Radians(entry.rotation));
-		const float width = entry.shape.width;
-		const float height = entry.shape.height;
-
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, 0.0f), entry.color, uv});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, 0.0f), entry.color, uv});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, height), entry.color, uv});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, height), entry.color, uv});
+		const auto corners =
+		    BoxCorners(entry.screen, entry.shape.width, entry.shape.height, entry.rotation, entry.scale);
+		for (const Position corner : corners)
+		{
+			vertices.push_back({corner, entry.color, uv});
+		}
 
 		for (const int corner : {0, 1, 2, 0, 2, 3})
 		{
@@ -281,20 +313,20 @@ namespace engine::graphics
 	void DrawBatch::AddCircle(const Entry& entry, Position uv)
 	{
 		// A fan around the centre: one centre vertex, kCircleSegments rim vertices, and one
-		// triangle per segment.
+		// triangle per segment. A rotation or scale turns and stretches the fan about the centre.
 		const int centre = static_cast<int>(vertices.size());
 		const float radius = entry.shape.radius;
-		const float c = std::cos(Radians(entry.rotation));
-		const float s = std::sin(Radians(entry.rotation));
+		const Turn turn = TurnOf(entry.rotation);
+		const Position middle{entry.screen.x + radius, entry.screen.y + radius};
 
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, radius, radius), entry.color, uv});
+		vertices.push_back({middle, entry.color, uv});
 		for (int i = 0; i < kCircleSegments; ++i)
 		{
 			const float angle =
 			    2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / static_cast<float>(kCircleSegments);
-			vertices.push_back({Corner(entry.screen, c, s, entry.scale, radius + radius * std::cos(angle),
-			                           radius + radius * std::sin(angle)),
-			                    entry.color, uv});
+			vertices.push_back(
+			    {FromCentre(middle, turn, entry.scale, radius * std::cos(angle), radius * std::sin(angle)), entry.color,
+			     uv});
 		}
 
 		for (int i = 0; i < kCircleSegments; ++i)
@@ -308,10 +340,7 @@ namespace engine::graphics
 	void DrawBatch::AddQuad(const Entry& entry, const BatchSettings& settings)
 	{
 		const int first = static_cast<int>(vertices.size());
-		const float c = std::cos(Radians(entry.rotation));
-		const float s = std::sin(Radians(entry.rotation));
-		const float width = entry.size.x;
-		const float height = entry.size.y;
+		const auto corners = BoxCorners(entry.screen, entry.size.x, entry.size.y, entry.rotation, entry.scale);
 
 		const auto atlasWidth = static_cast<float>(settings.atlasWidth);
 		const auto atlasHeight = static_cast<float>(settings.atlasHeight);
@@ -321,10 +350,10 @@ namespace engine::graphics
 		const float v1 = static_cast<float>(entry.source.y + entry.source.height) / atlasHeight;
 		if (entry.flipX) std::swap(u0, u1);
 
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, 0.0f), entry.color, {u0, v0}});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, 0.0f), entry.color, {u1, v0}});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, height), entry.color, {u1, v1}});
-		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, height), entry.color, {u0, v1}});
+		vertices.push_back({corners[0], entry.color, {u0, v0}});
+		vertices.push_back({corners[1], entry.color, {u1, v0}});
+		vertices.push_back({corners[2], entry.color, {u1, v1}});
+		vertices.push_back({corners[3], entry.color, {u0, v1}});
 
 		for (const int corner : {0, 1, 2, 0, 2, 3})
 		{
