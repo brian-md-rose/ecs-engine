@@ -123,7 +123,12 @@ namespace engine::editor
 		// overlay takes the release. A release for a press it never saw is harmless to it.
 		if (event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_MOUSE_BUTTON_UP) return false;
 		if (IsMouseEvent(event.type)) return io.WantCaptureMouse;
-		if (IsKeyboardEvent(event.type)) return io.WantCaptureKeyboard;
+		if (IsKeyboardEvent(event.type))
+		{
+			// The game is being played with the pointer over its picture: it gets the keys, unless a text box wants them.
+			if (gameKeys && !io.WantTextInput) return false;
+			return io.WantCaptureKeyboard;
+		}
 		return false; // quit, window and controller events always reach the game
 	}
 

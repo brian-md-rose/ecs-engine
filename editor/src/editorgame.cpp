@@ -954,9 +954,23 @@ namespace engine::editor
 	// restart Play. A text box being typed in keeps its keys, and nothing happens in the middle of a drag.
 	void EditorGame::HandleShortcuts()
 	{
-		const ImGuiIO& io = ImGui::GetIO();
+		ImGuiIO& io = ImGui::GetIO();
 		const bool inViewport = viewportActive; // set again by the Viewport if it is drawn this frame
 		viewportActive = false;
+		// The game gets the keys while it is played over the Viewport. ImGui's own keyboard navigation is off then, or
+		// the arrow keys would also move its focus around the panels.
+		editor.SetGameKeys(play != nullptr && inViewport);
+		const bool gameHasKeys = play != nullptr && inViewport;
+		if (gameHasKeys && (io.ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard) != 0)
+		{
+			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+			navigationClearedForPlay = true;
+		}
+		else if (!gameHasKeys && navigationClearedForPlay)
+		{
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+			navigationClearedForPlay = false;
+		}
 		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
