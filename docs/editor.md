@@ -27,6 +27,10 @@ The **Console** panel (Panels menu, docked at the bottom by default) shows what 
 
 The **Build settings** panel (Panels menu, standalone editor, Windows) packages the game. Tick the scenes that ship (a new setup ticks all of them), click one to make it the **startup** scene, and set the *Game exe* (by default `game.exe` beside the editor) and the *Output folder* (by default `package/Tangle Run` beside the editor). **Package** writes the executable, a copy of `assets/` without the scenes you left out, and `build.json`, a manifest with the game name, engine version, startup scene, scene names and every file of the package. Only the package's own `assets/` is replaced; the panel refuses an output folder that would overwrite the source assets or the executable. **Package and run** also starts the packaged game. The choices are kept in `editor-build.json` beside the editor log. The game does not read the startup scene yet: Tangle Run still starts on its own first screen, so the manifest is a record for now. A game uses `AddBuildSettingsPanel(editor, config)`.
 
+## Profiler
+
+The **Profiler** panel (Panels menu) plots the frame time of the last 240 frames, with a second graph for the share spent in the game's Update (only while Play runs), and shows the FPS, average and worst frame time and the entity count. The table lists how many entities have each component in the world being shown (the played one while playing), biggest first; *Hide empty* drops components nobody has. *Pause* freezes the graph, *Clear* empties it. Frames are recorded only while the panel is open. "Other" is everything that is not Update: drawing, the editor UI and waiting for vsync. An overlay game calls `AddProfilerPanel(editor, worldFunction)`; the standalone editor adds it itself. There are no per-system timings yet.
+
 ## Hierarchy and Inspector
 
 `AddEntityPanels(editor, world)` (`editor/entitypanels.hpp`) adds both panels for a `ecs::World`. The world needs a `TypeRegistry` resource with the components registered (see [scenes](scenes.md)); only registered components are shown.
