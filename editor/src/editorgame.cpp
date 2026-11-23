@@ -19,6 +19,7 @@
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
 #include "editor/assetbrowser.hpp"
+#include "editor/consolepanel.hpp"
 #include "editor/entityops.hpp"
 #include "graphics/renderer2d.hpp"
 
@@ -91,6 +92,7 @@ namespace engine::editor
 			thumbnails = std::make_shared<AssetThumbnails>();
 			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails);
 		}
+		AddConsolePanel(editor);
 		if (config.spriteRect)
 			panels->spriteRect = [this](const std::string& name)
 			{

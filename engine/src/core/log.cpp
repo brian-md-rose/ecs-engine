@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdio>
 #include <ctime>
+#include <deque>
 #include <fstream>
 #include <mutex>
 #include <string>
@@ -22,6 +23,10 @@ namespace engine::core
 			bool console = true;
 			LogLevel minimumLevel = LogLevel::Info;
 			std::ofstream file;
+			std::deque<LogRecord> history;
+			std::size_t historyCapacity = 0;
+			std::uint64_t nextId = 1;
+			std::uint64_t version = 0;
 		};
 
 		LogState& State()
@@ -123,13 +128,54 @@ namespace engine::core
 		state.active = false;
 	}
 
+	void SetLogHistoryCapacity(std::size_t capacity)
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		state.historyCapacity = capacity;
+		++state.version;
+		while (state.history.size() > capacity)
+			state.history.pop_front();
+		if (capacity == 0) state.history.shrink_to_fit();
+	}
+
+	std::uint64_t LogHistoryVersion()
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		return state.version;
+	}
+
+	std::vector<LogRecord> LogHistory()
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		return {state.history.begin(), state.history.end()};
+	}
+
+	void ClearLogHistory()
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		state.history.clear();
+		++state.version;
+	}
+
 	void Log(LogLevel level, std::string_view message)
 	{
 		LogState& state = State();
 		const std::lock_guard<std::mutex> lock(state.mutex);
 		if (state.active && level < state.minimumLevel) return;
 
-		std::string line = Timestamp();
+		const std::string time = Timestamp();
+		if (state.historyCapacity > 0)
+		{
+			if (state.history.size() >= state.historyCapacity) state.history.pop_front();
+			state.history.push_back({state.nextId++, level, time, std::string(message)});
+			++state.version;
+		}
+
+		std::string line = time;
 		line += " [";
 		line += LevelName(level);
 		line += "] ";

@@ -10,6 +10,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ## [Unreleased]
 
 ### Added
+- **Editor Console panel**: shows the messages logged through `core::Log` with a button and count per level, a text filter, Clear, Copy (the shown lines to the clipboard), right-click *Copy line*, and auto-scroll. `core::SetLogHistoryCapacity`, `core::LogHistory` and `core::ClearLogHistory` keep the last messages in memory for any viewer (off until a capacity is set). While a `LogSession` runs, messages below `LogConfig::minimumLevel` are not kept.
 - **Asset thumbnails and import settings in the editor**: the Assets panel's Sprites tab can show a grid of pictures, and selecting a sprite shows it with its frame lines and its import settings (cell size, frames, and the rectangle of a region) to edit and Apply back to the `.sheet` line; an edit that would not load is refused. Filter mode and pivot are not settings yet (the manifest has no such fields)
 - Editor: a translate gizmo in the Viewport (X and Y arrows and a free-move square at the middle of the selection).
 - **Inspector multi-edit**: with several entities selected, a field edit, *Add component* and component removal apply to every selected entity that has the component. Fields that differ across the selection show `-` or an orange tint. One edit is one undo step.

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -122,4 +123,70 @@ TEST_CASE("LogIsActive is true only while a LogSession exists", "[log]")
 		CHECK(engine::core::LogIsActive());
 	}
 	CHECK_FALSE(engine::core::LogIsActive());
+}
+
+namespace
+{
+	// Turns the history off again when a test ends, even if a check throws, so other tests see none.
+	struct HistoryGuard
+	{
+		HistoryGuard() = default;
+		~HistoryGuard() { SetLogHistoryCapacity(0); }
+		HistoryGuard(const HistoryGuard&) = delete;
+		HistoryGuard& operator=(const HistoryGuard&) = delete;
+	};
+} // namespace
+
+TEST_CASE("The log history keeps the last messages and can be cleared", "[log]")
+{
+	const HistoryGuard guard;
+	SetLogHistoryCapacity(3);
+	ClearLogHistory();
+	{
+		const LogSession session({.file = {}, .minimumLevel = LogLevel::Info, .console = false});
+		LogDebug("dropped by the level");
+		LogInfo("one");
+		LogWarning("two");
+		LogError("three");
+		LogInfo("four");
+	}
+	std::vector<LogRecord> history = LogHistory();
+	REQUIRE(history.size() == 3);
+	CHECK(history[0].message == "two");
+	CHECK(history[0].level == LogLevel::Warning);
+	CHECK(history[2].message == "four");
+	CHECK(history[0].id < history[1].id);
+	CHECK(history[1].id < history[2].id);
+	CHECK(history[0].time.size() >= 12);
+
+	const std::uint64_t lastId = history[2].id;
+	const std::uint64_t kept = LogHistoryVersion();
+	ClearLogHistory();
+	CHECK(LogHistoryVersion() != kept);
+	CHECK(LogHistory().empty());
+	LogInfo("after clear"); // no session, still kept
+	history = LogHistory();
+	REQUIRE(history.size() == 1);
+	CHECK(history[0].id > lastId); // ids keep counting after Clear
+
+	SetLogHistoryCapacity(0);
+	CHECK(LogHistory().empty());
+	LogInfo("not kept");
+	CHECK(LogHistory().empty());
+}
+
+TEST_CASE("Shrinking the log history capacity drops the oldest messages", "[log]")
+{
+	const HistoryGuard guard;
+	SetLogHistoryCapacity(5);
+	ClearLogHistory();
+	for (const char* text : {"a", "b", "c", "d", "e"})
+		LogInfo(text);
+	REQUIRE(LogHistory().size() == 5);
+
+	SetLogHistoryCapacity(2);
+	const std::vector<LogRecord> history = LogHistory();
+	REQUIRE(history.size() == 2);
+	CHECK(history[0].message == "d");
+	CHECK(history[1].message == "e");
 }
