@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "core/json.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
@@ -61,6 +62,18 @@ namespace engine::editor
 	// The selected entities that have no selected ancestor: what to move or copy so that nothing moves twice (an
 	// entity follows its ancestor).
 	[[nodiscard]] std::vector<ecs::Entity> SelectionRoots(const ecs::Registry& registry, const PanelState& state);
+
+	// Multi-edit helpers for the Inspector. Both look only at the entities that have the component `type`.
+	// True if field holds different values on those entities (shown as mixed in the Inspector).
+	[[nodiscard]] bool FieldIsMixed(const ecs::Registry& registry, const ecs::TypeInfo& type,
+	                                const ecs::FieldInfo& field, const std::vector<ecs::Entity>& entities,
+	                                const ecs::IEntityIds& ids);
+
+	// Writes value into field on each of those entities. An entity whose Parent would make a loop is skipped. The first
+	// refusal is left in error (empty if all went through); returns how many entities were changed.
+	std::size_t SetFieldOnEntities(ecs::Registry& registry, const ecs::TypeInfo& type, const ecs::FieldInfo& field,
+	                               const core::JsonValue& value, const std::vector<ecs::Entity>& entities,
+	                               const ecs::IEntityIds& ids, std::string& error);
 
 	// Deletes everything selected, each with what is under it, and clears the selection.
 	void DeleteSelection(ecs::Registry& registry, PanelState& state);

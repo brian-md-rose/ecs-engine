@@ -391,10 +391,13 @@ namespace engine::editor
 
 		// One field, by its registered kind. True if the user changed it, with the new value in `value`.
 		bool EditField(const FieldInfo& field, JsonValue& value, const Registry& registry,
-		               const std::vector<Entity>& all, const PanelState& state)
+		               const std::vector<Entity>& all, const PanelState& state, bool mixed = false)
 		{
 			const AssetCatalog* assets = state.assets.get();
 			const char* label = field.name.c_str();
+			// A field that differs across the selection shows "-" (numbers) or is tinted (everything else).
+			const char* format = mixed ? "-" : nullptr;
+			if (mixed) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0F, 0.75F, 0.3F, 1.0F));
 			bool changed = false;
 			if (field.hints.readOnly) ImGui::BeginDisabled();
 			switch (field.kind)
@@ -436,7 +439,7 @@ namespace engine::editor
 						auto number = value.AsInt().value_or(0);
 						auto low = static_cast<std::int64_t>(*field.hints.min);
 						auto high = static_cast<std::int64_t>(*field.hints.max);
-						if (ImGui::SliderScalar(label, ImGuiDataType_S64, &number, &low, &high))
+						if (ImGui::SliderScalar(label, ImGuiDataType_S64, &number, &low, &high, format))
 						{
 							value = JsonValue(number);
 							changed = true;
@@ -447,7 +450,7 @@ namespace engine::editor
 						double number = value.AsDouble().value_or(0.0);
 						double low = *field.hints.min;
 						double high = *field.hints.max;
-						if (ImGui::SliderScalar(label, ImGuiDataType_Double, &number, &low, &high))
+						if (ImGui::SliderScalar(label, ImGuiDataType_Double, &number, &low, &high, format))
 						{
 							value = JsonValue(number);
 							changed = true;
@@ -457,7 +460,7 @@ namespace engine::editor
 				else if (isInt)
 				{
 					auto number = value.AsInt().value_or(0);
-					if (ImGui::DragScalar(label, ImGuiDataType_S64, &number, 1.0F))
+					if (ImGui::DragScalar(label, ImGuiDataType_S64, &number, 1.0F, nullptr, nullptr, format))
 					{
 						value = JsonValue(number);
 						changed = true;
@@ -466,7 +469,7 @@ namespace engine::editor
 				else
 				{
 					double number = value.AsDouble().value_or(0.0);
-					if (ImGui::DragScalar(label, ImGuiDataType_Double, &number, 0.05F))
+					if (ImGui::DragScalar(label, ImGuiDataType_Double, &number, 0.05F, nullptr, nullptr, format))
 					{
 						value = JsonValue(number);
 						changed = true;
@@ -543,16 +546,22 @@ namespace engine::editor
 				break;
 			}
 			if (field.hints.readOnly) ImGui::EndDisabled();
+			if (mixed)
+			{
+				ImGui::PopStyleColor();
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Different values on the selected entities");
+			}
 			if (!field.hints.tooltip.empty() && ImGui::IsItemHovered())
 				ImGui::SetTooltip("%s", field.hints.tooltip.c_str());
 			return changed;
 		}
 
-		// Draws one component's fields and writes back the ones the user changed.
+		// Draws one component's fields (the primary entity's values) and writes back the ones the user changed to every
+		// entity of `targets` that has the component. A field that differs across them is shown as mixed.
 		void DrawComponent(Registry& registry, const TypeInfo& type, Entity entity, PanelState& state,
-		                   const std::vector<Entity>& all, const LiveIds& ids)
+		                   const std::vector<Entity>& all, const LiveIds& ids, const std::vector<Entity>& targets)
 		{
-			void* component = type.Get(registry, entity);
+			const void* component = type.Get(registry, entity);
 			if (component == nullptr) return;
 			// A filter that matches the component's name shows all its fields; otherwise only the matching ones.
 			const bool wholeType = ContainsNoCase(type.Name(), state.fieldFilter);
@@ -566,27 +575,11 @@ namespace engine::editor
 					ImGui::TextDisabled("%s: %s", field.name.c_str(), error.c_str());
 					continue;
 				}
-				if (!EditField(field, value, registry, all, state)) continue;
-
-				// A new parent must not make a loop, which would hang anything that walks up the hierarchy.
-				if (type.Type() == std::type_index(typeid(ecs::Parent)))
-				{
-					const auto parentId = value.AsInt();
-					const auto parentEntity = parentId ? ids.EntityOf(*parentId) : std::nullopt;
-					if (parentEntity && WouldMakeLoop(registry, entity, *parentEntity))
-					{
-						state.status = "can't parent " + LabelOf(registry, entity) + " to itself or something under it";
-						continue;
-					}
-				}
-				if (!field.load(component, value, ids, error))
-				{
-					state.status = type.Name() + "." + field.name + ": " + error;
-				}
-				else
-				{
-					state.status.clear();
-				}
+				const bool mixed = targets.size() > 1 && FieldIsMixed(registry, type, field, targets, ids);
+				if (!EditField(field, value, registry, all, state, mixed)) continue;
+				// The undo step comes from the editor's change check, so one edit across the selection is one step.
+				const std::vector<Entity>& to = targets.size() > 1 ? targets : std::vector<Entity>{entity};
+				(void)SetFieldOnEntities(registry, type, field, value, to, ids, state.status);
 			}
 		}
 
@@ -608,7 +601,7 @@ namespace engine::editor
 			const Entity entity = state.selected;
 			ImGui::Text("%s  (index %u)", LabelOf(registry, entity).c_str(), static_cast<unsigned>(entity.id));
 			if (!state.extra.empty())
-				ImGui::TextDisabled("%u more selected; changes here apply to this entity only",
+				ImGui::TextDisabled("%u more selected; edits apply to all of them that have the component",
 				                    static_cast<unsigned>(state.extra.size()));
 			if (!state.status.empty()) ImGui::TextColored(ImVec4(1.0F, 0.4F, 0.4F, 1.0F), "%s", state.status.c_str());
 			ImGui::SetNextItemWidth(-FLT_MIN);
@@ -617,6 +610,7 @@ namespace engine::editor
 
 			const std::vector<Entity> all = registry.AllEntities();
 			const LiveIds ids(registry); // once per frame, not per component
+			const std::vector<Entity> selection = state.All();
 			const TypeInfo* toRemove = nullptr;
 			for (std::size_t i = 0; i < types->Count(); ++i)
 			{
@@ -632,6 +626,9 @@ namespace engine::editor
 					if (!any) continue;
 				}
 				ImGui::PushID(static_cast<int>(i));
+				std::vector<Entity> targets;
+				for (const Entity other : selection)
+					if (type.Has(registry, other)) targets.push_back(other);
 				bool keep = true;
 				const bool open = ImGui::CollapsingHeader(type.Name().c_str(), &keep, ImGuiTreeNodeFlags_DefaultOpen);
 				if (ImGui::BeginPopupContextItem("component menu"))
@@ -656,11 +653,15 @@ namespace engine::editor
 					}
 					ImGui::EndPopup();
 				}
-				if (open) DrawComponent(registry, type, entity, state, all, ids);
+				if (open) DrawComponent(registry, type, entity, state, all, ids, targets);
 				if (!keep) toRemove = &type;
 				ImGui::PopID();
 			}
-			if (toRemove != nullptr) toRemove->Remove(registry, entity);
+			if (toRemove != nullptr)
+			{
+				for (const Entity other : selection)
+					if (toRemove->Has(registry, other)) toRemove->Remove(registry, other);
+			}
 
 			ImGui::Spacing();
 			if (ImGui::BeginCombo("Add component", "choose..."))
@@ -669,7 +670,9 @@ namespace engine::editor
 				{
 					const TypeInfo& type = types->At(i);
 					if (type.IsRuntime() || type.Has(registry, entity)) continue;
-					if (ImGui::Selectable(type.Name().c_str())) type.AddDefault(registry, entity);
+					if (!ImGui::Selectable(type.Name().c_str())) continue;
+					for (const Entity other : selection)
+						if (!type.Has(registry, other)) type.AddDefault(registry, other);
 				}
 				ImGui::EndCombo();
 			}
@@ -772,6 +775,55 @@ namespace engine::editor
 		for (const ecs::Entity entity : state.All())
 			if (registry.IsAlive(entity) && !HasSelectedAncestor(registry, state, entity)) roots.push_back(entity);
 		return roots;
+	}
+
+	bool FieldIsMixed(const ecs::Registry& registry, const ecs::TypeInfo& type, const ecs::FieldInfo& field,
+	                  const std::vector<ecs::Entity>& entities, const ecs::IEntityIds& ids)
+	{
+		std::optional<core::JsonValue> first;
+		for (const ecs::Entity entity : entities)
+		{
+			if (!registry.IsAlive(entity) || !type.Has(registry, entity)) continue;
+			core::JsonValue value;
+			std::string error;
+			if (!field.save(type.Get(registry, entity), ids, value, error)) continue;
+			if (!first)
+				first = std::move(value);
+			else if (!(*first == value))
+				return true;
+		}
+		return false;
+	}
+
+	std::size_t SetFieldOnEntities(ecs::Registry& registry, const ecs::TypeInfo& type, const ecs::FieldInfo& field,
+	                               const core::JsonValue& value, const std::vector<ecs::Entity>& entities,
+	                               const ecs::IEntityIds& ids, std::string& error)
+	{
+		error.clear();
+		const bool isParent = type.Type() == std::type_index(typeid(ecs::Parent));
+		std::size_t changed = 0;
+		for (const ecs::Entity entity : entities)
+		{
+			if (!registry.IsAlive(entity) || !type.Has(registry, entity)) continue;
+			std::string problem;
+			// A new parent must not make a loop, which would hang anything that walks up the hierarchy.
+			if (isParent)
+			{
+				const auto parentId = value.AsInt();
+				const auto parentEntity = parentId ? ids.EntityOf(*parentId) : std::nullopt;
+				if (parentEntity && WouldMakeLoop(registry, entity, *parentEntity))
+				{
+					problem = "can't parent " + LabelOf(registry, entity) + " to itself or something under it";
+				}
+			}
+			if (problem.empty() && !field.load(type.Get(registry, entity), value, ids, problem))
+				problem = type.Name() + "." + field.name + ": " + problem;
+			if (problem.empty())
+				++changed;
+			else if (error.empty())
+				error = problem;
+		}
+		return changed;
 	}
 
 	void DeleteSelection(ecs::Registry& registry, PanelState& state)
