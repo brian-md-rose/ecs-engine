@@ -19,6 +19,7 @@
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
 #include "editor/assetbrowser.hpp"
+#include "editor/consolepanel.hpp"
 #include "editor/entityops.hpp"
 #include "graphics/renderer2d.hpp"
 
@@ -87,6 +88,7 @@ namespace engine::editor
 			return CurrentWorld();
 		});
 		if (!config.assetFolder.empty()) panels->assets = AddAssetBrowser(editor, config.assetFolder);
+		AddConsolePanel(editor);
 		if (config.spriteRect)
 			panels->spriteRect = [this](const std::string& name)
 			{

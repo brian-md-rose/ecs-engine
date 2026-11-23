@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -122,4 +123,38 @@ TEST_CASE("LogIsActive is true only while a LogSession exists", "[log]")
 		CHECK(engine::core::LogIsActive());
 	}
 	CHECK_FALSE(engine::core::LogIsActive());
+}
+
+TEST_CASE("The log history keeps the last messages and can be cleared", "[log]")
+{
+	SetLogHistoryCapacity(3);
+	ClearLogHistory();
+	{
+		const LogSession session({.file = {}, .minimumLevel = LogLevel::Info, .console = false});
+		LogDebug("dropped by the level");
+		LogInfo("one");
+		LogWarning("two");
+		LogError("three");
+		LogInfo("four");
+	}
+	std::vector<LogRecord> history = LogHistory();
+	REQUIRE(history.size() == 3);
+	CHECK(history[0].message == "two");
+	CHECK(history[0].level == LogLevel::Warning);
+	CHECK(history[2].message == "four");
+	CHECK(history[0].id < history[1].id);
+	CHECK(history[1].id < history[2].id);
+	CHECK(history[0].time.size() >= 12);
+
+	ClearLogHistory();
+	CHECK(LogHistory().empty());
+	LogInfo("after clear"); // no session, still kept
+	history = LogHistory();
+	REQUIRE(history.size() == 1);
+	CHECK(history[0].id > 0);
+
+	SetLogHistoryCapacity(0);
+	CHECK(LogHistory().empty());
+	LogInfo("not kept");
+	CHECK(LogHistory().empty());
 }

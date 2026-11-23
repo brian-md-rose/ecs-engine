@@ -1,6 +1,10 @@
 #pragma once
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <string>
 #include <string_view>
+#include <vector>
 
 // Logging for the engine and the games built on it. Messages go to a log file, to the console
 // (stderr), or both, each with a time and a level. SDL-free, so it is part of engine::core. The platform
@@ -52,6 +56,25 @@ namespace engine::core
 
 	// True while a LogSession exists.
 	[[nodiscard]] bool LogIsActive();
+
+	// A remembered message, for a viewer such as the editor's Console panel.
+	struct LogRecord
+	{
+		std::uint64_t id = 0; // 1, 2, 3, ... in the order logged; never reused, so a viewer can tell what is new
+		LogLevel level = LogLevel::Info;
+		std::string time;    // "2026-11-18 16:09:27.123"
+		std::string message; // without the time and level
+	};
+
+	// Keeps the last `capacity` messages in memory (0, the default, keeps none and frees what was kept). Messages
+	// dropped by LogConfig::minimumLevel are not kept. Works with or without a LogSession.
+	void SetLogHistoryCapacity(std::size_t capacity);
+
+	// The remembered messages, oldest first. Safe to call from any thread.
+	[[nodiscard]] std::vector<LogRecord> LogHistory();
+
+	// Forgets the remembered messages (ids keep counting).
+	void ClearLogHistory();
 
 	// Writes one line, "2026-11-18 16:09:27.123 [ERROR] message". Safe to call from any thread.
 	void Log(LogLevel level, std::string_view message);
