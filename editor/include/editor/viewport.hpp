@@ -68,6 +68,36 @@ namespace engine::editor
 	[[nodiscard]] graphics::Position DragTarget(graphics::Position start, graphics::Position moved, bool axisLock,
 	                                            float grid) noexcept;
 
+	// The translate gizmo drawn over the selection in the Viewport: an arrow to the right (X), an arrow down (Y) and a
+	// square at the pivot that moves freely. Sizes are in window pixels, so the gizmo stays the same size at any zoom.
+	enum class GizmoHandle
+	{
+		None,
+		X,
+		Y,
+		Free
+	};
+	struct GizmoShape
+	{
+		float arrowLength = 56; // from the pivot to the tip of an arrow
+		float grab = 6;         // how near an arrow's line the pointer must be to grab it
+		float centre = 7;       // half the side of the square at the pivot
+	};
+
+	// The handle under point (window pixels) for a gizmo whose pivot is at pivot. The square wins over the arrows.
+	[[nodiscard]] GizmoHandle PickGizmo(graphics::Position pivot, graphics::Position point,
+	                                    const GizmoShape& shape = {}) noexcept;
+
+	// The part of a pointer movement that the handle lets through: X keeps only the horizontal, Y only the vertical,
+	// Free all of it, None nothing.
+	[[nodiscard]] graphics::Position GizmoMove(GizmoHandle handle, graphics::Position moved) noexcept;
+
+	// The middle of what is drawn for entities (the mean of the middles of their EntityScreenRects), in logical
+	// screen pixels: where the translate gizmo sits. Empty if none of them is drawn.
+	[[nodiscard]] std::optional<graphics::Position> SelectionCentre(const ecs::Registry& registry,
+	                                                                const std::vector<ecs::Entity>& entities,
+	                                                                const graphics::Camera& camera);
+
 	// How the picture is shown in the viewport window: scaled by zoom and moved by pan (window pixels).
 	struct ViewTransform
 	{
