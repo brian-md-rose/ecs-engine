@@ -218,3 +218,21 @@ TEST_CASE("A relative asset folder still leaves out unpicked scenes", "[buildset
 	REQUIRE(result.ok);
 	CHECK_FALSE(fs::exists(box.root / "out" / "assets" / "scenes" / "extra.json"));
 }
+
+TEST_CASE("Unpicked scenes are left out when the scene folder is the assets folder", "[buildsettings]")
+{
+	const Sandbox box;
+	Write(box.root / "flat" / "a.json", "{}");
+	Write(box.root / "flat" / "b.json", "{}");
+	Write(box.root / "flat" / "keep.txt", "x");
+	BuildSettingsConfig config = box.Config();
+	config.assetFolder = box.root / "flat";
+	config.sceneFolder = box.root / "flat";
+	BuildSettings settings = box.Settings();
+	settings.scenes = {"a"};
+	settings.startupScene = "a";
+	REQUIRE(PackageGame(config, settings).ok);
+	CHECK(fs::exists(box.root / "out" / "assets" / "a.json"));
+	CHECK_FALSE(fs::exists(box.root / "out" / "assets" / "b.json"));
+	CHECK(fs::exists(box.root / "out" / "assets" / "keep.txt"));
+}

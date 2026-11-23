@@ -201,8 +201,10 @@ namespace engine::editor
 			ImGui::TextDisabled(
 			    "The game also loads scenes by name (title, pause...); leave out only ones it never opens.");
 
-			changed |= ImGui::InputText("Game exe", &state.settings.gameExe);
-			changed |= ImGui::InputText("Output folder", &state.settings.outputFolder);
+			ImGui::InputText("Game exe", &state.settings.gameExe);
+			changed |= ImGui::IsItemDeactivatedAfterEdit(); // saved when the box is left, not per key
+			ImGui::InputText("Output folder", &state.settings.outputFolder);
+			changed |= ImGui::IsItemDeactivatedAfterEdit();
 			if (changed) Save(state);
 
 			const double now = ImGui::GetTime();
@@ -362,7 +364,8 @@ namespace engine::editor
 		if (!IsInside(config.sceneFolder, config.assetFolder))
 			return fail("The scenes folder is not inside the assets folder.");
 		const fs::path assetRoot = Canonical(config.assetFolder);
-		const fs::path sceneRelative = Canonical(config.sceneFolder).lexically_relative(assetRoot);
+		fs::path sceneRelative = Canonical(config.sceneFolder).lexically_relative(assetRoot);
+		if (sceneRelative == ".") sceneRelative.clear(); // scenes directly in the assets folder
 		// Checked before anything is deleted, so a bad source leaves the last package as it was.
 		std::error_code error;
 		if (!fs::is_directory(config.assetFolder, error))
