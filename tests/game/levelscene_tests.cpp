@@ -203,6 +203,9 @@ TEST_CASE("Play from here refuses a wall, a door, an enemy start and a cell outs
 	    game::PlacePlayerStart(game.maze.world, static_cast<int>(wall.column), static_cast<int>(wall.row)).empty());
 	CHECK_FALSE(
 	    game::PlacePlayerStart(game.maze.world, static_cast<int>(enemy.column), static_cast<int>(enemy.row)).empty());
+	const game::TilePosition door = map.Find(game::Tile::Door).front();
+	CHECK_FALSE(
+	    game::PlacePlayerStart(game.maze.world, static_cast<int>(door.column), static_cast<int>(door.row)).empty());
 	CHECK_FALSE(game::PlacePlayerStart(game.maze.world, -1, 0).empty());
 	CHECK_FALSE(game::PlacePlayerStart(game.maze.world, 999, 0).empty());
 	CHECK(game.maze.world.resources.Get<game::TileMap>().Find(game::Tile::PlayerSpawn).size() == 1); // unchanged

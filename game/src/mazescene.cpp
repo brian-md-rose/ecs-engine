@@ -370,19 +370,12 @@ namespace game
 		if (column < 0 || row < 0 || !map.Contains({static_cast<std::size_t>(column), static_cast<std::size_t>(row)}))
 			return "that cell is outside the maze";
 		const TilePosition target{static_cast<std::size_t>(column), static_cast<std::size_t>(row)};
-		switch (map.At(target))
-		{
-		case Tile::Wall:
-			return "that cell is a wall";
-		case Tile::Door:
-			return "that cell is a door";
-		case Tile::EnemySpawn:
-			return "that cell is an enemy start";
-		case Tile::Tunnel:
-			return "that cell is a tunnel";
-		default:
-			break;
-		}
+		// An if chain, not a switch: MSVC's /Wall wants every enumerator named in a switch, even with a default.
+		const Tile here = map.At(target);
+		if (here == Tile::Wall) return "that cell is a wall";
+		if (here == Tile::Door) return "that cell is a door";
+		if (here == Tile::EnemySpawn) return "that cell is an enemy start";
+		if (here == Tile::Tunnel) return "that cell is a tunnel";
 		std::vector<Tile> grid;
 		grid.reserve(map.Width() * map.Height());
 		for (std::size_t y = 0; y < map.Height(); ++y)
