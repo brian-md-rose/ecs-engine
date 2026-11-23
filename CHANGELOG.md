@@ -11,8 +11,6 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 - The editor's panels dock: drag a panel by its title into an edge or onto another panel to tab it, and the layout is saved with the rest of the panel positions. The first run (and **Panels > Reset layout**) uses a default arrangement: Hierarchy left, Viewport in the middle, Inspector and Scene right, Assets and Issues along the bottom. `Editor::SetPanelDock` sets a panel's default area. ImGui is now the `v1.92.9b-docking` tag.
-
-
 - **Sprite source picker in the editor**: the Sprite component's `source` has a *picture* list of sprite names in the Inspector (`EditorGameConfig::spriteRect` gives the atlas rectangle of a name). The scene format is unchanged.
 - **Editor asset browser**: an Assets panel lists the sprites, fonts and sounds under the assets folder, and a String field marked with `FieldHints::assetKind` is picked from that list in the Inspector. `ClipName` uses it, and now also accepts every sprite name of `sprites.sheet` (`button_hover` as well as the older `buttonHover`).
 

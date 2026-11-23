@@ -174,7 +174,8 @@ TEST_CASE("Panels start docked in the default layout, and the layout is saved wi
           "[editor][application]")
 {
 	const std::filesystem::path layoutFile = std::filesystem::temp_directory_path() / "ecs-engine-dock-test.ini";
-	std::filesystem::remove(layoutFile);
+	std::error_code ignored;
+	std::filesystem::remove(layoutFile, ignored);
 	{
 		Application app(TestConfig());
 		ScriptedGame game;
@@ -193,11 +194,14 @@ TEST_CASE("Panels start docked in the default layout, and the layout is saved wi
 		if (app.Run(game) != 0) SKIP("no offscreen video driver");
 	}
 
-	std::ifstream in(layoutFile);
-	const std::string saved((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	std::string saved;
+	{
+		std::ifstream in(layoutFile);
+		saved.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	} // closed before the file is removed, which Windows needs
 	CHECK(saved.find("[Docking][Data]") != std::string::npos);
 	CHECK(saved.find("DockId=") != std::string::npos);
-	std::filesystem::remove(layoutFile);
+	std::filesystem::remove(layoutFile, ignored);
 }
 
 TEST_CASE("The editor swallows F1 but never a quit request", "[editor][application]")
