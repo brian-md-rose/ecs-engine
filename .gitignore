@@ -17,7 +17,7 @@ CMakeUserPresets.json
 *.lib
 *.dll
 
-# Screenshots (F12); the folder itself is kept by .gitkeep
+# Screenshots (F9); the folder itself is kept by .gitkeep
 screenshot/*
 !screenshot/.gitkeep
 screenshots/

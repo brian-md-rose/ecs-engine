@@ -86,7 +86,7 @@ namespace engine::application
 		[[nodiscard]] virtual DisplayLink Display() { return {}; }
 
 		// Asked each frame: where the game keeps its ScreenshotRequest and ScreenshotResult. A game that never takes
-		// a screenshot from code needn't override it; F12 works without it.
+		// a screenshot from code needn't override it; F9 works without it.
 		[[nodiscard]] virtual ScreenshotLink Screenshot() { return {}; }
 	};
 
@@ -118,12 +118,12 @@ namespace engine::application
 		std::array<std::uint32_t, input::kMaxPads> padIds{};
 		double updateStep;
 		int maxUpdatesPerFrame;
-		graphics::DisplaySettings display;                         // what is in force
-		bool displayInfoStale = true;                              // DisplayInfo needs refreshing
-		EditorHost* editor = nullptr;                              // the overlay, when there is one (not owned)
-		std::filesystem::path screenshotFolder;                    // where screenshots go
-		std::optional<input::Key> screenshotKey = input::Key::F12; // the key that takes one, if any
-		bool screenshotAsked = false;                              // the key was pressed since the last frame
+		graphics::DisplaySettings display;                        // what is in force
+		bool displayInfoStale = true;                             // DisplayInfo needs refreshing
+		EditorHost* editor = nullptr;                             // the overlay, when there is one (not owned)
+		std::filesystem::path screenshotFolder;                   // where screenshots go
+		std::optional<input::Key> screenshotKey = input::Key::F9; // the key that takes one, if any
+		bool screenshotAsked = false;                             // the key was pressed since the last frame
 		int screenshotAfter = 0; // save the screenshot at this frame, then quit (0: off)
 		int framesDrawn = 0;
 
@@ -161,7 +161,7 @@ namespace engine::application
 		// turns screenshots off.
 		void SetScreenshotFolder(std::filesystem::path folder) { screenshotFolder = std::move(folder); }
 
-		// The key that takes a screenshot (F12 to start with), or nullopt for none. With an editor overlay the picture
+		// The key that takes a screenshot (F9 to start with), or nullopt for none. With an editor overlay the picture
 		// is the whole window, panels included; without one it is the game's picture at its logical size.
 		void SetScreenshotKey(std::optional<input::Key> key) noexcept { screenshotKey = key; }
 

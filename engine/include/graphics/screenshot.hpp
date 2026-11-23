@@ -8,7 +8,7 @@
 #include "graphics/image.hpp"
 
 // The parts of screenshots that need no window: the picture's size, the file's name and the folder it goes in.
-// Application does the capture itself (F12, or a game's ScreenshotRequest); see docs/screenshots.md.
+// Application does the capture itself (F9, or a game's ScreenshotRequest); see docs/screenshots.md.
 namespace engine::graphics
 {
 	// Resource: a game sets pending to ask for a screenshot of the next frame. Application clears it after the

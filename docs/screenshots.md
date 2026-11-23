@@ -1,6 +1,8 @@
 # Screenshots
 
-Press **F12** in any game built on the engine to save a PNG of the current frame. Nothing else is needed in the game.
+Press **F9** in any game built on the engine to save a PNG of the current frame. Nothing else is needed in the game.
+
+It is F9 and not F12 because Windows reserves F12 for debuggers: with Visual Studio attached, F12 breaks into the debugger instead of reaching the game. A game can pick another key with `Application::SetScreenshotKey`.
 
 ## What is saved
 
@@ -49,5 +51,5 @@ game.exe --screenshot-after 120 --screenshot-dir C:\temp\shots
 Programs with their own arguments call `graphics::ParseScreenshotArgs` and `Application::SetScreenshotArgs`, and skip
 the options' entries with `graphics::ScreenshotArgWidth`.
 
-The editor needs no extra screenshot code for Play: F12 saves the whole window, including the Viewport that shows the
+The editor needs no extra screenshot code for Play: F9 saves the whole window, including the Viewport that shows the
 running game.

@@ -122,7 +122,7 @@ Gameplay logic is SDL-free, so it is unit-tested on CI alongside the engine.
 | P / Esc           | Start or Back         | Pause; go back from the options and how-to-play screens |
 | F1                |                       | Toggle the rendering stress test (in `tangle_run_editor --overlay`, the editor overlay instead) |
 | F3                |                       | Toggle the debug panel                       |
-| F12               |                       | Save a screenshot ([docs/screenshots.md](docs/screenshots.md)) |
+| F9                |                       | Save a screenshot ([docs/screenshots.md](docs/screenshots.md)) |
 
 The mouse works in every menu: hover a button to select it and click to act on it (on an option, a click steps it
 forward). The how-to-play list scrolls with the wheel, by dragging, or with the right stick. The UI demo's hints name
