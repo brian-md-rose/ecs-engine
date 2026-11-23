@@ -65,14 +65,19 @@ namespace engine::editor
 	class Profiler
 	{
 		double pendingUpdateMs = 0.0;
+		long lastFrame = -2;
 
 	public:
 		// Adds time spent in one Update call; the panel takes the total at its next frame.
 		void AddUpdateMs(double ms) noexcept { pendingUpdateMs += ms; }
-		[[nodiscard]] double TakeUpdateMs() noexcept
+
+		// The update time gathered since the last frame the panel drew, for frame number `frame` (consecutive frames
+		// differ by 1). If the panel skipped frames (it was closed), what piled up meanwhile is dropped and 0 returned.
+		[[nodiscard]] double TakeUpdateMs(long frame) noexcept
 		{
-			const double ms = pendingUpdateMs;
+			const double ms = frame == lastFrame + 1 ? pendingUpdateMs : 0.0;
 			pendingUpdateMs = 0.0;
+			lastFrame = frame;
 			return ms;
 		}
 	};

@@ -47,8 +47,20 @@ TEST_CASE("Component counts are listed biggest first, ties by name", "[profiler]
 TEST_CASE("The Profiler hands the update time to the next frame once", "[profiler]")
 {
 	Profiler profiler;
+	CHECK(profiler.TakeUpdateMs(10) == 0.0); // the first frame has no earlier one
 	profiler.AddUpdateMs(1.5);
 	profiler.AddUpdateMs(0.5);
-	CHECK(profiler.TakeUpdateMs() == 2.0);
-	CHECK(profiler.TakeUpdateMs() == 0.0);
+	CHECK(profiler.TakeUpdateMs(11) == 2.0);
+	CHECK(profiler.TakeUpdateMs(12) == 0.0);
+}
+
+TEST_CASE("The Profiler drops update time that piled up while the panel was closed", "[profiler]")
+{
+	Profiler profiler;
+	CHECK(profiler.TakeUpdateMs(1) == 0.0);
+	profiler.AddUpdateMs(5.0);
+	profiler.AddUpdateMs(5.0);
+	CHECK(profiler.TakeUpdateMs(50) == 0.0); // frames 2..49 were not drawn
+	profiler.AddUpdateMs(1.0);
+	CHECK(profiler.TakeUpdateMs(51) == 1.0);
 }

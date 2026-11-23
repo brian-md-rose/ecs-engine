@@ -79,7 +79,8 @@ namespace engine::editor
 		void DrawProfiler(ProfilerState& state, ecs::World& world)
 		{
 			const ImGuiIO& io = ImGui::GetIO();
-			const float updateMs = static_cast<float>(state.profiler->TakeUpdateMs());
+			const float updateMs =
+			    static_cast<float>(state.profiler->TakeUpdateMs(static_cast<long>(ImGui::GetFrameCount())));
 			const std::size_t entities = world.registry.EntityCount();
 			if (!state.paused)
 				state.history.Add({.frameMs = io.DeltaTime * 1000.0F, .updateMs = updateMs, .entities = entities});
