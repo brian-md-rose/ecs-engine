@@ -222,3 +222,60 @@ TEST_CASE("Copying more than one root keeps names, and refuses a reference to so
 	busy.errors.push_back({"earlier", "something"});
 	CHECK_FALSE(engine::editor::CopyTrees(registry, types, both, busy).empty());
 }
+
+TEST_CASE("Editing a field writes it to every selected entity that has the component", "[editor][selection]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	Registry registry;
+	const Entity a = AddBox(registry, 0, 0);
+	const Entity b = AddBox(registry, 20, 0);
+	const Entity noShape = registry.Create();
+	registry.GetComponent<engine::graphics::Shape>(b).width = 30;
+
+	const auto* shape = types.Find<engine::graphics::Shape>();
+	REQUIRE(shape != nullptr);
+	const engine::ecs::FieldInfo* width = nullptr;
+	for (const engine::ecs::FieldInfo& field : shape->Fields())
+		if (field.name == "width") width = &field;
+	REQUIRE(width != nullptr);
+
+	const engine::editor::LiveIds ids(registry);
+	const std::vector<Entity> targets{a, b, noShape};
+	CHECK(engine::editor::FieldIsMixed(registry, *shape, *width, targets, ids));
+
+	std::string error;
+	const std::size_t changed = engine::editor::SetFieldOnEntities(
+	    registry, *shape, *width, engine::core::JsonValue(std::int64_t{42}), targets, ids, error);
+	CHECK(changed == 2); // the entity without a Shape is skipped
+	CHECK(error.empty());
+	CHECK(registry.GetComponent<engine::graphics::Shape>(a).width == 42);
+	CHECK(registry.GetComponent<engine::graphics::Shape>(b).width == 42);
+	CHECK_FALSE(engine::editor::FieldIsMixed(registry, *shape, *width, targets, ids));
+}
+
+TEST_CASE("Multi-edit of Parent skips an entity that would make a loop", "[editor][selection]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	Registry registry;
+	const Entity a = AddBox(registry, 0, 0);
+	const Entity b = AddBox(registry, 1, 0);
+	registry.Add<engine::ecs::Parent>(a, engine::ecs::Parent{});
+	registry.Add<engine::ecs::Parent>(b, engine::ecs::Parent{});
+
+	const auto* parent = types.Find<engine::ecs::Parent>();
+	REQUIRE(parent != nullptr);
+	REQUIRE_FALSE(parent->Fields().empty());
+	const engine::editor::LiveIds ids(registry);
+	const auto aId = ids.IdOf(a);
+	REQUIRE(aId.has_value());
+
+	std::string error;
+	// Parenting both to a: a itself is refused, b goes through.
+	const std::size_t changed = engine::editor::SetFieldOnEntities(registry, *parent, parent->Fields().front(),
+	                                                               engine::core::JsonValue(*aId), {a, b}, ids, error);
+	CHECK(changed == 1);
+	CHECK_FALSE(error.empty());
+	CHECK(registry.GetComponent<engine::ecs::Parent>(b).entity == a);
+}
