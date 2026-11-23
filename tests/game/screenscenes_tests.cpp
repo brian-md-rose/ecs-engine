@@ -65,14 +65,20 @@ TEST_CASE("Every scene file loads with no errors and no warnings", "[game][scene
 	game::RegisterGameComponents(types);
 
 	const game::GameAssets assets = gametest::SceneAssets();
-	for (const char* name : {"title", "help", "options", "nameentry", "leveltransition", "pause", "uidemo"})
+	// Walk the folder itself, so a new scene file is covered without editing a list here.
+	std::size_t files = 0;
+	for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::path(GAME_ASSETS_DIR) / "scenes"))
+	{
+		if (entry.path().extension() == ".json") ++files;
+	}
+	CHECK(files > 0);
+	CHECK(assets.scenes.size() == files);
+
+	for (const auto& [name, json] : assets.scenes)
 	{
 		CAPTURE(name);
-		const auto found = assets.scenes.find(name);
-		REQUIRE(found != assets.scenes.end());
-
 		engine::ecs::Registry registry;
-		const auto result = engine::ecs::LoadScene(registry, types, found->second);
+		const auto result = engine::ecs::LoadScene(registry, types, json);
 		CHECK(result.Ok());
 		CHECK(result.issues.warnings.empty());
 		CHECK_FALSE(result.entities.empty());
