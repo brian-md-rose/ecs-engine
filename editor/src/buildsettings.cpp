@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <iterator>
 #include <memory>
 #include <system_error>
 #include <utility>
@@ -99,7 +98,8 @@ namespace engine::editor
 		{
 			state.settings =
 			    state.config.settingsFile.empty() ? BuildSettings{} : LoadBuildSettings(state.config.settingsFile);
-			const bool fresh = state.config.settingsFile.empty() || !fs::exists(state.config.settingsFile);
+			std::error_code exists;
+			const bool fresh = state.config.settingsFile.empty() || !fs::exists(state.config.settingsFile, exists);
 			if (state.settings.gameExe.empty()) state.settings.gameExe = state.config.defaultGameExe.string();
 			if (state.settings.outputFolder.empty()) state.settings.outputFolder = state.config.defaultOutput.string();
 			state.available = ListSceneNames(state.config.sceneFolder);
