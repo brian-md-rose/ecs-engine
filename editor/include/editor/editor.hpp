@@ -55,6 +55,12 @@ namespace engine::editor
 		[[nodiscard]] bool IsVisible() const noexcept { return visible; }
 		void SetVisible(bool shown) noexcept { visible = shown; }
 
+		// While true, key presses go to the game as well as to the editor (a text box being typed in still keeps
+		// its keys), and the editor's keyboard navigation is off. The standalone editor sets it while a game is
+		// played and the Viewport has the pointer or focus; otherwise ImGui's navigation takes the arrow keys.
+		void SetGameKeys(bool gameGetsKeys) noexcept { gameKeys = gameGetsKeys; }
+		[[nodiscard]] bool GameKeys() const noexcept { return gameKeys; }
+
 		// EditorHost:
 		void Attach(const application::EditorSurface& surface) override;
 		void Detach() override;
@@ -80,6 +86,7 @@ namespace engine::editor
 		std::string layoutFileText;
 		bool attached = false;
 		bool visible = false;
+		bool gameKeys = false;
 		bool showAbout = false;
 		bool showImGuiDemo = false;
 		std::function<void()> menuBar;

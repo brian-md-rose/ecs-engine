@@ -957,6 +957,12 @@ namespace engine::editor
 		const ImGuiIO& io = ImGui::GetIO();
 		const bool inViewport = viewportActive; // set again by the Viewport if it is drawn this frame
 		viewportActive = false;
+		// The game gets the keys while it is played over the Viewport. ImGui's own keyboard navigation is off then, or
+		// the arrow keys would also move its focus around the panels.
+		editor.SetGameKeys(play != nullptr && inViewport);
+		ImGui::GetIO().ConfigFlags = play != nullptr && inViewport
+		                                 ? (io.ConfigFlags & ~ImGuiConfigFlags_NavEnableKeyboard)
+		                                 : (io.ConfigFlags | ImGuiConfigFlags_NavEnableKeyboard);
 		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_F5, false))

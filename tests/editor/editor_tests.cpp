@@ -287,3 +287,33 @@ TEST_CASE("The inspector draws a text field with choices as a list, and a value 
 	CHECK(world.registry.GetComponent<Picture>(one).clip == "panel");
 	CHECK(world.registry.GetComponent<Picture>(two).clip == "gone"); // drawing never changes it
 }
+
+TEST_CASE("The game gets arrow keys while the editor says it has the keyboard", "[editor][application]")
+{
+	Application app(TestConfig());
+	ScriptedGame game;
+	game.pressF1 = false;
+	engine::editor::Editor editor;
+	bool takenByDefault = false;
+	bool takenWithGameKeys = true;
+	game.onUpdate = [&](int update)
+	{
+		if (update != 3) return;
+		editor.SetVisible(true);
+		SDL_Event arrow{};
+		arrow.type = SDL_EVENT_KEY_DOWN;
+		arrow.key.scancode = SDL_SCANCODE_LEFT;
+		// With keyboard navigation active ImGui wants the key; the first press switches it on.
+		takenByDefault = editor.OnEvent(&arrow);
+		editor.SetGameKeys(true);
+		takenWithGameKeys = editor.OnEvent(&arrow);
+		editor.SetGameKeys(false);
+		editor.SetVisible(false);
+	};
+	app.SetEditorHost(&editor);
+	if (app.Run(game) != 0) SKIP("no offscreen video driver");
+
+	(void)takenByDefault; // depends on ImGui's navigation state, so it is not asserted
+	CHECK_FALSE(takenWithGameKeys);
+	CHECK_FALSE(editor.GameKeys());
+}
