@@ -136,6 +136,10 @@ namespace engine::editor
 		std::optional<GridCell> lastCell; // the cell the stroke last touched, so a fast drag leaves no gaps
 		PlayMouse playMouse;              // the mouse the playing game sees, from the pointer over the viewport
 		bool mouseFed = false;            // the viewport fed playMouse since the last game update
+		bool playPaused = false;          // Play is frozen (Step runs one update)
+		int playSteps = 0;                // one-update steps asked for while paused
+		float playSpeed = 1.0F;           // how fast the game runs, 1 = real time
+		bool playMuted = false;           // the game is given no audio device
 		// Undo: the scene as text after each finished change (a drag, a typed value, a menu click), oldest first;
 		// historyPos is the one the world is at. Undo and Redo reload the neighbour, which re-creates the entities
 		// (their ids change, the selection is kept by position).
@@ -225,6 +229,23 @@ namespace engine::editor
 		// Stops and starts again from the edit world as it is now. False if not playing, or if it can't start.
 		bool RestartPlay();
 		[[nodiscard]] bool IsPlaying() const noexcept { return play != nullptr; }
+		// Pause freezes the game (the Hierarchy and Inspector still show it); Step then runs one update. Speed scales
+		// the time given to each update (1 = real time), and Mute keeps the game from making sound. All three are for
+		// Play only.
+		void SetPlayPaused(bool paused) noexcept { playPaused = paused; }
+		[[nodiscard]] bool PlayPaused() const noexcept { return playPaused; }
+		void StepPlay() noexcept
+		{
+			if (play)
+			{
+				playPaused = true;
+				++playSteps;
+			}
+		}
+		void SetPlaySpeed(float speed) noexcept { playSpeed = speed < 0.05F ? 0.05F : (speed > 8.0F ? 8.0F : speed); }
+		[[nodiscard]] float PlaySpeed() const noexcept { return playSpeed; }
+		void SetPlayMuted(bool muted) noexcept { playMuted = muted; }
+		[[nodiscard]] bool PlayMuted() const noexcept { return playMuted; }
 
 		[[nodiscard]] ecs::World& EditWorld() { return edit->world; }
 		[[nodiscard]] ecs::World* PlayWorld() { return play ? &play->world : nullptr; }
