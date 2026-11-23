@@ -93,7 +93,7 @@ TEST_CASE("A scene is written in a stable, readable shape", "[ecs][scene]")
 	CHECK(issues.Ok());
 	const std::string expected =
 	    std::string(R"({"format":1,"engine":")") + engine::kVersionString +
-	    R"(","entities":[{"id":1,"name":"Player","components":{"Transform":{"position":{"x":16.0,"y":24.5}}}},)" +
+	    R"(","entities":[{"id":1,"name":"Player","components":{"Transform":{"position":{"x":16.0,"y":24.5},"rotation":0.0,"scale":{"x":1.0,"y":1.0}}}},)" +
 	    R"({"id":2,"parent":1,"components":{"Follow":{"target":1,"speed":0.5}}}]})";
 	CHECK(Compact(scene) == expected);
 	CHECK(Compact(SaveScene(registry, types, issues)) == expected); // the same twice
@@ -330,4 +330,43 @@ TEST_CASE("Bad scene settings are left out with a warning", "[ecs][scene]")
 	engine::ecs::WriteSceneSettings(scene, engine::ecs::SceneSettings{});
 	CHECK(scene.Find("settings") == nullptr);
 	CHECK(scene.Find("entities") != nullptr);
+}
+
+TEST_CASE("A scene written before rotation and scale existed loads with the defaults", "[ecs][scene]")
+{
+	const TypeRegistry types = MakeTypes();
+	const JsonValue scene =
+	    Parse(R"({"format":1,"entities":[{"id":1,"components":{"Transform":{"position":{"x":3,"y":4}},)"
+	          R"("LocalTransform":{"position":{"x":1,"y":2}}}}]})");
+
+	Registry loaded;
+	const auto result = LoadScene(loaded, types, scene);
+	REQUIRE(result.Ok());
+	REQUIRE(result.entities.size() == 1);
+	const Transform& transform = loaded.GetComponent<Transform>(result.entities[0]);
+	CHECK(transform.position.x == 3.0f);
+	CHECK(transform.rotation == 0.0f);
+	CHECK(transform.scale.x == 1.0f);
+	CHECK(transform.scale.y == 1.0f);
+	const auto& local = loaded.GetComponent<engine::graphics::LocalTransform>(result.entities[0]);
+	CHECK(local.scale.x == 1.0f);
+}
+
+TEST_CASE("Rotation and scale round-trip through a scene", "[ecs][scene]")
+{
+	const TypeRegistry types = MakeTypes();
+	Registry source;
+	const Entity a = source.Create();
+	source.Add<Transform>(a, Transform{.position = {1.0f, 2.0f}, .rotation = 45.0f, .scale = {2.0f, -0.5f}});
+
+	Issues issues;
+	const JsonValue scene = SaveScene(source, types, issues);
+	REQUIRE(issues.Ok());
+	Registry loaded;
+	const auto result = LoadScene(loaded, types, scene);
+	REQUIRE(result.Ok());
+	const Transform& transform = loaded.GetComponent<Transform>(result.entities[0]);
+	CHECK(transform.rotation == 45.0f);
+	CHECK(transform.scale.x == 2.0f);
+	CHECK(transform.scale.y == -0.5f);
 }

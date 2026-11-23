@@ -178,7 +178,7 @@ TEST_CASE("Moving an entity follows the camera zoom and the parent's local posit
 
 	const Entity child = AddBox(registry, 50, 50, 5);
 	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{box});
-	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{1, 1}});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{.position = {1, 1}});
 	REQUIRE(engine::editor::MoveEntity(registry, child, camera, {2, 2}));
 	CHECK(registry.TryGetComponent<engine::graphics::LocalTransform>(child)->position.x == 2.0F);
 	CHECK(registry.TryGetComponent<Transform>(child)->position.x == 50.0F);
@@ -378,7 +378,7 @@ TEST_CASE("MovablePosition is the LocalTransform of a child and the Transform of
 	const Entity parent = AddBox(registry, 100, 100, 5);
 	const Entity child = AddBox(registry, 100, 100, 5);
 	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{parent});
-	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{3, 4}});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{.position = {3, 4}});
 	CHECK(MovablePosition(registry, child)->x == 3.0F);
 	REQUIRE(SetMovablePosition(registry, child, {7, 8}));
 	CHECK(registry.GetComponent<engine::graphics::LocalTransform>(child).position.y == 8.0F);

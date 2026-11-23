@@ -165,7 +165,7 @@ namespace game
 			registry.Add<ScreenSpace>(row);
 			registry.Add<DespawnOnExit<Screen>>(row, DespawnOnExit<Screen>{kScope});
 			registry.Add<engine::ecs::Parent>(row, engine::ecs::Parent{content});
-			registry.Add<LocalTransform>(row, LocalTransform{{kHelpIndent, y}});
+			registry.Add<LocalTransform>(row, LocalTransform{.position = {kHelpIndent, y}});
 			const bool heading = !value.empty() && value.find(' ') == std::string::npos;
 			registry.Add<Text>(row, Text{.value = value,
 			                             .color = heading ? kTitleColor : kItemColor,
