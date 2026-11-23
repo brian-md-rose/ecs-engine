@@ -33,7 +33,6 @@ namespace engine::editor
 			return error ? path.lexically_normal() : result;
 		}
 
-		// True if inner is the same as outer or inside it.
 		// Windows paths ignore case, so they are compared in lower case there.
 		fs::path Fold(fs::path path)
 		{
@@ -56,6 +55,7 @@ namespace engine::editor
 			return relative.extension() == ".json" && Fold(relative.parent_path()) == Fold(sceneRelative);
 		}
 
+		// True if inner is the same as outer or inside it.
 		bool IsInside(const fs::path& inner, const fs::path& outer)
 		{
 			const fs::path relative = Fold(Canonical(inner)).lexically_relative(Fold(Canonical(outer)));
@@ -152,7 +152,11 @@ namespace engine::editor
 				changed = true;
 			}
 			ImGui::SameLine();
-			if (ImGui::SmallButton("All")) state.settings.scenes = state.available;
+			if (ImGui::SmallButton("All"))
+			{
+				state.settings.scenes = state.available;
+				changed = true;
+			}
 			ImGui::SameLine();
 			if (ImGui::SmallButton("None"))
 			{
