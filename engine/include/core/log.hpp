@@ -67,7 +67,7 @@ namespace engine::core
 	};
 
 	// Keeps the last `capacity` messages in memory (0, the default, keeps none and frees what was kept). Messages
-	// dropped by LogConfig::minimumLevel are not kept. Works with or without a LogSession.
+	// dropped by LogConfig::minimumLevel are not kept while a LogSession is active; without one, all are kept.
 	void SetLogHistoryCapacity(std::size_t capacity);
 
 	// The remembered messages, oldest first. Safe to call from any thread.
