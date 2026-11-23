@@ -112,6 +112,13 @@ namespace
 	{
 		return game::HasSceneMaze(world.registry) ? game::AdoptSceneMaze(world) : std::string();
 	}
+
+	// Play from here: the player starts on the clicked cell of the maze.
+	std::string StartPlayFrom(engine::ecs::World& world, engine::editor::GridCell cell)
+	{
+		if (!game::HasSceneMaze(world.registry)) return "this scene has no maze";
+		return game::PlacePlayerStart(world, cell.column, cell.row);
+	}
 } // namespace
 
 int main(int argc, char** argv)
@@ -161,6 +168,7 @@ int main(int argc, char** argv)
 	             .autosaveFolder = logFolder.empty() ? std::filesystem::path() : logFolder / "autosave",
 	             .openOnStart = openScene,
 	             .onPlay = StartPlay,
+	             .onPlayFrom = StartPlayFrom,
 	             .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
 	editor.SetVisible(true);

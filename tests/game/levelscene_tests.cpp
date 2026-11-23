@@ -160,3 +160,50 @@ TEST_CASE("A scene with settings sets them on the world, and one without leaves 
 	static_cast<void>(game::SpawnScene(world, "plainscene"));
 	CHECK(world.resources.Get<engine::ecs::SceneSettings>().camera.has_value()); // not cleared by a scene without
 }
+
+TEST_CASE("Play from here starts the player on the chosen cell of the scene's maze")
+{
+	LevelGame game;
+	REQUIRE_FALSE(game::SpawnScene(game.maze.world, "level1").empty());
+	REQUIRE(game::AdoptSceneMaze(game.maze.world).empty());
+	const auto& map = game.maze.world.resources.Get<game::TileMap>();
+	const std::vector<game::TilePosition> pellets = map.Find(game::Tile::Pellet);
+	REQUIRE_FALSE(pellets.empty());
+	const game::TilePosition target = pellets.front();
+	const std::vector<game::TilePosition> oldStart = map.Find(game::Tile::PlayerSpawn);
+	REQUIRE(oldStart.size() == 1);
+
+	REQUIRE(
+	    game::PlacePlayerStart(game.maze.world, static_cast<int>(target.column), static_cast<int>(target.row)).empty());
+	const auto& moved = game.maze.world.resources.Get<game::TileMap>();
+	REQUIRE(moved.Find(game::Tile::PlayerSpawn).size() == 1);
+	CHECK(moved.Find(game::Tile::PlayerSpawn).front() == target);
+	CHECK(moved.At(oldStart.front()) == game::Tile::Empty);
+
+	game.Update(3);
+	std::size_t players = 0;
+	game.maze.world.registry.Each<game::PlayerControlled, game::Spawn>(
+	    [&](Entity, const game::PlayerControlled&, const game::Spawn& spawn)
+	{
+		++players;
+		CHECK(spawn.tile == target);
+	});
+	CHECK(players == 1);
+}
+
+TEST_CASE("Play from here refuses a wall, a door, an enemy start and a cell outside the maze")
+{
+	LevelGame game;
+	REQUIRE_FALSE(game::SpawnScene(game.maze.world, "level1").empty());
+	REQUIRE(game::AdoptSceneMaze(game.maze.world).empty());
+	const auto& map = game.maze.world.resources.Get<game::TileMap>();
+	const game::TilePosition wall = map.Find(game::Tile::Wall).front();
+	const game::TilePosition enemy = map.Find(game::Tile::EnemySpawn).front();
+	CHECK_FALSE(
+	    game::PlacePlayerStart(game.maze.world, static_cast<int>(wall.column), static_cast<int>(wall.row)).empty());
+	CHECK_FALSE(
+	    game::PlacePlayerStart(game.maze.world, static_cast<int>(enemy.column), static_cast<int>(enemy.row)).empty());
+	CHECK_FALSE(game::PlacePlayerStart(game.maze.world, -1, 0).empty());
+	CHECK_FALSE(game::PlacePlayerStart(game.maze.world, 999, 0).empty());
+	CHECK(game.maze.world.resources.Get<game::TileMap>().Find(game::Tile::PlayerSpawn).size() == 1); // unchanged
+}

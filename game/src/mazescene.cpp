@@ -10,8 +10,8 @@
 #include "core/log.hpp"
 #include "ecs/enginecomponents.hpp"
 #include "ecs/name.hpp"
-#include "ecs/states.hpp"
 #include "ecs/scene.hpp"
+#include "ecs/states.hpp"
 #include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
 #include "enemysystems.hpp"
@@ -20,8 +20,8 @@
 #include "graphics/sprite.hpp"
 #include "maze.hpp"
 #include "mazegame.hpp"
-#include "screens.hpp"
 #include "scenes.hpp"
+#include "screens.hpp"
 #include "targeting.hpp"
 #include "walltiles.hpp"
 
@@ -361,6 +361,42 @@ namespace game
 		world.resources.Get<GameWorld>().fromScene = true;
 		// Starts the game on its own maze: entering Playing spawns the player, enemies and HUD but not the maze.
 		world.resources.Get<engine::ecs::NextState<Screen>>().Set(Screen::Playing);
+		return {};
+	}
+
+	std::string PlacePlayerStart(engine::ecs::World& world, int column, int row)
+	{
+		const TileMap& map = world.resources.Get<TileMap>();
+		if (column < 0 || row < 0 || !map.Contains({static_cast<std::size_t>(column), static_cast<std::size_t>(row)}))
+			return "that cell is outside the maze";
+		const TilePosition target{static_cast<std::size_t>(column), static_cast<std::size_t>(row)};
+		switch (map.At(target))
+		{
+		case Tile::Wall:
+			return "that cell is a wall";
+		case Tile::Door:
+			return "that cell is a door";
+		case Tile::EnemySpawn:
+			return "that cell is an enemy start";
+		case Tile::Tunnel:
+			return "that cell is a tunnel";
+		default:
+			break;
+		}
+		std::vector<Tile> grid;
+		grid.reserve(map.Width() * map.Height());
+		for (std::size_t y = 0; y < map.Height(); ++y)
+		{
+			for (std::size_t x = 0; x < map.Width(); ++x)
+			{
+				const TilePosition at{x, y};
+				Tile tile = map.At(at);
+				if (tile == Tile::PlayerSpawn) tile = Tile::Empty;
+				if (at == target) tile = Tile::PlayerSpawn;
+				grid.push_back(tile);
+			}
+		}
+		world.resources.Get<TileMap>() = TileMap(map.Width(), map.Height(), std::move(grid));
 		return {};
 	}
 

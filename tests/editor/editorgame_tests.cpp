@@ -618,9 +618,48 @@ TEST_CASE("Play can be paused, stepped and sped up, and a new Play starts runnin
 	game.SetPlaySpeed(100.0F);
 	CHECK(game.PlaySpeed() == 8.0F); // kept in range
 
+	game.StepPlay(); // a step while running pauses, as the menu item does
+	CHECK(game.PlayPaused());
+	game.SetPlayMuted(true);
+	CHECK(game.PlayMuted());
+	game.SetPlayMuted(false);
+
 	game.SetPlayPaused(true);
 	game.StopPlay();
 	REQUIRE(game.StartPlay());
 	CHECK_FALSE(game.PlayPaused()); // a new Play is not left frozen
 	game.StopPlay();
+}
+
+TEST_CASE("Play from here calls the game's hook with the cell, Restart repeats it and a plain Play does not",
+          "[editor][game]")
+{
+	std::vector<engine::editor::GridCell> calls;
+	std::string refuse;
+	EditorGameConfig config = MakeConfig(TempFolder("playfrom"));
+	config.onPlayFrom = [&](engine::ecs::World&, engine::editor::GridCell cell)
+	{
+		calls.push_back(cell);
+		return refuse;
+	};
+	engine::editor::Editor editor;
+	EditorGame game(editor, config);
+	REQUIRE(game.IsValid());
+
+	REQUIRE(game.StartPlayFrom({3, 4}));
+	REQUIRE(calls.size() == 1);
+	CHECK(calls[0] == engine::editor::GridCell{3, 4});
+	REQUIRE(game.RestartPlay());
+	REQUIRE(calls.size() == 2);
+	CHECK(calls[1] == engine::editor::GridCell{3, 4});
+	game.StopPlay();
+
+	REQUIRE(game.StartPlay()); // a plain Play forgets the cell
+	CHECK(calls.size() == 2);
+	game.StopPlay();
+
+	refuse = "a wall";
+	CHECK_FALSE(game.StartPlayFrom({1, 1}));
+	CHECK_FALSE(game.IsPlaying());
+	CHECK(game.Message().find("a wall") != std::string::npos);
 }

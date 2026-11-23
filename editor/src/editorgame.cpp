@@ -506,6 +506,19 @@ namespace engine::editor
 	bool EditorGame::StartPlay()
 	{
 		if (play) return true;
+		playFrom.reset();
+		return BeginPlay();
+	}
+
+	bool EditorGame::StartPlayFrom(GridCell cell)
+	{
+		if (play || !config.onPlayFrom) return false;
+		playFrom = cell;
+		return BeginPlay();
+	}
+
+	bool EditorGame::BeginPlay()
+	{
 		playPaused = false;
 		playSteps = 0;
 		CheckDirty(); // so the prompt on New and Open while playing knows about edits made before Play
@@ -542,6 +555,16 @@ namespace engine::editor
 				ecs::Issues reported;
 				reported.errors.push_back({"", problem});
 				ShowIssues("starting Play", reported);
+				return false;
+			}
+		}
+		if (playFrom && config.onPlayFrom)
+		{
+			const std::string problem = config.onPlayFrom(game->world, *playFrom);
+			if (!problem.empty())
+			{
+				message = "can't play from there: " + problem;
+				playFrom.reset();
 				return false;
 			}
 		}
@@ -590,8 +613,10 @@ namespace engine::editor
 	bool EditorGame::RestartPlay()
 	{
 		if (!play) return false;
+		const std::optional<GridCell> from = playFrom;
 		StopPlay();
-		return StartPlay();
+		playFrom = from;
+		return BeginPlay();
 	}
 
 	graphics::Camera EditorGame::CurrentCamera()
@@ -908,6 +933,19 @@ namespace engine::editor
 			}
 		}
 		if (painting) PaintStroke(*grid, origin, draw);
+		// A right click that did not pan: a menu to Play with the game starting at that cell.
+		if (!play && grid && config.onPlayFrom && hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+		    ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 4.0F).x == 0.0F &&
+		    ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 4.0F).y == 0.0F)
+		{
+			contextCell = CellAt(*grid, view.ToPicture({io.MousePos.x, io.MousePos.y}, origin));
+			if (contextCell) ImGui::OpenPopup("play-from-here");
+		}
+		if (ImGui::BeginPopup("play-from-here"))
+		{
+			if (contextCell && ImGui::MenuItem("Play from here")) pendingPlayFrom = contextCell;
+			ImGui::EndPopup();
+		}
 		panels->Prune(world.registry);
 		for (const ecs::Entity entity : panels->All())
 		{
@@ -982,6 +1020,12 @@ namespace engine::editor
 		{
 			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 			navigationClearedForPlay = false;
+		}
+		if (pendingPlayFrom)
+		{
+			const GridCell cell = *pendingPlayFrom;
+			pendingPlayFrom.reset();
+			(void)StartPlayFrom(cell);
 		}
 		if (io.WantTextInput || wasBusy || dialog != Dialog::None) return;
 

@@ -58,6 +58,11 @@ namespace engine::editor
 		// empty string. No hook leaves the game to start as it would.
 		std::function<std::string(ecs::World&)> onPlay = nullptr;
 
+		// Called after onPlay, only for Play from here (a right click on a grid cell in the Viewport): puts the game's
+		// start at that cell. Returns what is wrong with starting there, or an empty string. Without it Play from here
+		// is not offered.
+		std::function<std::string(ecs::World&, GridCell)> onPlayFrom = nullptr;
+
 		// Paints a scene made of grid cells (a maze). The Viewport shows its palette while editing a scene it applies
 		// to.
 		GridTool gridTool = {};
@@ -86,6 +91,8 @@ namespace engine::editor
 			SaveAs,
 			Recover
 		};
+
+		bool BeginPlay(); // starts Play with playFrom as it is
 
 		Editor& editor;
 		EditorGameConfig config;
@@ -133,13 +140,16 @@ namespace engine::editor
 		bool stroking = false;    // a paint or erase drag is in progress
 		std::string gridProblems; // the grid tool's problem line, kept until the scene changes
 		bool problemsStale = true;
-		std::optional<GridCell> lastCell; // the cell the stroke last touched, so a fast drag leaves no gaps
-		PlayMouse playMouse;              // the mouse the playing game sees, from the pointer over the viewport
-		bool mouseFed = false;            // the viewport fed playMouse since the last game update
-		bool playPaused = false;          // Play is frozen (Step runs one update)
-		int playSteps = 0;                // one-update steps asked for while paused
-		float playSpeed = 1.0F;           // how fast the game runs, 1 = real time
-		bool playMuted = false;           // the game is given no audio device
+		std::optional<GridCell> lastCell;        // the cell the stroke last touched, so a fast drag leaves no gaps
+		PlayMouse playMouse;                     // the mouse the playing game sees, from the pointer over the viewport
+		bool mouseFed = false;                   // the viewport fed playMouse since the last game update
+		bool playPaused = false;                 // Play is frozen (Step runs one update)
+		int playSteps = 0;                       // one-update steps asked for while paused
+		float playSpeed = 1.0F;                  // how fast the game runs, 1 = real time
+		bool playMuted = false;                  // the game is given no audio device
+		std::optional<GridCell> playFrom;        // where the Play being started, or the running one, starts the game
+		std::optional<GridCell> pendingPlayFrom; // asked for by the Viewport menu, started at the next shortcut pass
+		std::optional<GridCell> contextCell;     // the cell the Viewport menu was opened on
 		// Undo: the scene as text after each finished change (a drag, a typed value, a menu click), oldest first;
 		// historyPos is the one the world is at. Undo and Redo reload the neighbour, which re-creates the entities
 		// (their ids change, the selection is kept by position).
@@ -225,6 +235,9 @@ namespace engine::editor
 
 		// ---- play ----
 		bool StartPlay();
+		// Play with the game starting at the grid cell (needs EditorGameConfig::onPlayFrom). Restart plays from it
+		// again.
+		bool StartPlayFrom(GridCell cell);
 		void StopPlay();
 		// Stops and starts again from the edit world as it is now. False if not playing, or if it can't start.
 		bool RestartPlay();
