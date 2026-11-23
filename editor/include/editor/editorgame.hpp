@@ -15,6 +15,7 @@
 #include "editor/editor.hpp"
 #include "editor/entitypanels.hpp"
 #include "editor/gridtool.hpp"
+#include "editor/profilerpanel.hpp"
 #include "editor/viewport.hpp"
 #include "graphics/renderer.hpp"
 
@@ -133,7 +134,8 @@ namespace engine::editor
 		std::string saveAsName;
 
 		std::shared_ptr<AssetThumbnails>
-		    thumbnails; // the Assets panel's sprite pictures; null without an assets folder
+		    thumbnails;                     // the Assets panel's sprite pictures; null without an assets folder
+		std::shared_ptr<Profiler> profiler; // fed the game's Update time for the Profiler panel
 
 		// The viewport: the game is drawn into target (as big as the game's logical screen) and the Viewport panel
 		// shows it, panned and zoomed. The renderer owns the texture, so it is never freed here.
