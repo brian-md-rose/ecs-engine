@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <system_error>
+#include <vector>
 
 #include "editor/assetbrowser.hpp"
 #include "editor/assetcatalog.hpp"
@@ -85,4 +87,13 @@ TEST_CASE("The real game assets are found", "[editor][assets]")
 		CHECK(catalog.Contains(AssetKind::Sprite, name));
 	CHECK(catalog.Contains(AssetKind::Font, "font"));
 	CHECK(catalog.Contains(AssetKind::Sound, "music/theme.ogg"));
+}
+
+TEST_CASE("A sheet mixing glyphs and longer names is sprites, not a font", "[editor][assets]")
+{
+	const auto folder = FreshFolder("mixed");
+	Write(folder / "sprites" / "mixed.sheet", "image m.png\nregion a 0 0 5 7\nregion heart 6 0 9 9\n");
+	const AssetCatalog catalog(folder);
+	CHECK(catalog.Names(AssetKind::Font).empty());
+	CHECK(catalog.Names(AssetKind::Sprite) == std::vector<std::string>{"a", "heart"});
 }
