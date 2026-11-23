@@ -98,6 +98,7 @@ namespace engine::editor
 			ImGui::EndTabBar();
 		});
 		editor.SetPanelSize("Assets", 380.0F, 320.0F);
+		editor.SetPanelDock("Assets", Editor::DockArea::Bottom);
 		return catalog;
 	}
 } // namespace engine::editor

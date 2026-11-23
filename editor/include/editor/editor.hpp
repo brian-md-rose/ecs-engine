@@ -42,6 +42,20 @@ namespace engine::editor
 			menuDialogs = std::move(dialogs);
 		}
 
+		// Where a panel sits in the default layout (used when there is no saved layout, and by Panels > Reset layout).
+		// None, the default, leaves it floating.
+		enum class DockArea
+		{
+			None,
+			Center,
+			Left,
+			Right,
+			Bottom
+		};
+
+		// Sets the default dock area of the panel called name; false when there is none.
+		bool SetPanelDock(std::string_view name, DockArea area);
+
 		// Opens or closes the panel called name; false when there is none.
 		bool SetPanelOpen(std::string_view name, bool open);
 
@@ -76,10 +90,12 @@ namespace engine::editor
 			bool open = false;
 			float width = 0;
 			float height = 0;
+			DockArea dock = DockArea::None;
 		};
 
 		void DrawUi();
 		void DrawAbout();
+		void BuildDefaultLayout(unsigned int dockSpaceId);
 
 		void* renderer = nullptr;         // the SDL_Renderer*, kept for Draw
 		std::filesystem::path layoutFile; // kept alive for ImGuiIO::IniFilename
@@ -89,6 +105,7 @@ namespace engine::editor
 		bool gameKeys = false;
 		bool showAbout = false;
 		bool showImGuiDemo = false;
+		bool buildLayout = false; // build the default layout on the next frame
 		std::function<void()> menuBar;
 		std::function<void()> menuDialogs;
 		std::deque<Panel> panels; // a deque, so a panel adding a panel does not move the one drawing

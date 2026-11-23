@@ -113,6 +113,9 @@ namespace engine::editor
 			DrawSceneSettings();
 		});
 		editor.SetPanelSize("Viewport", 700, 480);
+		editor.SetPanelDock("Viewport", Editor::DockArea::Center);
+		editor.SetPanelDock("Issues", Editor::DockArea::Bottom);
+		editor.SetPanelDock("Scene", Editor::DockArea::Right);
 		editor.SetPanelOpen("Viewport", true);
 		editor.SetVisible(true);
 
