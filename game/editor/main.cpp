@@ -15,7 +15,9 @@
 #include "core/log.hpp"
 #include "core/paths.hpp"
 #include "core/sdllog.hpp"
+#include "core/version.hpp"
 #include "editor/assetbrowser.hpp"
+#include "editor/buildsettings.hpp"
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
 #include "editor/entitypanels.hpp"
@@ -195,6 +197,16 @@ int main(int argc, char** argv)
 	             .onPlayFrom = StartPlayFrom,
 	             .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
+	// Build settings: the game exe is the one built beside the editor (game.exe in the same configuration folder).
+	const std::filesystem::path exeFolder = engine::core::ExecutableDirectory();
+	engine::editor::AddBuildSettingsPanel(
+	    editor, {.sceneFolder = SceneFolder(),
+	             .assetFolder = AssetFolder(),
+	             .settingsFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-build.json",
+	             .defaultGameExe = exeFolder / "game.exe",
+	             .defaultOutput = exeFolder / "package" / "Tangle Run",
+	             .gameName = game::MazeGame::kConfig.title,
+	             .engineVersion = engine::kVersionString});
 	editor.SetVisible(true);
 	app.SetEditorHost(&editor);
 	return app.Run(game);
