@@ -39,6 +39,9 @@ namespace engine::editor
 		// The assets folder the Assets panel lists and the Inspector's asset pick-lists read (sprites, fonts, sounds).
 		// Empty, the default, adds no panel.
 		std::filesystem::path assetFolder = {};
+		// Where a sprite name is in the world's atlas (nothing if it can't be drawn), for the Sprite component's source
+		// picker. Empty, the default, leaves Sprite::source as raw numbers.
+		std::function<std::optional<graphics::PixelRect>(ecs::World&, const std::string&)> spriteRect = nullptr;
 
 		// A text file where the names of the scenes last opened or saved are kept, newest first, so the editor can
 		// reopen the last one at the next start and list the rest under Open recent. Empty keeps none.

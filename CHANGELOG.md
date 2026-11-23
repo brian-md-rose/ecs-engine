@@ -11,6 +11,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ### Added
 
+- **Sprite source picker in the editor**: the Sprite component's `source` has a *picture* list of sprite names in the Inspector (`EditorGameConfig::spriteRect` gives the atlas rectangle of a name). The scene format is unchanged.
 - **Editor asset browser**: an Assets panel lists the sprites, fonts and sounds under the assets folder, and a String field marked with `FieldHints::assetKind` is picked from that list in the Inspector. `ClipName` uses it, and now also accepts every sprite name of `sprites.sheet` (`button_hover` as well as the older `buttonHover`).
 
 ### Changed

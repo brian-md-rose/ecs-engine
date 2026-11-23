@@ -79,6 +79,16 @@ namespace
 		}
 	}
 
+	// Where a sprite of sprites.sheet is in the atlas of the world's game, for the Sprite component's source picker.
+	std::optional<engine::graphics::PixelRect> SpriteRect(engine::ecs::World& world, const std::string& name)
+	{
+		const auto* clips = world.resources.TryGet<game::SpriteClips>();
+		if (clips == nullptr) return std::nullopt;
+		const engine::graphics::Clip* clip = game::FindClip(*clips, name);
+		if (clip == nullptr || clip->frames == 0) return std::nullopt;
+		return clip->firstFrame;
+	}
+
 	// The maze painter: the tile palette and grid for a maze scene, and nothing for any other scene.
 	engine::editor::GridTool MazePainter()
 	{
@@ -164,6 +174,10 @@ int main(int argc, char** argv)
 		if (!game.IsValid()) return 1;
 		const auto panels = engine::editor::AddEntityPanels(editor, game.world);
 		panels->assets = engine::editor::AddAssetBrowser(editor, AssetFolder());
+		panels->spriteRect = [&game](const std::string& name)
+		{
+			return SpriteRect(game.world, name);
+		};
 		app.SetEditorHost(&editor);
 		return app.Run(game);
 	}
@@ -173,6 +187,7 @@ int main(int argc, char** argv)
 	             .afterLoad = ResolveAfterLoad,
 	             .sceneFolder = SceneFolder(),
 	             .assetFolder = AssetFolder(),
+	             .spriteRect = SpriteRect,
 	             .recentFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-recent.txt",
 	             .autosaveFolder = logFolder.empty() ? std::filesystem::path() : logFolder / "autosave",
 	             .openOnStart = openScene,
