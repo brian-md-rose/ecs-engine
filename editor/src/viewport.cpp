@@ -177,6 +177,44 @@ namespace engine::editor
 		return target;
 	}
 
+	GizmoHandle PickGizmo(graphics::Position pivot, graphics::Position point, const GizmoShape& shape) noexcept
+	{
+		const float dx = point.x - pivot.x;
+		const float dy = point.y - pivot.y;
+		if (std::abs(dx) <= shape.centre && std::abs(dy) <= shape.centre) return GizmoHandle::Free;
+		if (std::abs(dy) <= shape.grab && dx > 0 && dx <= shape.arrowLength) return GizmoHandle::X;
+		if (std::abs(dx) <= shape.grab && dy > 0 && dy <= shape.arrowLength) return GizmoHandle::Y;
+		return GizmoHandle::None;
+	}
+
+	graphics::Position GizmoMove(GizmoHandle handle, graphics::Position moved) noexcept
+	{
+		if (handle == GizmoHandle::X) return {moved.x, 0};
+		if (handle == GizmoHandle::Y) return {0, moved.y};
+		if (handle == GizmoHandle::Free) return moved;
+		return {};
+	}
+
+	std::optional<graphics::Position> SelectionCentre(const ecs::Registry& registry,
+	                                                  const std::vector<ecs::Entity>& entities,
+	                                                  const graphics::Camera& camera)
+	{
+		float sumX = 0;
+		float sumY = 0;
+		int count = 0;
+		for (const ecs::Entity entity : entities)
+		{
+			const auto rect = EntityScreenRect(registry, entity, camera);
+			if (!rect) continue;
+			sumX += rect->x + rect->width * 0.5F;
+			sumY += rect->y + rect->height * 0.5F;
+			++count;
+		}
+		if (count == 0) return std::nullopt;
+		const float n = static_cast<float>(count);
+		return graphics::Position{sumX / n, sumY / n};
+	}
+
 	bool MoveEntity(ecs::Registry& registry, ecs::Entity entity, const graphics::Camera& camera,
 	                graphics::Position delta)
 	{
