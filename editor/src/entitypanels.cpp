@@ -21,6 +21,7 @@
 #include "ecs/hierarchy.hpp"
 #include "ecs/name.hpp"
 #include "ecs/typeregistry.hpp"
+#include "editor/assetdrag.hpp"
 #include "editor/entityops.hpp"
 
 namespace engine::editor
@@ -312,7 +313,8 @@ namespace engine::editor
 
 		// A text field picked from a list. A value that is not in the list is shown as it is, marked, and stays
 		// until another is picked.
-		bool EditChoice(const char* label, const std::vector<std::string>& choices, JsonValue& value)
+		bool EditChoice(const char* label, const std::vector<std::string>& choices, JsonValue& value,
+		                bool takesDrops = false, DragKind dropKind = DragKind::Sprite)
 		{
 			const std::string current(value.AsString().value_or(""));
 			const bool known = std::find(choices.begin(), choices.end(), current) != choices.end();
@@ -328,6 +330,14 @@ namespace engine::editor
 				}
 				ImGui::EndCombo();
 			}
+			// An asset dragged from the Assets panel and dropped on the box sets the name, if the list has it.
+			if (takesDrops)
+				if (const auto dropped = AssetDropTarget({dropKind});
+				    dropped && std::find(choices.begin(), choices.end(), dropped->name) != choices.end())
+				{
+					value = JsonValue(dropped->name);
+					changed = true;
+				}
 			return changed;
 		}
 
@@ -386,6 +396,13 @@ namespace engine::editor
 				}
 				ImGui::EndCombo();
 			}
+			if (const auto dropped = AssetDropTarget({DragKind::Sprite}))
+				for (const auto& [name, rect] : options)
+					if (name == dropped->name)
+					{
+						value = RectJson(rect);
+						changed = true;
+					}
 			return changed;
 		}
 
@@ -415,7 +432,8 @@ namespace engine::editor
 						{
 							return std::find(usable.begin(), usable.end(), name) == usable.end();
 						});
-					changed = EditChoice(label, names.empty() ? usable : names, value);
+					changed = EditChoice(label, names.empty() ? usable : names, value, true,
+					                     DragKindFor(field.hints.assetKind));
 					break;
 				}
 				if (!field.hints.choices.empty())

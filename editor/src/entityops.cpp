@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -10,6 +11,7 @@
 #include "ecs/hierarchy.hpp"
 #include "ecs/name.hpp"
 #include "ecs/scene.hpp"
+#include "graphics/sprite.hpp"
 
 namespace engine::editor
 {
@@ -55,6 +57,20 @@ namespace engine::editor
 		const Entity entity = registry.Create();
 		registry.Add<ecs::Name>(entity, ecs::Name{name});
 		if (!parent.IsNull() && registry.IsAlive(parent)) registry.Add<ecs::Parent>(entity, ecs::Parent{parent});
+		return entity;
+	}
+
+	Entity CreateSpriteEntity(Registry& registry, const std::string& name, const graphics::PixelRect& source,
+	                          graphics::Position centre)
+	{
+		const Entity entity = CreateEntity(registry, name);
+		const float halfWidth = static_cast<float>(source.width) * 0.5F;
+		const float halfHeight = static_cast<float>(source.height) * 0.5F;
+		registry.Add<graphics::Transform>(
+		    entity, graphics::Transform{{std::round(centre.x - halfWidth), std::round(centre.y - halfHeight)}});
+		graphics::Sprite sprite;
+		sprite.source = source;
+		registry.Add<graphics::Sprite>(entity, sprite);
 		return entity;
 	}
 

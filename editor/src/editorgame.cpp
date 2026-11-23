@@ -19,6 +19,7 @@
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
 #include "editor/assetbrowser.hpp"
+#include "editor/assetdrag.hpp"
 #include "editor/consolepanel.hpp"
 #include "editor/entityops.hpp"
 #include "editor/profilerpanel.hpp"
@@ -91,7 +92,7 @@ namespace engine::editor
 		if (!config.assetFolder.empty())
 		{
 			thumbnails = std::make_shared<AssetThumbnails>();
-			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails);
+			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails, config.sceneFolder);
 		}
 		AddConsolePanel(editor);
 		profiler = AddProfilerPanel(editor, [this]() -> ecs::World&
@@ -759,6 +760,32 @@ namespace engine::editor
 		}
 	}
 
+	void EditorGame::TakeAssetDrop(graphics::Position origin)
+	{
+		const auto dropped = AssetDropTarget({DragKind::Sprite, DragKind::Scene});
+		if (!dropped) return;
+		if (dropped->kind == DragKind::Scene)
+		{
+			Request(Action::Open, dropped->name); // asks first if there are unsaved changes
+			return;
+		}
+		const auto rect = config.spriteRect ? config.spriteRect(CurrentWorld(), dropped->name) : std::nullopt;
+		if (!rect)
+		{
+			message = "the game can't draw " + dropped->name;
+			return;
+		}
+		const ImGuiIO& io = ImGui::GetIO();
+		graphics::Position at = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
+		if (snapToGrid != io.KeyCtrl)
+		{
+			const auto step = static_cast<float>(snapSize);
+			at = {std::round(at.x / step) * step, std::round(at.y / step) * step};
+		}
+		panels->Select(CreateSpriteEntity(CurrentWorld().registry, dropped->name, *rect, at));
+		message.clear();
+	}
+
 	void EditorGame::DrawViewport()
 	{
 		if (targetHandle == nullptr || target == graphics::kNoTexture)
@@ -826,6 +853,7 @@ namespace engine::editor
 		const ImVec2 max = ImGui::GetItemRectMax();
 		const graphics::Position origin{min.x, min.y};
 		const ImGuiIO& io = ImGui::GetIO();
+		if (!play) TakeAssetDrop(origin);
 
 		// While playing, the game gets the wheel and the buttons; hold Ctrl to zoom and pan the view instead.
 		const bool viewKeys = !play || io.KeyCtrl;

@@ -11,6 +11,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "core/text.hpp"
+#include "editor/assetdrag.hpp"
 #include "editor/assetthumbnails.hpp"
 
 namespace engine::editor
@@ -40,6 +41,8 @@ namespace engine::editor
 			std::string draftName;
 			SpriteSettings draftBase;
 			std::string saveError;
+			std::vector<std::string> scenes; // the .json files of the scene folder, as of the last rescan
+			bool scenesScanned = false;
 		};
 
 		// Where the sprite is drawn inside a box: as big as fits, in whole pixels when it can (so pixel art stays
@@ -91,6 +94,7 @@ namespace engine::editor
 					state.selectedKind = ecs::AssetKind::Sprite;
 					state.selectedFile = entry.file;
 				}
+				AssetDragSource({DragKind::Sprite, entry.name});
 				if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", entry.name.c_str(), entry.detail.c_str());
 				const AssetThumbnails::Picture picture =
 				    thumbnails != nullptr ? thumbnails->Get(entry.file, entry.name) : AssetThumbnails::Picture{};
@@ -226,12 +230,47 @@ namespace engine::editor
 					state.selectedKind = kind;
 					state.selectedFile = entry.file;
 				}
+				AssetDragSource({DragKindFor(kind), entry.name});
 				if (ImGui::IsItemHovered())
 					ImGui::SetTooltip("%s", core::PathText(entry.file.lexically_relative(catalog.Folder())).c_str());
 				ImGui::TableNextColumn();
 				ImGui::TextUnformatted(entry.detail.c_str());
 			}
 			ImGui::EndTable();
+		}
+		void ScanScenes(const std::filesystem::path& folder, BrowserState& state)
+		{
+			state.scenes.clear();
+			state.scenesScanned = true;
+			std::error_code error;
+			for (const auto& entry : std::filesystem::directory_iterator(folder, error))
+				if (entry.is_regular_file() && entry.path().extension() == ".json")
+					state.scenes.push_back(entry.path().filename().string());
+			std::sort(state.scenes.begin(), state.scenes.end());
+		}
+
+		// The scenes of the scene folder, to drag onto the Viewport to open one.
+		void DrawScenes(const std::filesystem::path& folder, BrowserState& state)
+		{
+			if (!state.scenesScanned) ScanScenes(folder, state);
+			bool any = false;
+			for (const std::string& name : state.scenes)
+			{
+				if (!state.filter.empty() && !ContainsNoCase(name, state.filter)) continue;
+				any = true;
+				const bool isSelected = state.selectedKind == ecs::AssetKind::None && state.selected == name;
+				if (ImGui::Selectable(name.c_str(), isSelected))
+				{
+					state.selected = name;
+					state.selectedKind = ecs::AssetKind::None;
+					state.selectedFile.clear();
+				}
+				AssetDragSource({DragKind::Scene, name});
+			}
+			if (!any)
+				ImGui::TextDisabled("No scene found under %s", core::PathText(folder).c_str());
+			else
+				ImGui::TextDisabled("Drag a scene onto the Viewport to open it");
 		}
 	} // namespace
 
@@ -241,16 +280,18 @@ namespace engine::editor
 	}
 
 	std::shared_ptr<AssetCatalog> AddAssetBrowser(Editor& editor, std::filesystem::path assetsFolder,
-	                                              std::shared_ptr<AssetThumbnails> thumbnails)
+	                                              std::shared_ptr<AssetThumbnails> thumbnails,
+	                                              std::filesystem::path sceneFolder)
 	{
 		auto catalog = std::make_shared<AssetCatalog>(std::move(assetsFolder));
 		auto state = std::make_shared<BrowserState>();
-		editor.AddPanel("Assets", [catalog, state, thumbnails]
+		editor.AddPanel("Assets", [catalog, state, thumbnails, sceneFolder = std::move(sceneFolder)]
 		{
 			if (ImGui::Button("Rescan"))
 			{
 				if (thumbnails != nullptr) thumbnails->Forget();
 				catalog->Rescan();
+				state->scenesScanned = false;
 			}
 			ImGui::SameLine();
 			const bool canCopy = !state->selected.empty();
@@ -290,6 +331,11 @@ namespace engine::editor
 				{
 					DrawTab(*catalog, nullptr, kind, *state);
 				}
+				ImGui::EndTabItem();
+			}
+			if (!sceneFolder.empty() && ImGui::BeginTabItem("Scenes###Scenes"))
+			{
+				DrawScenes(sceneFolder, *state);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();

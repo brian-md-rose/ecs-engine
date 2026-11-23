@@ -195,6 +195,9 @@ namespace engine::editor
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
+		// What the Assets panel dropped on the Viewport this frame: a sprite becomes an entity at the pointer, a scene
+		// opens.
+		void TakeAssetDrop(graphics::Position origin);
 		void DrawIssues();
 		void DrawSceneSettings();
 		[[nodiscard]] std::filesystem::path AutosavePath() const;
