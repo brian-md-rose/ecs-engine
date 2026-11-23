@@ -333,7 +333,7 @@ namespace engine::editor
 
 		// One field, by its registered kind. True if the user changed it, with the new value in `value`.
 		bool EditField(const FieldInfo& field, JsonValue& value, const Registry& registry,
-		               const std::vector<Entity>& all)
+		               const std::vector<Entity>& all, const AssetCatalog* assets)
 		{
 			const char* label = field.name.c_str();
 			bool changed = false;
@@ -341,6 +341,12 @@ namespace engine::editor
 			switch (field.kind)
 			{
 			case FieldKind::String:
+				if (field.hints.assetKind != ecs::AssetKind::None && assets != nullptr)
+				{
+					// The files found under the assets folder; the Assets panel lists the same ones.
+					changed = EditChoice(label, assets->Names(field.hints.assetKind), value);
+					break;
+				}
 				if (!field.hints.choices.empty())
 				{
 					changed = EditChoice(label, field.hints.choices, value);
@@ -490,7 +496,7 @@ namespace engine::editor
 					ImGui::TextDisabled("%s: %s", field.name.c_str(), error.c_str());
 					continue;
 				}
-				if (!EditField(field, value, registry, all)) continue;
+				if (!EditField(field, value, registry, all, state.assets.get())) continue;
 
 				// A new parent must not make a loop, which would hang anything that walks up the hierarchy.
 				if (type.Type() == std::type_index(typeid(ecs::Parent)))

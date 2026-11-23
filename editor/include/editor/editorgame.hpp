@@ -36,6 +36,9 @@ namespace engine::editor
 
 		// Where scenes (.json files) are listed for Open, and written for Save.
 		std::filesystem::path sceneFolder;
+		// The assets folder the Assets panel lists and the Inspector's asset pick-lists read (sprites, fonts, sounds).
+		// Empty, the default, adds no panel.
+		std::filesystem::path assetFolder = {};
 
 		// A text file where the names of the scenes last opened or saved are kept, newest first, so the editor can
 		// reopen the last one at the next start and list the rest under Open recent. Empty keeps none.

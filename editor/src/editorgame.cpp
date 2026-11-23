@@ -18,6 +18,7 @@
 #include "ecs/enginecomponents.hpp"
 #include "ecs/scene.hpp"
 #include "ecs/typeregistry.hpp"
+#include "editor/assetbrowser.hpp"
 #include "editor/entityops.hpp"
 #include "graphics/renderer2d.hpp"
 
@@ -85,6 +86,7 @@ namespace engine::editor
 		{
 			return CurrentWorld();
 		});
+		if (!config.assetFolder.empty()) panels->assets = AddAssetBrowser(editor, config.assetFolder);
 		editor.SetMenuBar(
 		    [this]
 		{

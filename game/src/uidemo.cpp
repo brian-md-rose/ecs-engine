@@ -245,21 +245,35 @@ namespace game
 		types.Register<DemoHint>("DemoHint").Field("line", &DemoHint::line);
 		types.Register<ClipName>("ClipName")
 		    .Field("value", &ClipName::value,
-		           {.tooltip = "which picture of the atlas to draw",
-		            .choices = {"panel", "button", "buttonHover", "buttonPressed", "cursor"}});
+		           {.tooltip = "which picture of the atlas to draw (a sprite of sprites.sheet)",
+		            .choices = {"panel", "button", "button_hover", "button_pressed", "cursor"},
+		            .assetKind = engine::ecs::AssetKind::Sprite});
+	}
+
+	const engine::graphics::Clip* FindClip(const SpriteClips& clips, const std::string& name)
+	{
+		// The sprite's name in sprites.sheet; the camel case names are the older spelling, still accepted.
+		if (name == "panel") return &clips.panel;
+		if (name == "button") return &clips.button;
+		if (name == "button_hover" || name == "buttonHover") return &clips.buttonHover;
+		if (name == "button_pressed" || name == "buttonPressed") return &clips.buttonPressed;
+		if (name == "cursor") return &clips.cursor;
+		if (name == "player_right") return &clips.playerRight;
+		if (name == "player_down") return &clips.playerDown;
+		if (name == "player_up") return &clips.playerUp;
+		if (name == "player_death") return &clips.playerDeath;
+		if (name == "frightened") return &clips.frightened;
+		if (name == "frightened_flash") return &clips.frightenedFlash;
+		if (name == "returning") return &clips.returning;
+		if (name == "pellet") return &clips.pellet;
+		if (name == "power_pellet") return &clips.powerPellet;
+		if (name == "door") return &clips.door;
+		return nullptr;
 	}
 
 	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips)
 	{
-		const auto find = [&clips](const std::string& name) -> const engine::graphics::Clip*
-		{
-			if (name == "panel") return &clips.panel;
-			if (name == "button") return &clips.button;
-			if (name == "buttonHover") return &clips.buttonHover;
-			if (name == "buttonPressed") return &clips.buttonPressed;
-			if (name == "cursor") return &clips.cursor;
-			return nullptr;
-		};
+		const auto find = [&clips](const std::string& name) { return FindClip(clips, name); };
 		registry.Each<ClipName, engine::ui::NinePatch>(
 		    [&](engine::ecs::Entity, const ClipName& clip, engine::ui::NinePatch& patch)
 		{

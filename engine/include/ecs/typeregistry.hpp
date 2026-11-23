@@ -68,6 +68,15 @@ namespace engine::ecs
 		[[nodiscard]] bool Ok() const noexcept { return errors.empty(); }
 	};
 
+	// What kind of asset a String field names, so an editor can offer the files it finds as a list (the asset browser).
+	enum class AssetKind : std::uint8_t
+	{
+		None,
+		Sprite, // a sprite or sprite region name from a .sheet manifest
+		Font,   // a glyph sheet, by file name without extension
+		Sound   // a sound or music file, by path inside the assets folder
+	};
+
 	// What an editor shows for a field. min and max are hints for a slider; loading does not clamp.
 	struct FieldHints
 	{
@@ -78,6 +87,9 @@ namespace engine::ecs
 		// For a String field: the values worth picking (clip names, sound names), shown by an editor as a list
 		// instead of a text box. Loading accepts any text, so a value outside the list still works.
 		std::vector<std::string> choices = {};
+		// For a String field: the kind of asset it names. An editor with an asset catalog lists the assets of that kind
+		// (and shows `choices` when it has none). Loading accepts any text.
+		AssetKind assetKind = AssetKind::None;
 	};
 
 	enum class FieldKind : std::uint8_t

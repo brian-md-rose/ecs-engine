@@ -9,6 +9,10 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Editor asset browser**: an Assets panel lists the sprites, fonts and sounds under the assets folder, and a String field marked with `FieldHints::assetKind` is picked from that list in the Inspector. `ClipName` uses it, and now also accepts every sprite name of `sprites.sheet` (`button_hover` as well as the older `buttonHover`).
+
 ### Changed
 
 - **Screenshot key is F9, not F12**: Windows reserves F12 for debuggers, so with Visual Studio attached it broke into the debugger. `Application::SetScreenshotKey` still picks another key.

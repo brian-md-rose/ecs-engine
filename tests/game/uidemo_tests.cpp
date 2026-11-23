@@ -492,3 +492,14 @@ TEST_CASE("A broken demo scene leaves the screen empty instead of crashing", "[g
 	});
 	CHECK(buttons == 0);
 }
+
+TEST_CASE("FindClip knows the sprite names of sprites.sheet and the older spellings", "[game][uidemo][scene]")
+{
+	game::SpriteClips clips;
+	CHECK(game::FindClip(clips, "button_hover") == &clips.buttonHover);
+	CHECK(game::FindClip(clips, "buttonHover") == &clips.buttonHover);
+	CHECK(game::FindClip(clips, "button_pressed") == &clips.buttonPressed);
+	CHECK(game::FindClip(clips, "pellet") == &clips.pellet);
+	CHECK(game::FindClip(clips, "player_death") == &clips.playerDeath);
+	CHECK(game::FindClip(clips, "nope") == nullptr);
+}

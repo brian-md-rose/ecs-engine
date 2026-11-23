@@ -15,6 +15,7 @@
 #include "core/log.hpp"
 #include "core/paths.hpp"
 #include "core/sdllog.hpp"
+#include "editor/assetbrowser.hpp"
 #include "editor/editor.hpp"
 #include "editor/editorgame.hpp"
 #include "editor/entitypanels.hpp"
@@ -42,6 +43,12 @@ namespace
 		if (std::filesystem::is_directory(source, error)) return source;
 #endif
 		return engine::core::ExecutableDirectory() / "assets" / "scenes";
+	}
+
+	// The assets folder next to the scenes (source copy or the one beside the executable): what the Assets panel lists.
+	std::filesystem::path AssetFolder()
+	{
+		return SceneFolder().parent_path();
 	}
 
 	// A new copy of the game for the edit world or for Play. Its scene files are read again from the folder the editor
@@ -155,7 +162,8 @@ int main(int argc, char** argv)
 	{
 		game::MazeGame game;
 		if (!game.IsValid()) return 1;
-		engine::editor::AddEntityPanels(editor, game.world);
+		const auto panels = engine::editor::AddEntityPanels(editor, game.world);
+		panels->assets = engine::editor::AddAssetBrowser(editor, AssetFolder());
 		app.SetEditorHost(&editor);
 		return app.Run(game);
 	}
@@ -164,6 +172,7 @@ int main(int argc, char** argv)
 	    editor, {.makeGame = MakeEditedGame,
 	             .afterLoad = ResolveAfterLoad,
 	             .sceneFolder = SceneFolder(),
+	             .assetFolder = AssetFolder(),
 	             .recentFile = logFolder.empty() ? std::filesystem::path() : logFolder / "editor-recent.txt",
 	             .autosaveFolder = logFolder.empty() ? std::filesystem::path() : logFolder / "autosave",
 	             .openOnStart = openScene,

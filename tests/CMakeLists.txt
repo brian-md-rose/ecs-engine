@@ -56,6 +56,8 @@ if(TARGET engine_editor)
     if(MSVC)
         target_compile_options(editor_tests PRIVATE /wd4868)
     endif()
+    # The real game assets, for the asset browser's smoke test.
+    target_compile_definitions(editor_tests PRIVATE GAME_ASSETS_DIR="${PROJECT_SOURCE_DIR}/game/assets")
     catch_discover_tests(editor_tests)
 endif()
 
