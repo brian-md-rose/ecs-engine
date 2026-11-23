@@ -1,7 +1,7 @@
 #pragma once
 
-#include <filesystem>
 #include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -82,6 +82,11 @@ namespace game
 	// another maze, and asks for the Playing screen. Changes nothing but the log if the tiles are not a
 	// valid maze. The world must be a MazeGame's, with its entities loaded. Returns what is wrong, or an empty string.
 	[[nodiscard]] std::string AdoptSceneMaze(engine::ecs::World& world);
+
+	// For the editor's Play from here: after AdoptSceneMaze, moves the player's start to the cell (column, row), so the
+	// game starts the player there. The old start becomes an empty tile. Returns what is wrong (a wall, a door, an
+	// enemy start, a cell outside the maze), or an empty string.
+	[[nodiscard]] std::string PlacePlayerStart(engine::ecs::World& world, int column, int row);
 
 	// What the editor can paint into a maze, in palette order: Wall, Door, Pellet, Power pellet, Player start, Enemy
 	// start and Tunnel.
