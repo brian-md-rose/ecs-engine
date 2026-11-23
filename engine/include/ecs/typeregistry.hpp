@@ -88,7 +88,8 @@ namespace engine::ecs
 		// instead of a text box. Loading accepts any text, so a value outside the list still works.
 		std::vector<std::string> choices = {};
 		// For a String field: the kind of asset it names. An editor with an asset catalog lists the assets of that kind
-		// (and shows `choices` when it has none, or when the editor has no list for the kind). Loading accepts any text.
+		// cut down to `choices` when that is set (the names the game can use), and shows `choices` alone when the editor has no
+		// list for the kind. Loading accepts any text.
 		AssetKind assetKind = AssetKind::None;
 	};
 

@@ -344,8 +344,16 @@ namespace engine::editor
 				if (field.hints.assetKind != ecs::AssetKind::None && assets != nullptr &&
 				    !assets->Names(field.hints.assetKind).empty())
 				{
-					// The files found under the assets folder; the Assets panel lists the same ones.
-					changed = EditChoice(label, assets->Names(field.hints.assetKind), value);
+					// The files found under the assets folder (the Assets panel lists the same ones), cut down to the
+					// names the game accepts when the field says which those are.
+					std::vector<std::string> names = assets->Names(field.hints.assetKind);
+					const std::vector<std::string>& usable = field.hints.choices;
+					if (!usable.empty())
+						std::erase_if(names, [&usable](const std::string& name)
+						{
+							return std::find(usable.begin(), usable.end(), name) == usable.end();
+						});
+					changed = EditChoice(label, names.empty() ? usable : names, value);
 					break;
 				}
 				if (!field.hints.choices.empty())

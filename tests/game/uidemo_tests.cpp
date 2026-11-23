@@ -503,3 +503,23 @@ TEST_CASE("FindClip knows the sprite names of sprites.sheet and the older spelli
 	CHECK(game::FindClip(clips, "player_death") == &clips.playerDeath);
 	CHECK(game::FindClip(clips, "nope") == nullptr);
 }
+
+TEST_CASE("Every ClipName choice is a name FindClip resolves", "[game][uidemo][scene]")
+{
+	engine::ecs::TypeRegistry types;
+	game::RegisterUiDemoComponents(types);
+	game::SpriteClips clips;
+	bool found = false;
+	for (std::size_t i = 0; i < types.Count(); ++i)
+	{
+		for (const engine::ecs::FieldInfo& field : types.At(i).Fields())
+		{
+			if (field.hints.assetKind != engine::ecs::AssetKind::Sprite) continue;
+			found = true;
+			CHECK_FALSE(field.hints.choices.empty());
+			for (const std::string& name : field.hints.choices)
+				CHECK(game::FindClip(clips, name) != nullptr);
+		}
+	}
+	CHECK(found);
+}

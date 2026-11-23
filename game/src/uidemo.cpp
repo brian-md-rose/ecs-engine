@@ -246,7 +246,10 @@ namespace game
 		types.Register<ClipName>("ClipName")
 		    .Field("value", &ClipName::value,
 		           {.tooltip = "which picture of the atlas to draw (a sprite of sprites.sheet)",
-		            .choices = {"panel", "button", "button_hover", "button_pressed", "cursor"},
+		            // The names FindClip knows; the asset list is cut down to these.
+		            .choices = {"panel", "button", "button_hover", "button_pressed", "cursor", "player_right",
+		                        "player_down", "player_up", "player_death", "frightened", "frightened_flash",
+		                        "returning", "pellet", "power_pellet", "door"},
 		            .assetKind = engine::ecs::AssetKind::Sprite});
 	}
 
@@ -273,7 +276,10 @@ namespace game
 
 	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips)
 	{
-		const auto find = [&clips](const std::string& name) { return FindClip(clips, name); };
+		const auto find = [&clips](const std::string& name)
+		{
+			return FindClip(clips, name);
+		};
 		registry.Each<ClipName, engine::ui::NinePatch>(
 		    [&](engine::ecs::Entity, const ClipName& clip, engine::ui::NinePatch& patch)
 		{
