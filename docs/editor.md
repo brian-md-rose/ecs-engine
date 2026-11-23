@@ -83,7 +83,7 @@ ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out
 
 ## Shortcuts
 
-In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+C copy and Ctrl+V paste the selected entities (each with what is under it, as scene text on the clipboard, so a paste can go into another scene or be saved in a text file; it fails with a message if a copied entity refers to one that was not copied), Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop, F6 Restart (stops and plays again from the edit world as it is). While playing only F5 and F6 work. None of them act while a text box has focus, a drag is in progress or a dialog is open.
+In the standalone editor: Ctrl+S Save, Ctrl+Shift+S Save as, Ctrl+N New, Ctrl+Z Undo, Ctrl+Y (or Ctrl+Shift+Z) Redo, Ctrl+C copy and Ctrl+V paste the selected entities (each with what is under it, as scene text on the clipboard, so a paste can go into another scene or be saved in a text file; it fails with a message if a copied entity refers to one that was not copied), Ctrl+D duplicate the selected entity, Delete delete it and everything under it, F5 Play or Stop, F6 Restart (stops and plays again from the edit world as it is), F7 Pause or Resume Play, F8 Step (one 1/60 s update while paused). While playing only F5 to F8 work. The Play menu items also have Speed (0.25x to 4x) and Mute (the game gets no audio device). None of them act while a text box has focus, a drag is in progress or a dialog is open.
 
 ## Painting a grid scene
 

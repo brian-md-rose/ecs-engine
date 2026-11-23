@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <optional>
 #include <system_error>
@@ -22,6 +23,7 @@
 
 namespace engine::editor
 {
+	constexpr double kPlayStep = 1.0 / 60.0; // what one Step advances the game by
 	namespace
 	{
 		constexpr int kFramesBetweenDirtyChecks = 20;
@@ -504,6 +506,8 @@ namespace engine::editor
 	bool EditorGame::StartPlay()
 	{
 		if (play) return true;
+		playPaused = false;
+		playSteps = 0;
 		CheckDirty(); // so the prompt on New and Open while playing knows about edits made before Play
 		ecs::Issues issues;
 		core::JsonValue snapshot = ecs::SaveScene(edit->world.registry, EnsureTypes(edit->world), issues);
@@ -566,7 +570,15 @@ namespace engine::editor
 		mouseFed = false;
 		input::Input gameInput = input;
 		gameInput.mouse = playMouse.mouse;
-		play->Update(dt, gameInput, audio);
+		// Paused: nothing runs, except one fixed step per Step.
+		double stepDt = dt * static_cast<double>(playSpeed);
+		if (playPaused)
+		{
+			if (playSteps <= 0) return;
+			--playSteps;
+			stepDt = kPlayStep;
+		}
+		play->Update(stepDt, gameInput, playMuted ? nullptr : audio);
 		playMouse.mouse.EndUpdate();
 		if (play->WantsToQuit())
 		{
@@ -984,6 +996,8 @@ namespace engine::editor
 		if (play)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_F6, false)) (void)RestartPlay();
+			if (ImGui::IsKeyPressed(ImGuiKey_F7, false)) playPaused = !playPaused;
+			if (ImGui::IsKeyPressed(ImGuiKey_F8, true)) StepPlay();
 			return; // the rest edit the scene
 		}
 
@@ -1143,6 +1157,22 @@ namespace engine::editor
 		}
 
 		if (play && ImGui::MenuItem("Restart", "F6")) (void)RestartPlay();
+		if (play)
+		{
+			if (ImGui::MenuItem(playPaused ? "Resume" : "Pause", "F7")) playPaused = !playPaused;
+			if (ImGui::MenuItem("Step", "F8")) StepPlay();
+			if (ImGui::BeginMenu("Speed"))
+			{
+				for (const float option : {0.25F, 0.5F, 1.0F, 2.0F, 4.0F})
+				{
+					char label[16];
+					(void)std::snprintf(label, sizeof label, "%gx", static_cast<double>(option));
+					if (ImGui::MenuItem(label, nullptr, playSpeed == option)) SetPlaySpeed(option);
+				}
+				ImGui::EndMenu();
+			}
+			ImGui::MenuItem("Mute", nullptr, &playMuted);
+		}
 		if (ImGui::MenuItem(play ? "Stop" : "Play", "F5"))
 		{
 			if (play)
@@ -1157,7 +1187,8 @@ namespace engine::editor
 
 		if (play)
 		{
-			ImGui::TextColored(ImVec4(1.0F, 0.8F, 0.3F, 1.0F), "PLAYING (changes are discarded on Stop)");
+			ImGui::TextColored(ImVec4(1.0F, 0.8F, 0.3F, 1.0F), playPaused ? "PAUSED (F7 resumes, F8 steps)"
+			                                                              : "PLAYING (changes are discarded on Stop)");
 		}
 		else
 		{

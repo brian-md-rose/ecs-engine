@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
@@ -581,4 +582,45 @@ TEST_CASE("Scene settings are part of the scene: dirty, saved, undone and played
 	// The play world gets a copy.
 	REQUIRE(game.StartPlay());
 	CHECK(settingsOf(*game.PlayWorld()) == saved);
+}
+
+TEST_CASE("Play can be paused, stepped and sped up, and a new Play starts running", "[editor][game]")
+{
+	engine::editor::Editor editor;
+	EditorGame game(editor, MakeConfig(TempFolder("playcontrols")));
+	REQUIRE(game.IsValid());
+	AddMover(game.EditWorld(), "a", 0); // moves 10 units per second
+	REQUIRE(game.StartPlay());
+	engine::input::Input input;
+	const auto positionX = [&]
+	{
+		const auto ids = game.PlayWorld()->registry.AllEntities();
+		REQUIRE(ids.size() == 1);
+		return game.PlayWorld()->registry.TryGetComponent<Transform>(ids[0])->position.x;
+	};
+
+	game.SetPlayPaused(true);
+	game.Update(1.0, input, nullptr);
+	CHECK(positionX() == 0.0F); // frozen
+
+	game.StepPlay();
+	game.Update(1.0, input, nullptr); // one step is 1/60 s whatever dt is
+	CHECK(positionX() == Catch::Approx(10.0F / 60.0F));
+	game.Update(1.0, input, nullptr);
+	CHECK(positionX() == Catch::Approx(10.0F / 60.0F)); // and only one
+
+	game.SetPlayPaused(false);
+	game.SetPlaySpeed(2.0F);
+	const float before = positionX();
+	game.Update(1.0, input, nullptr);
+	CHECK(positionX() - before == Catch::Approx(20.0F));
+
+	game.SetPlaySpeed(100.0F);
+	CHECK(game.PlaySpeed() == 8.0F); // kept in range
+
+	game.SetPlayPaused(true);
+	game.StopPlay();
+	REQUIRE(game.StartPlay());
+	CHECK_FALSE(game.PlayPaused()); // a new Play is not left frozen
+	game.StopPlay();
 }
