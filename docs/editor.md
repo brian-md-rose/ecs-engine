@@ -23,6 +23,10 @@ The **Assets** panel (Panels menu) lists what is under the game's assets folder 
 
 The **Console** panel (Panels menu, docked at the bottom by default) shows what the game and the engine log through `core::Log`, oldest first, coloured by level. The level buttons (with a count each) hide or show Debug, Info, Warn and Error; the filter box keeps the messages that contain the text, ignoring case. *Clear* forgets the messages, *Copy* puts the lines shown on the clipboard, and right-clicking a line offers *Copy line*. With *Auto-scroll* on, the view follows new messages until you scroll up. The panel keeps the last 2000 messages (`AddConsolePanel(editor, capacity)`); while a log session is running, anything below its minimum level (Info unless the game's `LogConfig` says otherwise) is never recorded. The standalone editor adds it itself; an overlay game calls `AddConsolePanel`. Any other viewer can read `core::LogHistory()`.
 
+## Profiler
+
+The **Profiler** panel (Panels menu) plots the frame time of the last 240 frames, with a second graph for the share spent in the game's Update (only while Play runs), and shows the FPS, average and worst frame time and the entity count. The table lists how many entities have each component in the world being shown (the played one while playing), biggest first; *Hide empty* drops components nobody has. *Pause* freezes the graph, *Clear* empties it. Frames are recorded only while the panel is open. "Other" is everything that is not Update: drawing, the editor UI and waiting for vsync. An overlay game calls `AddProfilerPanel(editor, worldFunction)`; the standalone editor adds it itself. There are no per-system timings yet.
+
 ## Hierarchy and Inspector
 
 `AddEntityPanels(editor, world)` (`editor/entitypanels.hpp`) adds both panels for a `ecs::World`. The world needs a `TypeRegistry` resource with the components registered (see [scenes](scenes.md)); only registered components are shown.

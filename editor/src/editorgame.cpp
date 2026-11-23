@@ -21,6 +21,7 @@
 #include "editor/assetbrowser.hpp"
 #include "editor/consolepanel.hpp"
 #include "editor/entityops.hpp"
+#include "editor/profilerpanel.hpp"
 #include "graphics/renderer2d.hpp"
 
 namespace engine::editor
@@ -93,6 +94,10 @@ namespace engine::editor
 			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails);
 		}
 		AddConsolePanel(editor);
+		profiler = AddProfilerPanel(editor, [this]() -> ecs::World&
+		{
+			return CurrentWorld();
+		});
 		if (config.spriteRect)
 			panels->spriteRect = [this](const std::string& name)
 			{
@@ -617,7 +622,11 @@ namespace engine::editor
 			--playSteps;
 			stepDt = kPlayStep;
 		}
+		const auto updateStart = std::chrono::steady_clock::now();
 		play->Update(stepDt, gameInput, playMuted ? nullptr : audio);
+		if (profiler)
+			profiler->AddUpdateMs(
+			    std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - updateStart).count());
 		playMouse.mouse.EndUpdate();
 		if (play->WantsToQuit())
 		{
