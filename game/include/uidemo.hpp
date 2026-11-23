@@ -73,6 +73,10 @@ namespace game
 	// (RegisterGameComponents calls it).
 	void RegisterUiDemoComponents(engine::ecs::TypeRegistry& types);
 
+	// The clip a sprite name of sprites.sheet stands for ("panel", "button_hover", "pellet"), or null. The enemies
+	// and wall pieces are not (they depend on the personality or the neighbours). The older camel case spellings of the UI pictures still work.
+	[[nodiscard]] const engine::graphics::Clip* FindClip(const SpriteClips& clips, const std::string& name);
+
 	// Sets the source rectangle of every NinePatch and Sprite that has a ClipName from the clip of that name.
 	// An unknown name is left as it is (empty, which draws nothing).
 	void ResolveClipNames(engine::ecs::Registry& registry, const SpriteClips& clips);

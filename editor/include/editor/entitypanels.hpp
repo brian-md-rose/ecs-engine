@@ -8,6 +8,7 @@
 #include "ecs/entity.hpp"
 #include "ecs/typeregistry.hpp"
 #include "ecs/world.hpp"
+#include "editor/assetcatalog.hpp"
 #include "editor/editor.hpp"
 
 namespace engine::editor
@@ -30,6 +31,9 @@ namespace engine::editor
 		std::string filter;
 		std::string fieldFilter; // the Inspector's search: shows only components and fields whose name contains it
 		std::string status;      // the last thing that was refused
+		// What the Inspector lists for a field with FieldHints::assetKind. Null (the default): such a field shows its
+		// `choices`, or a text box.
+		std::shared_ptr<const AssetCatalog> assets;
 
 		// The whole selection: the primary first, then the others. Empty if nothing is selected.
 		[[nodiscard]] std::vector<ecs::Entity> All() const;
