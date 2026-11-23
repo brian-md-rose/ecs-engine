@@ -65,6 +65,8 @@ namespace engine::editor
 			std::string status;
 			bool statusIsError = false;
 			bool loaded = false;
+			std::vector<std::string> problems; // cached: BuildProblems touches the disk
+			double problemsChecked = -1.0;     // ImGui time of the last check; also redone after any edit
 		};
 
 		void Rescan(PanelState& state)
@@ -128,7 +130,12 @@ namespace engine::editor
 
 			ImGui::TextUnformatted("Scenes");
 			ImGui::SameLine();
-			if (ImGui::SmallButton("Rescan")) Rescan(state);
+			bool changed = false;
+			if (ImGui::SmallButton("Rescan"))
+			{
+				Rescan(state);
+				changed = true;
+			}
 			ImGui::SameLine();
 			if (ImGui::SmallButton("All")) state.settings.scenes = state.available;
 			ImGui::SameLine();
@@ -136,8 +143,8 @@ namespace engine::editor
 			{
 				state.settings.scenes.clear();
 				state.settings.startupScene.clear();
+				changed = true;
 			}
-			bool changed = false;
 			if (ImGui::BeginChild("buildscenes", ImVec2(0.0F, ImGui::GetTextLineHeightWithSpacing() * 8.0F),
 			                      ImGuiChildFlags_Borders))
 			{
@@ -179,7 +186,13 @@ namespace engine::editor
 			changed |= ImGui::InputText("Output folder", &state.settings.outputFolder);
 			if (changed) Save(state);
 
-			const std::vector<std::string> problems = BuildProblems(state.settings, state.available);
+			const double now = ImGui::GetTime();
+			if (changed || state.problemsChecked < 0.0 || now - state.problemsChecked > 1.0)
+			{
+				state.problems = BuildProblems(state.settings, state.available);
+				state.problemsChecked = now;
+			}
+			const std::vector<std::string>& problems = state.problems;
 			for (const std::string& problem : problems)
 				ImGui::TextColored(ImVec4(1.0F, 0.8F, 0.3F, 1.0F), "%s", problem.c_str());
 
@@ -193,6 +206,7 @@ namespace engine::editor
 				Save(state);
 				const PackageResult result = PackageGame(state.config, state.settings);
 				Report(state, result);
+				state.problemsChecked = -1.0;
 				if (packageAndRun) Launch(state, result);
 			}
 			if (!state.status.empty())
