@@ -302,8 +302,8 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 	// Centred text is drawn around its Transform, so its rectangle starts to the left of it.
 	const Entity centred = registry.Create();
 	registry.Add<Transform>(centred, Transform{{100, 50}});
-	registry.Add<engine::graphics::Text>(centred,
-	                                     engine::graphics::Text{.value = "AB", .align = engine::graphics::Align::Centre});
+	registry.Add<engine::graphics::Text>(
+	    centred, engine::graphics::Text{.value = "AB", .align = engine::graphics::Align::Centre});
 	CHECK(EntityScreenRect(registry, centred, camera)->x == 94.0F);
 
 	const Entity panel = registry.Create();
@@ -387,4 +387,47 @@ TEST_CASE("MovablePosition is the LocalTransform of a child and the Transform of
 	registry.Add<engine::graphics::ScreenSpace>(plain);
 	CHECK(UnitsPerPixel(registry, plain, camera) == 1.0F);
 	CHECK_FALSE(MovablePosition(registry, registry.Create()).has_value());
+}
+
+TEST_CASE("The translate gizmo picks its handles and lets only an axis through", "[editor][viewport][gizmo]")
+{
+	using engine::editor::GizmoHandle;
+	using engine::editor::GizmoMove;
+	using engine::editor::PickGizmo;
+	const Position pivot{100, 100};
+
+	CHECK(PickGizmo(pivot, {102, 98}) == GizmoHandle::Free);
+	CHECK(PickGizmo(pivot, {140, 101}) == GizmoHandle::X);
+	CHECK(PickGizmo(pivot, {99, 140}) == GizmoHandle::Y);
+	CHECK(PickGizmo(pivot, {60, 100}) == GizmoHandle::None); // the arrows point right and down only
+	CHECK(PickGizmo(pivot, {140, 120}) == GizmoHandle::None);
+	CHECK(PickGizmo(pivot, {300, 100}) == GizmoHandle::None);
+
+	CHECK(GizmoMove(GizmoHandle::X, {5, 7}).y == 0.0F);
+	CHECK(GizmoMove(GizmoHandle::X, {5, 7}).x == 5.0F);
+	CHECK(GizmoMove(GizmoHandle::Y, {5, 7}).x == 0.0F);
+	CHECK(GizmoMove(GizmoHandle::Y, {5, 7}).y == 7.0F);
+	CHECK(GizmoMove(GizmoHandle::Free, {5, 7}).x == 5.0F);
+	CHECK(GizmoMove(GizmoHandle::None, {5, 7}).y == 0.0F);
+}
+
+TEST_CASE("The gizmo sits at the mean middle of what is drawn", "[editor][viewport][gizmo]")
+{
+	Registry registry;
+	const Camera camera = MakeCamera();
+	const Entity a = AddBox(registry, 0, 0, 10);
+	const Entity b = AddBox(registry, 20, 40, 10);
+	const Entity bare = registry.Create();
+
+	const auto one = engine::editor::SelectionCentre(registry, {a}, camera);
+	REQUIRE(one.has_value());
+	const auto both = engine::editor::SelectionCentre(registry, {a, b, bare}, camera);
+	REQUIRE(both.has_value());
+	const auto ra = EntityScreenRect(registry, a, camera);
+	const auto rb = EntityScreenRect(registry, b, camera);
+	REQUIRE(ra.has_value());
+	REQUIRE(rb.has_value());
+	CHECK(both->x == ((ra->x + ra->width / 2.0F) + (rb->x + rb->width / 2.0F)) / 2.0F);
+	CHECK(both->y == ((ra->y + ra->height / 2.0F) + (rb->y + rb->height / 2.0F)) / 2.0F);
+	CHECK_FALSE(engine::editor::SelectionCentre(registry, {bare}, camera).has_value());
 }

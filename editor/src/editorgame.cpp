@@ -849,11 +849,34 @@ namespace engine::editor
 
 		ecs::World& world = CurrentWorld();
 		const graphics::Camera camera = CurrentCamera();
+		// The translate gizmo sits at the middle of the selection (window pixels). A press on one of its handles moves
+		// the selection along that axis, or freely from the square; it goes first, so it wins over picking.
+		const auto gizmoPivot = [&]() -> std::optional<graphics::Position>
+		{
+			if (play || painting) return std::nullopt;
+			const auto centre = SelectionCentre(world.registry, SelectionRoots(world.registry, *panels), camera);
+			if (!centre) return std::nullopt;
+			return view.ToWindow(*centre, origin);
+		};
+		gizmoHover = GizmoHandle::None;
+		if (const auto pivot = gizmoPivot(); pivot && hovered)
+			gizmoHover = PickGizmo(*pivot, {io.MousePos.x, io.MousePos.y});
+		if (!play && !painting && gizmoHover != GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		{
+			boxStart.reset();
+			gizmoHandle = gizmoHover;
+			movingSelected = true;
+			collapseTo = ecs::Entity::Null;
+			dragged.clear();
+			for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
+				if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
+			dragPixels = {};
+		}
 		// Press selects what is under the pointer; dragging from there moves it (and the rest of the selection it is
 		// part of), so no separate handle is needed. Ctrl or Shift adds to the selection or takes the entity out of it.
 		// A press on empty space starts a box: what it covers when released is selected (added to the selection with
 		// Ctrl or Shift).
-		if (!play && !painting && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (!play && !painting && gizmoHover == GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			const ecs::Entity picked = PickEntity(world.registry, camera, picture);
@@ -888,6 +911,7 @@ namespace engine::editor
 				panels->Select(collapseTo);
 			collapseTo = ecs::Entity::Null;
 			movingSelected = false;
+			gizmoHandle = GizmoHandle::None;
 		}
 		// A selection made elsewhere (the Hierarchy) that is off-screen is scrolled into view, so it can be seen. While
 		// playing the selection is only noted, so Stop does not scroll to a change made during Play.
@@ -905,15 +929,21 @@ namespace engine::editor
 		{
 			// The pointer's movement over the picture, in the picture's pixels. Each entity moves by that in its own
 			// units. Shift keeps one axis; the grid applies when snapping is on, and Ctrl flips that for the drag.
-			dragPixels.x += io.MouseDelta.x / view.zoom;
-			dragPixels.y += io.MouseDelta.y / view.zoom;
+			// A gizmo arrow lets only its own axis through, and the other axis stays exactly where it began.
+			const graphics::Position step = gizmoHandle == GizmoHandle::None
+			                                    ? graphics::Position{io.MouseDelta.x, io.MouseDelta.y}
+			                                    : GizmoMove(gizmoHandle, {io.MouseDelta.x, io.MouseDelta.y});
+			dragPixels.x += step.x / view.zoom;
+			dragPixels.y += step.y / view.zoom;
 			const bool snapping = snapToGrid != io.KeyCtrl;
 			for (const DraggedEntity& item : dragged)
 			{
 				const float units = UnitsPerPixel(world.registry, item.entity, camera);
-				(void)SetMovablePosition(world.registry, item.entity,
-				                         DragTarget(item.start, {dragPixels.x * units, dragPixels.y * units},
-				                                    io.KeyShift, snapping ? static_cast<float>(snapSize) : 0.0F));
+				graphics::Position moveTo = DragTarget(item.start, {dragPixels.x * units, dragPixels.y * units},
+				                                       io.KeyShift, snapping ? static_cast<float>(snapSize) : 0.0F);
+				if (gizmoHandle == GizmoHandle::X) moveTo.y = item.start.y;
+				if (gizmoHandle == GizmoHandle::Y) moveTo.x = item.start.x;
+				(void)SetMovablePosition(world.registry, item.entity, moveTo);
 			}
 		}
 		if (boxStart)
@@ -970,6 +1000,30 @@ namespace engine::editor
 				    entity == panels->selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(255, 160, 40, 150);
 				draw->AddRect(ImVec2(a.x - 1, a.y - 1), ImVec2(b.x + 1, b.y + 1), color, 0.0F, 2.0F);
 			}
+		}
+		if (const auto pivot = gizmoPivot())
+		{
+			const GizmoShape shape;
+			const GizmoHandle lit = gizmoHandle != GizmoHandle::None ? gizmoHandle : gizmoHover;
+			const auto tint = [&](GizmoHandle handle, ImU32 plain, ImU32 bright)
+			{
+				return handle == lit ? bright : plain;
+			};
+			const ImU32 red = tint(GizmoHandle::X, IM_COL32(220, 60, 60, 255), IM_COL32(255, 150, 120, 255));
+			const ImU32 green = tint(GizmoHandle::Y, IM_COL32(70, 190, 70, 255), IM_COL32(150, 255, 130, 255));
+			const ImU32 white = tint(GizmoHandle::Free, IM_COL32(230, 230, 230, 255), IM_COL32(255, 230, 90, 255));
+			const float tip = shape.arrowLength;
+			const ImVec2 at(pivot->x, pivot->y);
+			draw->AddLine(at, ImVec2(at.x + tip, at.y), red, 2.0F);
+			draw->AddTriangleFilled(ImVec2(at.x + tip + 8, at.y), ImVec2(at.x + tip - 4, at.y - 5),
+			                        ImVec2(at.x + tip - 4, at.y + 5), red);
+			draw->AddLine(at, ImVec2(at.x, at.y + tip), green, 2.0F);
+			draw->AddTriangleFilled(ImVec2(at.x, at.y + tip + 8), ImVec2(at.x - 5, at.y + tip - 4),
+			                        ImVec2(at.x + 5, at.y + tip - 4), green);
+			draw->AddRectFilled(ImVec2(at.x - shape.centre, at.y - shape.centre),
+			                    ImVec2(at.x + shape.centre, at.y + shape.centre), IM_COL32(20, 20, 24, 200));
+			draw->AddRect(ImVec2(at.x - shape.centre, at.y - shape.centre),
+			              ImVec2(at.x + shape.centre, at.y + shape.centre), white, 0.0F, 2.0F);
 		}
 		draw->PopClipRect();
 	}
