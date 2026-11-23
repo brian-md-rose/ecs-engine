@@ -74,13 +74,15 @@ namespace engine::editor
 	// The manifest text with line `line` (1-based, a sprite or region line) rewritten to use settings; the keyword,
 	// name and PNG stay, and so do all other lines. nullopt if that line is not a sprite or region line.
 	[[nodiscard]] std::optional<std::string> ApplySpriteSettings(std::string_view text, std::size_t line,
+	                                                             const std::string& name,
 	                                                             const SpriteSettings& settings);
 
 	// Writes settings into line `line` of the manifest file. Nothing is written, and the reason is returned, if the
 	// line is not a sprite line or the edited manifest would not load (a rectangle outside the image, a frame size that
-	// does not match the PNG). An empty string means it worked.
+	// does not match the PNG). An empty string means it worked. The file is replaced in one step, so a failed write
+	// leaves it as it was.
 	[[nodiscard]] std::string SaveSpriteSettings(const std::filesystem::path& file, std::size_t line,
-	                                             const SpriteSettings& settings);
+	                                             const std::string& name, const SpriteSettings& settings);
 
 	[[nodiscard]] const char* AssetKindName(ecs::AssetKind kind) noexcept;
 } // namespace engine::editor

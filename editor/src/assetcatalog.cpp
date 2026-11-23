@@ -236,7 +236,7 @@ namespace engine::editor
 		return "";
 	}
 
-	std::optional<std::string> ApplySpriteSettings(std::string_view text, std::size_t line,
+	std::optional<std::string> ApplySpriteSettings(std::string_view text, std::size_t line, const std::string& name,
 	                                               const SpriteSettings& settings)
 	{
 		std::size_t begin = 0;
@@ -254,7 +254,7 @@ namespace engine::editor
 
 		const std::vector<core::Word> words = core::SplitWords(old);
 		const bool isRegion = !words.empty() && words[0].text == "region";
-		if (words.size() < 2 || (!isRegion && words[0].text != "sprite")) return std::nullopt;
+		if (words.size() < 2 || (!isRegion && words[0].text != "sprite") || words[1].text != name) return std::nullopt;
 		const std::size_t keep = isRegion ? 2 : 3; // keyword and name, and the PNG of a sprite
 		if (words.size() < keep + (isRegion ? 4 : 2)) return std::nullopt;
 
@@ -273,18 +273,31 @@ namespace engine::editor
 		return result;
 	}
 
-	std::string SaveSpriteSettings(const std::filesystem::path& file, std::size_t line, const SpriteSettings& settings)
+	std::string SaveSpriteSettings(const std::filesystem::path& file, std::size_t line, const std::string& name,
+	                               const SpriteSettings& settings)
 	{
 		const auto text = core::ReadTextFile(file);
 		if (!text) return "can't read " + core::PathText(file);
-		const auto edited = ApplySpriteSettings(*text, line, settings);
-		if (!edited) return "line " + std::to_string(line) + " is not a sprite or region line any more; Rescan";
+		const auto edited = ApplySpriteSettings(*text, line, name, settings);
+		if (!edited) return "line " + std::to_string(line) + " is not '" + name + "' any more; Rescan";
 		const graphics::PixelSheetResult check = graphics::ParseSheetManifest(*edited, file.parent_path());
 		if (!check.sheet) return "line " + std::to_string(check.error.line) + ": " + check.error.message;
-		std::ofstream out(file, std::ios::binary | std::ios::trunc);
-		out << *edited;
-		out.close();
-		if (!out) return "can't write " + core::PathText(file);
+		// Written beside the manifest and moved over it, so a failed write leaves the manifest as it was.
+		std::filesystem::path temp = file;
+		temp += ".tmp";
+		{
+			std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+			out << *edited;
+			out.close();
+			if (!out) return "can't write " + core::PathText(temp);
+		}
+		std::error_code error;
+		std::filesystem::rename(temp, file, error);
+		if (error)
+		{
+			std::filesystem::remove(temp, error);
+			return "can't replace " + core::PathText(file);
+		}
 		return {};
 	}
 } // namespace engine::editor

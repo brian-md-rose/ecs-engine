@@ -34,8 +34,11 @@ namespace engine::editor
 			std::filesystem::path selectedFile; // tells apart two sheets that name a sprite the same
 			bool grid = false;                  // sprites as a grid of pictures instead of a list
 			float tileSize = 64.0F;
-			SpriteSettings draft; // the import settings being edited
-			std::string draftKey; // which sprite (and numbers) the draft was taken from
+			SpriteSettings draft;            // the import settings being edited
+			std::filesystem::path draftFile; // which sprite, and the numbers, the draft was taken from
+			std::size_t draftLine = 0;
+			std::string draftName;
+			SpriteSettings draftBase;
 			std::string saveError;
 		};
 
@@ -144,39 +147,39 @@ namespace engine::editor
 
 			// Import settings: the numbers on the sprite's line of the manifest.
 			const SpriteSettings& current = entry->settings;
-			const std::string key = core::PathText(entry->file) + ':' + std::to_string(entry->line) + ':' +
-			                        entry->name + ':' + entry->detail + std::to_string(current.x) + ',' +
-			                        std::to_string(current.y);
-			if (state.draftKey != key)
+			if (state.draftFile != entry->file || state.draftLine != entry->line || state.draftName != entry->name ||
+			    !(state.draftBase == current))
 			{
 				state.draft = current;
-				state.draftKey = key;
+				state.draftFile = entry->file;
+				state.draftLine = entry->line;
+				state.draftName = entry->name;
+				state.draftBase = current;
 				state.saveError.clear();
 			}
 			ImGui::SeparatorText("Import settings");
 			if (entry->region)
 			{
 				ImGui::SetNextItemWidth(70.0F);
-				ImGui::DragInt("x", &state.draft.x, 0.2F, 0, 1024);
+				ImGui::DragInt("x", &state.draft.x, 0.2F, 0, 100000);
 				ImGui::SameLine();
 				ImGui::SetNextItemWidth(70.0F);
-				ImGui::DragInt("y", &state.draft.y, 0.2F, 0, 1024);
+				ImGui::DragInt("y", &state.draft.y, 0.2F, 0, 100000);
 			}
 			ImGui::SetNextItemWidth(70.0F);
-			ImGui::DragInt("cell w", &state.draft.frameWidth, 0.2F, 1, 1024);
+			ImGui::DragInt("cell w", &state.draft.frameWidth, 0.2F, 1, 100000);
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(70.0F);
-			ImGui::DragInt("cell h", &state.draft.frameHeight, 0.2F, 1, 1024);
+			ImGui::DragInt("cell h", &state.draft.frameHeight, 0.2F, 1, 100000);
 			ImGui::SetNextItemWidth(70.0F);
-			ImGui::DragInt("frames", &state.draft.frames, 0.1F, 1, 1024);
+			ImGui::DragInt("frames", &state.draft.frames, 0.1F, 1, 100000);
 			const bool changed = !(state.draft == current);
 			if (!changed) ImGui::BeginDisabled();
 			if (ImGui::Button("Apply"))
 			{
-				state.saveError = SaveSpriteSettings(entry->file, entry->line, state.draft);
+				state.saveError = SaveSpriteSettings(entry->file, entry->line, entry->name, state.draft);
 				if (state.saveError.empty())
 				{
-					state.draftKey.clear();
 					if (thumbnails != nullptr) thumbnails->Forget();
 					catalog.Rescan(); // entry is not valid after this
 					return;

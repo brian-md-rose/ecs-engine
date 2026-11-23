@@ -86,7 +86,8 @@ namespace engine::editor
 		{
 			return CurrentWorld();
 		});
-		if (!config.assetFolder.empty()) {
+		if (!config.assetFolder.empty())
+		{
 			thumbnails = std::make_shared<AssetThumbnails>();
 			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails);
 		}

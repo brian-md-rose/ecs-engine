@@ -145,18 +145,20 @@ TEST_CASE("ApplySpriteSettings rewrites one line and keeps the rest", "[editor][
 	using engine::editor::SpriteSettings;
 	const std::string text = "# c\nsprite a sprites/a.png 8 8\r\n  region b 1 2 3 4 2\nimage x.png\n";
 
-	const auto sprite = ApplySpriteSettings(text, 2, SpriteSettings{.frameWidth = 4, .frameHeight = 5, .frames = 3});
+	const auto sprite =
+	    ApplySpriteSettings(text, 2, "a", SpriteSettings{.frameWidth = 4, .frameHeight = 5, .frames = 3});
 	REQUIRE(sprite);
 	CHECK(*sprite == "# c\nsprite a sprites/a.png 4 5 3\r\n  region b 1 2 3 4 2\nimage x.png\n");
 
-	const auto region =
-	    ApplySpriteSettings(text, 3, SpriteSettings{.x = 9, .y = 8, .frameWidth = 7, .frameHeight = 6, .frames = 1});
+	const auto region = ApplySpriteSettings(
+	    text, 3, "b", SpriteSettings{.x = 9, .y = 8, .frameWidth = 7, .frameHeight = 6, .frames = 1});
 	REQUIRE(region);
 	CHECK(*region == "# c\nsprite a sprites/a.png 8 8\r\n  region b 9 8 7 6 1\nimage x.png\n");
 
-	CHECK_FALSE(ApplySpriteSettings(text, 1, SpriteSettings{})); // a comment
-	CHECK_FALSE(ApplySpriteSettings(text, 4, SpriteSettings{})); // an image line
-	CHECK_FALSE(ApplySpriteSettings(text, 9, SpriteSettings{})); // past the end
+	CHECK_FALSE(ApplySpriteSettings(text, 1, "a", SpriteSettings{}));     // a comment
+	CHECK_FALSE(ApplySpriteSettings(text, 4, "x", SpriteSettings{}));     // an image line
+	CHECK_FALSE(ApplySpriteSettings(text, 2, "b", SpriteSettings{}));     // another sprite's line
+	CHECK_FALSE(ApplySpriteSettings(text, 9, "NAME9", SpriteSettings{})); // past the end
 }
 
 TEST_CASE("SaveSpriteSettings writes a manifest that loads and refuses one that does not", "[editor][assets]")
@@ -169,13 +171,16 @@ TEST_CASE("SaveSpriteSettings writes a manifest that loads and refuses one that 
 	Write(sheet, "sprite strip strip.png 8 8 2\n");
 
 	// A different cut of the same 16 x 8 picture is fine.
-	CHECK(SaveSpriteSettings(sheet, 1, SpriteSettings{.frameWidth = 4, .frameHeight = 8, .frames = 4}).empty());
+	CHECK(
+	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 4, .frameHeight = 8, .frames = 4}).empty());
 	CHECK(AssetCatalog(folder).Entries(AssetKind::Sprite)[0].settings.frames == 4);
 
 	// One that does not match the picture is refused and the file stays as it was.
 	const std::string reason =
-	    SaveSpriteSettings(sheet, 1, SpriteSettings{.frameWidth = 8, .frameHeight = 8, .frames = 5});
+	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 8, .frameHeight = 8, .frames = 5});
 	CHECK_FALSE(reason.empty());
 	CHECK(AssetCatalog(folder).Entries(AssetKind::Sprite)[0].settings.frames == 4);
-	CHECK_FALSE(SaveSpriteSettings(sheet, 7, SpriteSettings{}).empty());
+	CHECK_FALSE(SaveSpriteSettings(sheet, 1, "other", SpriteSettings{.frameWidth = 8, .frameHeight = 8})
+	                .empty()); // a different sprite is on that line now
+	CHECK_FALSE(SaveSpriteSettings(sheet, 7, "strip", SpriteSettings{}).empty());
 }
