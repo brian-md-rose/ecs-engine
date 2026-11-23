@@ -96,6 +96,15 @@ namespace engine::editor
 				return a.name < b.name;
 			});
 		}
+
+		// The names of sorted entries, each once (two sheets may name a sprite the same).
+		std::vector<std::string> UniqueNames(const std::vector<AssetEntry>& entries)
+		{
+			std::vector<std::string> names;
+			for (const AssetEntry& entry : entries)
+				if (names.empty() || names.back() != entry.name) names.push_back(entry.name);
+			return names;
+		}
 	} // namespace
 
 	AssetCatalog::AssetCatalog(std::filesystem::path assetsFolder) : folder(std::move(assetsFolder))
@@ -108,6 +117,9 @@ namespace engine::editor
 		sprites.clear();
 		fonts.clear();
 		sounds.clear();
+		spriteNames.clear();
+		fontNames.clear();
+		soundNames.clear();
 		std::error_code error;
 		if (folder.empty() || !std::filesystem::is_directory(folder, error)) return;
 		for (std::filesystem::recursive_directory_iterator it(folder, error), end; !error && it != end;
@@ -128,6 +140,9 @@ namespace engine::editor
 		SortByName(sprites);
 		SortByName(fonts);
 		SortByName(sounds);
+		spriteNames = UniqueNames(sprites);
+		fontNames = UniqueNames(fonts);
+		soundNames = UniqueNames(sounds);
 	}
 
 	const std::vector<AssetEntry>& AssetCatalog::Entries(AssetKind kind) const noexcept
@@ -146,12 +161,21 @@ namespace engine::editor
 		return kNone;
 	}
 
-	std::vector<std::string> AssetCatalog::Names(AssetKind kind) const
+	const std::vector<std::string>& AssetCatalog::Names(AssetKind kind) const noexcept
 	{
-		std::vector<std::string> names;
-		for (const AssetEntry& entry : Entries(kind))
-			names.push_back(entry.name);
-		return names;
+		static const std::vector<std::string> none;
+		switch (kind)
+		{
+		case AssetKind::Sprite:
+			return spriteNames;
+		case AssetKind::Font:
+			return fontNames;
+		case AssetKind::Sound:
+			return soundNames;
+		case AssetKind::None:
+			break;
+		}
+		return none;
 	}
 
 	bool AssetCatalog::Contains(AssetKind kind, const std::string& name) const

@@ -341,7 +341,8 @@ namespace engine::editor
 			switch (field.kind)
 			{
 			case FieldKind::String:
-				if (field.hints.assetKind != ecs::AssetKind::None && assets != nullptr)
+				if (field.hints.assetKind != ecs::AssetKind::None && assets != nullptr &&
+				    !assets->Names(field.hints.assetKind).empty())
 				{
 					// The files found under the assets folder; the Assets panel lists the same ones.
 					changed = EditChoice(label, assets->Names(field.hints.assetKind), value);

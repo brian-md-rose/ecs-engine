@@ -38,11 +38,15 @@ namespace engine::editor
 
 		[[nodiscard]] const std::filesystem::path& Folder() const noexcept { return folder; }
 		[[nodiscard]] const std::vector<AssetEntry>& Entries(ecs::AssetKind kind) const noexcept;
-		[[nodiscard]] std::vector<std::string> Names(ecs::AssetKind kind) const;
+		// The names of Entries(kind), without repeats, kept from the last Rescan (cheap to call every frame).
+		[[nodiscard]] const std::vector<std::string>& Names(ecs::AssetKind kind) const noexcept;
 		[[nodiscard]] bool Contains(ecs::AssetKind kind, const std::string& name) const;
 
 	private:
 		std::filesystem::path folder;
+		std::vector<std::string> spriteNames;
+		std::vector<std::string> fontNames;
+		std::vector<std::string> soundNames;
 		std::vector<AssetEntry> sprites;
 		std::vector<AssetEntry> fonts;
 		std::vector<AssetEntry> sounds;

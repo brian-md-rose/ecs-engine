@@ -35,6 +35,7 @@ TEST_CASE("The catalog lists sprites, fonts and sounds by kind", "[editor][asset
 	                                            "sprite door sprites/door.png 8 8\n");
 	Write(folder / "sprites" / "font.sheet", "image font.png\nregion A 0 0 5 7 1\nregion B 6 0 5 7 1\n");
 	Write(folder / "sprites" / "icons.sheet", "image icons.png\nregion heart 0 0 9 9\n");
+	Write(folder / "sprites" / "more.sheet", "sprite door sprites/door2.png 8 8\n");
 	Write(folder / "music" / "theme.OGG", "x");
 	Write(folder / "jump.wav", "x");
 	Write(folder / "notes.txt", "x");
@@ -44,8 +45,9 @@ TEST_CASE("The catalog lists sprites, fonts and sounds by kind", "[editor][asset
 	CHECK(catalog.Names(AssetKind::Sprite) == std::vector<std::string>{"door", "heart", "player"});
 	CHECK(catalog.Names(AssetKind::Font) == std::vector<std::string>{"font"});
 	CHECK(catalog.Names(AssetKind::Sound) == std::vector<std::string>{"jump.wav", "music/theme.OGG"});
-	REQUIRE(catalog.Entries(AssetKind::Sprite).size() == 3);
-	CHECK(catalog.Entries(AssetKind::Sprite)[2].detail == "8 x 8, 2 frames");
+	CHECK(catalog.Entries(AssetKind::Sprite).size() == 4); // both doors are listed, the pick-list names it once
+	REQUIRE(catalog.Entries(AssetKind::Sprite).size() == 4);
+	CHECK(catalog.Entries(AssetKind::Sprite)[3].detail == "8 x 8, 2 frames");
 	CHECK(catalog.Entries(AssetKind::Sprite)[0].detail == "8 x 8");
 	CHECK(catalog.Entries(AssetKind::Font)[0].detail == "2 glyphs");
 	CHECK(catalog.Contains(AssetKind::Sprite, "door"));
