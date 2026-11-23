@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -21,7 +22,11 @@ namespace
 
 	struct Sandbox
 	{
-		fs::path root = fs::temp_directory_path() / "ecs-engine-buildsettings-test";
+		static inline int counter = 0;
+		fs::path root =
+		    fs::temp_directory_path() / ("ecs-engine-buildsettings-test-" +
+		                                 std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
+		                                 "-" + std::to_string(++counter));
 
 		Sandbox()
 		{
@@ -189,4 +194,27 @@ TEST_CASE("Unpicked scenes are left out wherever the scene folder is below the a
 
 	config.sceneFolder = box.root / "elsewhere";
 	CHECK_FALSE(PackageGame(config, settings).ok);
+}
+
+TEST_CASE("A package that fails part way can be redone", "[buildsettings]")
+{
+	const Sandbox box;
+	fs::create_directories(box.root / "out" / "game.exe"); // the exe copy fails after the assets are copied
+	CHECK_FALSE(PackageGame(box.Config(), box.Settings()).ok);
+	fs::remove_all(box.root / "out" / "game.exe");
+	CHECK(PackageGame(box.Config(), box.Settings()).ok);
+}
+
+TEST_CASE("A relative asset folder still leaves out unpicked scenes", "[buildsettings]")
+{
+	const Sandbox box;
+	const fs::path before = fs::current_path();
+	fs::current_path(box.root);
+	BuildSettingsConfig config = box.Config();
+	config.assetFolder = "assets/../assets";
+	config.sceneFolder = "assets/scenes";
+	const PackageResult result = PackageGame(config, box.Settings());
+	fs::current_path(before);
+	REQUIRE(result.ok);
+	CHECK_FALSE(fs::exists(box.root / "out" / "assets" / "scenes" / "extra.json"));
 }

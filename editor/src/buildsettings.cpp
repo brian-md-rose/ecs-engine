@@ -357,7 +357,8 @@ namespace engine::editor
 		// out.
 		if (!IsInside(config.sceneFolder, config.assetFolder))
 			return fail("The scenes folder is not inside the assets folder.");
-		const fs::path sceneRelative = Canonical(config.sceneFolder).lexically_relative(Canonical(config.assetFolder));
+		const fs::path assetRoot = Canonical(config.assetFolder);
+		const fs::path sceneRelative = Canonical(config.sceneFolder).lexically_relative(assetRoot);
 		// Checked before anything is deleted, so a bad source leaves the last package as it was.
 		std::error_code error;
 		if (!fs::is_directory(config.assetFolder, error))
@@ -367,17 +368,20 @@ namespace engine::editor
 			return fail(packageAssets.string() + " exists and is not from a package. Pick another folder.");
 		fs::create_directories(output, error);
 		if (error) return fail("Could not make " + output.string() + ": " + error.message());
+		// A marker first, so a package that fails part way is still seen as ours (and replaced) next time, and the
+		// manifest of the last package never lists files that are gone.
+		if (!core::WriteJson(output / kManifestName, core::JsonValue::Object().Set("incomplete", true)))
+			return fail(std::string("Could not write ") + kManifestName);
 		fs::remove_all(packageAssets, error);
 		if (error) return fail("Could not clear " + packageAssets.string() + ": " + error.message());
 
 		std::vector<std::string> files;
 		const std::vector<std::string> sceneFiles = SelectedSceneFiles(settings);
-		for (fs::recursive_directory_iterator it(config.assetFolder, error), end; !error && it != end;
-		     it.increment(error))
+		for (fs::recursive_directory_iterator it(assetRoot, error), end; !error && it != end; it.increment(error))
 		{
 			std::error_code entryError;
 			if (!it->is_regular_file(entryError)) continue;
-			const fs::path relative = it->path().lexically_relative(config.assetFolder);
+			const fs::path relative = it->path().lexically_relative(assetRoot);
 			if (IsPackagedScene(relative, sceneRelative) && !Contains(sceneFiles, relative.filename().generic_string()))
 				continue;
 			const fs::path target = packageAssets / relative;
