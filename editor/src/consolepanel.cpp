@@ -109,7 +109,7 @@ namespace engine::editor
 			{
 				core::ClearLogHistory();
 				state.records.clear();
-				state.version = core::LogHistoryVersion();
+				state.loaded = false; // reload next frame, so a message logged meanwhile is not skipped
 				state.shownValid = false;
 				for (std::size_t& count : state.counts)
 					count = 0;
