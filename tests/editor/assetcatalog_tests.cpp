@@ -5,6 +5,8 @@
 #include <system_error>
 #include <vector>
 
+#include "ecs/enginecomponents.hpp"
+#include "ecs/typeregistry.hpp"
 #include "editor/assetbrowser.hpp"
 #include "editor/assetcatalog.hpp"
 
@@ -96,4 +98,20 @@ TEST_CASE("A sheet mixing glyphs and longer names is sprites, not a font", "[edi
 	const AssetCatalog catalog(folder);
 	CHECK(catalog.Names(AssetKind::Font).empty());
 	CHECK(catalog.Names(AssetKind::Sprite) == std::vector<std::string>{"a", "heart"});
+}
+
+TEST_CASE("Sprite::source is marked as a sprite asset, so the Inspector can pick it by name", "[editor][assets]")
+{
+	engine::ecs::TypeRegistry types;
+	engine::ecs::RegisterEngineComponents(types);
+	const engine::ecs::TypeInfo* sprite = types.Find("Sprite");
+	REQUIRE(sprite != nullptr);
+	bool found = false;
+	for (const engine::ecs::FieldInfo& field : sprite->Fields())
+	{
+		if (field.name != "source") continue;
+		found = true;
+		CHECK(field.hints.assetKind == AssetKind::Sprite);
+	}
+	CHECK(found);
 }

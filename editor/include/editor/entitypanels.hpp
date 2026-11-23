@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "ecs/world.hpp"
 #include "editor/assetcatalog.hpp"
 #include "editor/editor.hpp"
+#include "graphics/image.hpp"
 
 namespace engine::editor
 {
@@ -34,6 +36,10 @@ namespace engine::editor
 		// What the Inspector lists for a field with FieldHints::assetKind. Null (the default): such a field shows its
 		// `choices`, or a text box.
 		std::shared_ptr<const AssetCatalog> assets;
+		// Where a sprite's name is in the game's atlas, or nothing if the game can't draw that name. With it (and
+		// `assets`) a PixelRect field marked `assetKind = Sprite` (Sprite::source) gets a picker of sprite names that
+		// sets the rectangle, above the raw x, y, width and height.
+		std::function<std::optional<graphics::PixelRect>(const std::string&)> spriteRect;
 
 		// The whole selection: the primary first, then the others. Empty if nothing is selected.
 		[[nodiscard]] std::vector<ecs::Entity> All() const;

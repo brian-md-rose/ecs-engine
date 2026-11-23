@@ -331,10 +331,69 @@ namespace engine::editor
 			return changed;
 		}
 
+		std::optional<graphics::PixelRect> RectOf(const JsonValue& value)
+		{
+			const core::JsonObject* members = value.AsObject();
+			if (members == nullptr) return std::nullopt;
+			graphics::PixelRect rect;
+			for (const auto& [key, member] : *members)
+			{
+				const auto number = member.AsInt();
+				if (!number) continue;
+				const int whole = static_cast<int>(*number);
+				if (key == "x") rect.x = whole;
+				if (key == "y") rect.y = whole;
+				if (key == "width") rect.width = whole;
+				if (key == "height") rect.height = whole;
+			}
+			return rect;
+		}
+
+		JsonValue RectJson(const graphics::PixelRect& rect)
+		{
+			core::JsonObject members;
+			members.emplace_back("x", JsonValue(static_cast<std::int64_t>(rect.x)));
+			members.emplace_back("y", JsonValue(static_cast<std::int64_t>(rect.y)));
+			members.emplace_back("width", JsonValue(static_cast<std::int64_t>(rect.width)));
+			members.emplace_back("height", JsonValue(static_cast<std::int64_t>(rect.height)));
+			return JsonValue(std::move(members));
+		}
+
+		// A picker of sprite names for a rectangle in the atlas: the sprites of the catalog that the game can draw.
+		// Picking one writes its rectangle; the combo shows the name whose rectangle the field holds, if any.
+		bool EditSpriteSource(const AssetCatalog& assets,
+		                      const std::function<std::optional<graphics::PixelRect>(const std::string&)>& rectOf,
+		                      JsonValue& value)
+		{
+			const std::optional<graphics::PixelRect> current = RectOf(value);
+			std::string shown = "(custom rectangle)";
+			std::vector<std::pair<std::string, graphics::PixelRect>> options;
+			for (const std::string& name : assets.Names(ecs::AssetKind::Sprite))
+			{
+				const std::optional<graphics::PixelRect> rect = rectOf(name);
+				if (!rect) continue;
+				options.emplace_back(name, *rect);
+				if (current && *current == *rect && shown == "(custom rectangle)") shown = name;
+			}
+			bool changed = false;
+			if (ImGui::BeginCombo("picture", shown.c_str()))
+			{
+				for (const auto& [name, rect] : options)
+				{
+					if (!ImGui::Selectable(name.c_str(), name == shown)) continue;
+					value = RectJson(rect);
+					changed = true;
+				}
+				ImGui::EndCombo();
+			}
+			return changed;
+		}
+
 		// One field, by its registered kind. True if the user changed it, with the new value in `value`.
 		bool EditField(const FieldInfo& field, JsonValue& value, const Registry& registry,
-		               const std::vector<Entity>& all, const AssetCatalog* assets)
+		               const std::vector<Entity>& all, const PanelState& state)
 		{
+			const AssetCatalog* assets = state.assets.get();
 			const char* label = field.name.c_str();
 			bool changed = false;
 			if (field.hints.readOnly) ImGui::BeginDisabled();
@@ -478,7 +537,9 @@ namespace engine::editor
 				break;
 			}
 			case FieldKind::Custom:
-				changed = EditJson(label, value, 0);
+				if (field.hints.assetKind == ecs::AssetKind::Sprite && assets != nullptr && state.spriteRect)
+					changed = EditSpriteSource(*assets, state.spriteRect, value);
+				changed |= EditJson(label, value, 0);
 				break;
 			}
 			if (field.hints.readOnly) ImGui::EndDisabled();
@@ -505,7 +566,7 @@ namespace engine::editor
 					ImGui::TextDisabled("%s: %s", field.name.c_str(), error.c_str());
 					continue;
 				}
-				if (!EditField(field, value, registry, all, state.assets.get())) continue;
+				if (!EditField(field, value, registry, all, state)) continue;
 
 				// A new parent must not make a loop, which would hang anything that walks up the hierarchy.
 				if (type.Type() == std::type_index(typeid(ecs::Parent)))

@@ -154,7 +154,9 @@ namespace engine::ecs
 		    .Field("color", &Shape::color)
 		    .Field("layer", &Shape::layer);
 		types.Register<Sprite>("Sprite")
-		    .Field("source", &Sprite::source)
+		    .Field("source", &Sprite::source,
+		           {.tooltip = "the part of the atlas to draw; an editor can pick it by sprite name",
+		            .assetKind = AssetKind::Sprite})
 		    .Field("tint", &Sprite::tint)
 		    .Field("layer", &Sprite::layer)
 		    .Field("flipX", &Sprite::flipX)
