@@ -80,6 +80,8 @@ namespace engine::graphics
 			PixelRect source{};    // textured quads
 			Position size{};       // textured quads: on-screen size in pixels
 			bool flipX = false;    // textured quads
+			float rotation = 0;    // degrees, about screen; shapes and textured quads (not text)
+			Scale scale{};         // stretches size about screen
 		};
 
 		std::vector<Entry> entries;

@@ -681,3 +681,75 @@ TEST_CASE("Clipped text is split into the clip's run, glyph by glyph", "[graphic
 	REQUIRE(batch.Runs().size() == 1);
 	CHECK(batch.Runs()[0].indexCount == 18);
 }
+
+TEST_CASE("A rotated rectangle swings clockwise about its top-left corner", "[graphics][batch]")
+{
+	Registry registry;
+	const Entity entity = AddRectangle(registry, {50.0f, 60.0f}, 0);
+	registry.GetComponent<Transform>(entity).rotation = 90.0f;
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+
+	REQUIRE(batch.Vertices().size() == 4);
+	const auto vertices = batch.Vertices();
+	// The 8 x 4 box: its corner stays, its top edge now points down, its left edge points left.
+	CHECK(vertices[0].position.x == Approx(50.0f));
+	CHECK(vertices[0].position.y == Approx(60.0f));
+	CHECK(vertices[1].position.x == Approx(50.0f));
+	CHECK(vertices[1].position.y == Approx(68.0f));
+	CHECK(vertices[2].position.x == Approx(46.0f));
+	CHECK(vertices[2].position.y == Approx(68.0f));
+	CHECK(vertices[3].position.x == Approx(46.0f));
+	CHECK(vertices[3].position.y == Approx(60.0f));
+}
+
+TEST_CASE("A scaled rectangle stretches from its top-left corner, and a negative scale mirrors it", "[graphics][batch]")
+{
+	Registry registry;
+	const Entity entity = AddRectangle(registry, {50.0f, 60.0f}, 0);
+	registry.GetComponent<Transform>(entity).scale = {2.0f, 3.0f};
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Vertices().size() == 4);
+	CHECK(batch.Vertices()[0].position.x == 50.0f);
+	CHECK(batch.Vertices()[2].position.x == 66.0f);
+	CHECK(batch.Vertices()[2].position.y == 72.0f);
+
+	registry.GetComponent<Transform>(entity).scale = {-1.0f, 1.0f};
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Vertices().size() == 4);
+	CHECK(batch.Vertices()[1].position.x == 42.0f); // the right edge is now on the left
+}
+
+TEST_CASE("A circle is stretched into an ellipse by its scale", "[graphics][batch]")
+{
+	Registry registry;
+	const Entity entity = registry.Create();
+	registry.Add<Transform>(entity, Transform{.position = {100.0f, 100.0f}, .scale = {2.0f, 1.0f}});
+	registry.Add<Shape>(entity, Shape{.kind = ShapeKind::Circle, .radius = 4.0f});
+
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	REQUIRE(batch.Vertices().size() == kCircleVertices);
+	CHECK(batch.Vertices()[0].position.x == Approx(108.0f)); // the centre: (4, 4) stretched to (8, 4)
+	CHECK(batch.Vertices()[0].position.y == Approx(104.0f));
+	CHECK(batch.Vertices()[1].position.x == Approx(116.0f)); // rim at angle 0: 8 + 4 * 2
+}
+
+TEST_CASE("A rotated shape is kept while any of it is in view", "[graphics][batch]")
+{
+	Registry registry;
+	// Wholly above the screen unturned, but turned a quarter about its corner it hangs down into view.
+	const Entity entity = registry.Create();
+	registry.Add<Transform>(entity, Transform{.position = {10.0f, -20.0f}, .rotation = 90.0f});
+	registry.Add<Shape>(entity, Shape{.width = 30.0f, .height = 4.0f});
+	DrawBatch batch;
+	batch.Build(registry, kCamera);
+	CHECK(batch.ItemCount() == 1);
+
+	registry.GetComponent<Transform>(entity).rotation = 270.0f;
+	batch.Build(registry, kCamera);
+	CHECK(batch.ItemCount() == 0);
+}

@@ -109,6 +109,32 @@ namespace engine::ecs
 		return true;
 	}
 
+	bool FieldCodec<graphics::Scale>::Save(const graphics::Scale& value, const IEntityIds& ids, core::JsonValue& out,
+	                                       std::string& error)
+	{
+		core::JsonValue object = core::JsonValue::Object();
+		core::JsonValue x;
+		core::JsonValue y;
+		if (!FieldCodec<float>::Save(value.x, ids, x, error) || !FieldCodec<float>::Save(value.y, ids, y, error))
+		{
+			return false;
+		}
+		object.Set("x", std::move(x));
+		object.Set("y", std::move(y));
+		out = std::move(object);
+		return true;
+	}
+
+	bool FieldCodec<graphics::Scale>::Load(graphics::Scale& value, const core::JsonValue& in, const IEntityIds& ids,
+	                                       std::string& error)
+	{
+		if (!ExpectObject(in, error)) return false;
+		graphics::Scale loaded = value;
+		if (!LoadMember(in, "x", loaded.x, ids, error) || !LoadMember(in, "y", loaded.y, ids, error)) return false;
+		value = loaded;
+		return true;
+	}
+
 	bool FieldCodec<graphics::PixelRect>::Save(const graphics::PixelRect& value, const IEntityIds& ids,
 	                                           core::JsonValue& out, std::string& error)
 	{
@@ -144,8 +170,14 @@ namespace engine::ecs
 		using namespace graphics;
 		types.Register<Name>("Name").Field("value", &Name::value);
 		types.Register<Parent>("Parent").Field("entity", &Parent::entity);
-		types.Register<Transform>("Transform").Field("position", &Transform::position);
-		types.Register<LocalTransform>("LocalTransform").Field("position", &LocalTransform::position);
+		types.Register<Transform>("Transform")
+		    .Field("position", &Transform::position)
+		    .Field("rotation", &Transform::rotation, {.tooltip = "degrees, clockwise"})
+		    .Field("scale", &Transform::scale);
+		types.Register<LocalTransform>("LocalTransform")
+		    .Field("position", &LocalTransform::position)
+		    .Field("rotation", &LocalTransform::rotation, {.tooltip = "degrees, clockwise"})
+		    .Field("scale", &LocalTransform::scale);
 		types.Register<Shape>("Shape")
 		    .EnumField("kind", &Shape::kind, {{"Rectangle", ShapeKind::Rectangle}, {"Circle", ShapeKind::Circle}})
 		    .Field("width", &Shape::width)

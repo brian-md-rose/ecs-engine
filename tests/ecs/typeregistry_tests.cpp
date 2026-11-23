@@ -266,8 +266,8 @@ TEST_CASE("Every engine component round-trips through JSON", "[ecs][typeregistry
 
 	registry.Add<engine::ecs::Name>(e, engine::ecs::Name{"Player"});
 	registry.Add<engine::ecs::Parent>(e, engine::ecs::Parent{parent});
-	registry.Add<Transform>(e, Transform{{16.5f, 24.0f}});
-	registry.Add<LocalTransform>(e, LocalTransform{{-1.25f, 6.0f}});
+	registry.Add<Transform>(e, Transform{.position = {16.5f, 24.0f}});
+	registry.Add<LocalTransform>(e, LocalTransform{.position = {-1.25f, 6.0f}});
 	registry.Add<Shape>(e, Shape{ShapeKind::Circle, 0, 0, 4.5f, Color{255, 220, 0}, 2});
 	registry.Add<Sprite>(e, Sprite{{1, 2, 3, 4}, Color{10, 20, 30}, 5, true, 8, 9});
 	registry.Add<engine::graphics::ClipRect>(e, engine::graphics::ClipRect{{0, 0, 64, 32}});

@@ -7,7 +7,7 @@
 #include "graphics/image.hpp"
 #include "graphics/transform.hpp"
 
-// Registers the engine's own components (Name, Parent, Position-based transforms, Shape, Sprite, Text, UI,
+// Registers the engine's own components (Name, Parent, transforms, Shape, Sprite, Text, UI,
 // ClipRect, ScreenSpace) with a TypeRegistry, and defines the FieldCodecs for the engine value
 // types a game's own components are likely to hold: Color, Position and PixelRect.
 namespace engine::ecs
@@ -26,6 +26,14 @@ namespace engine::ecs
 		static constexpr FieldKind kind = FieldKind::Custom;
 		static bool Save(const graphics::Position& value, const IEntityIds&, core::JsonValue& out, std::string& error);
 		static bool Load(graphics::Position& value, const core::JsonValue& in, const IEntityIds&, std::string& error);
+	};
+
+	// A Scale is written as {"x": ..., "y": ...}.
+	template <> struct FieldCodec<graphics::Scale>
+	{
+		static constexpr FieldKind kind = FieldKind::Custom;
+		static bool Save(const graphics::Scale& value, const IEntityIds&, core::JsonValue& out, std::string& error);
+		static bool Load(graphics::Scale& value, const core::JsonValue& in, const IEntityIds&, std::string& error);
 	};
 
 	// A PixelRect is written as {"x": ..., "y": ..., "width": ..., "height": ...}.
