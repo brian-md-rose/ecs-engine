@@ -55,7 +55,7 @@ target_link_libraries(engine_core PRIVATE engine::warnings)
 # Where ScreenshotDirectory looks first: the repository's screenshot folder. Only Debug (and RelWithDebInfo)
 # builds get it: Release and MinSizeRel always use the user's save folder, so a build you ship never writes into
 # a source tree. Set -DENGINE_SCREENSHOT_DIR= (empty) to turn it off in every configuration.
-set(ENGINE_SCREENSHOT_DIR "${PROJECT_SOURCE_DIR}/screenshot" CACHE PATH "Folder F12 screenshots go to in Debug builds; empty for none")
+set(ENGINE_SCREENSHOT_DIR "${PROJECT_SOURCE_DIR}/screenshot" CACHE PATH "Folder F9 screenshots go to in Debug builds; empty for none")
 target_compile_definitions(
     engine_core PRIVATE
     ENGINE_SCREENSHOT_DIR="$<$<NOT:$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>>:${ENGINE_SCREENSHOT_DIR}>")

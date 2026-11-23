@@ -10,7 +10,7 @@
 #include "graphics/renderer.hpp"
 #include "graphics/screenshot.hpp"
 
-// Live tests of F12 and ScreenshotRequest on SDL's offscreen video driver (chosen in graphics/window_tests.cpp,
+// Live tests of F9 and ScreenshotRequest on SDL's offscreen video driver (chosen in graphics/window_tests.cpp,
 // which is in the same executable). They skip if the machine can't make a window.
 namespace
 {
