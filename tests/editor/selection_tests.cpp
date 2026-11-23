@@ -21,7 +21,7 @@ namespace
 	Entity AddBox(Registry& registry, float x, float y, std::uint8_t layer = 0)
 	{
 		const Entity entity = registry.Create();
-		registry.Add<engine::graphics::Transform>(entity, engine::graphics::Transform{{x, y}});
+		registry.Add<engine::graphics::Transform>(entity, engine::graphics::Transform{.position = {x, y}});
 		registry.Add<engine::graphics::Shape>(entity,
 		                                      engine::graphics::Shape{.width = 10, .height = 10, .layer = layer});
 		return entity;

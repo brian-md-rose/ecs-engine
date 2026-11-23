@@ -31,7 +31,7 @@ namespace
 	Entity AddBox(Registry& registry, float x, float y, float size, std::uint8_t layer = 0)
 	{
 		const Entity entity = registry.Create();
-		registry.Add<Transform>(entity, Transform{{x, y}});
+		registry.Add<Transform>(entity, Transform{.position = {x, y}});
 		registry.Add<Shape>(entity, Shape{.width = size, .height = size, .layer = layer});
 		return entity;
 	}
@@ -178,7 +178,7 @@ TEST_CASE("Moving an entity follows the camera zoom and the parent's local posit
 
 	const Entity child = AddBox(registry, 50, 50, 5);
 	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{box});
-	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{1, 1}});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{.position = {1, 1}});
 	REQUIRE(engine::editor::MoveEntity(registry, child, camera, {2, 2}));
 	CHECK(registry.TryGetComponent<engine::graphics::LocalTransform>(child)->position.x == 2.0F);
 	CHECK(registry.TryGetComponent<Transform>(child)->position.x == 50.0F);
@@ -288,7 +288,7 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 	const Camera camera = MakeCamera();
 
 	const Entity label = registry.Create();
-	registry.Add<Transform>(label, Transform{{20, 10}});
+	registry.Add<Transform>(label, Transform{.position = {20, 10}});
 	registry.Add<engine::graphics::Text>(label, engine::graphics::Text{.value = "HELLO", .scale = 2});
 	// Five letters, 6 pixels each, at scale 2: 60 wide; one line of 8, at scale 2: 16 tall.
 	const auto textRect = EntityScreenRect(registry, label, camera);
@@ -301,13 +301,13 @@ TEST_CASE("Text and nine-patch entities can be picked", "[editor][viewport]")
 
 	// Centred text is drawn around its Transform, so its rectangle starts to the left of it.
 	const Entity centred = registry.Create();
-	registry.Add<Transform>(centred, Transform{{100, 50}});
+	registry.Add<Transform>(centred, Transform{.position = {100, 50}});
 	registry.Add<engine::graphics::Text>(
 	    centred, engine::graphics::Text{.value = "AB", .align = engine::graphics::Align::Centre});
 	CHECK(EntityScreenRect(registry, centred, camera)->x == 94.0F);
 
 	const Entity panel = registry.Create();
-	registry.Add<Transform>(panel, Transform{{200, 100}});
+	registry.Add<Transform>(panel, Transform{.position = {200, 100}});
 	registry.Add<engine::ui::NinePatch>(panel, engine::ui::NinePatch{.width = 40, .height = 30});
 	CHECK(PickEntity(registry, camera, {210, 110}) == panel);
 }
@@ -378,7 +378,7 @@ TEST_CASE("MovablePosition is the LocalTransform of a child and the Transform of
 	const Entity parent = AddBox(registry, 100, 100, 5);
 	const Entity child = AddBox(registry, 100, 100, 5);
 	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{parent});
-	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{{3, 4}});
+	registry.Add<engine::graphics::LocalTransform>(child, engine::graphics::LocalTransform{.position = {3, 4}});
 	CHECK(MovablePosition(registry, child)->x == 3.0F);
 	REQUIRE(SetMovablePosition(registry, child, {7, 8}));
 	CHECK(registry.GetComponent<engine::graphics::LocalTransform>(child).position.y == 8.0F);

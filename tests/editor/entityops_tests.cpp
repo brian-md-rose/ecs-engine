@@ -85,7 +85,7 @@ TEST_CASE("DuplicateTree copies components and points inner references at the co
 	const Entity outside = CreateEntity(registry, "outside");
 	const Entity root = CreateEntity(registry, "root");
 	const Entity child = CreateEntity(registry, "child", root);
-	registry.Add<engine::graphics::Transform>(child, engine::graphics::Transform{{3.0F, 4.0F}});
+	registry.Add<engine::graphics::Transform>(child, engine::graphics::Transform{.position = {3.0F, 4.0F}});
 	registry.Add<Target>(root, Target{child, 7});    // inside the copied tree
 	registry.Add<Target>(child, Target{outside, 2}); // outside it
 
