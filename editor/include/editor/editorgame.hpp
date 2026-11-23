@@ -161,6 +161,7 @@ namespace engine::editor
 		bool snapToGrid = false;          // moves land on multiples of snapSize (Ctrl flips this while dragging)
 		int snapSize = 8;
 		bool viewportActive = false; // the Viewport had the pointer or focus last frame (arrow keys nudge only then)
+		bool navigationClearedForPlay = false; // Play turned ImGui keyboard navigation off, so it turns it back on
 		ecs::Entity shownSelection =
 		    ecs::Entity::Null; // the selection the viewport last looked at, to scroll to a new one
 
