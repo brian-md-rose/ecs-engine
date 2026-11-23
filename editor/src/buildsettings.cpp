@@ -1,6 +1,7 @@
 #include "editor/buildsettings.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 #include <memory>
 #include <system_error>
@@ -33,19 +34,33 @@ namespace engine::editor
 		}
 
 		// True if inner is the same as outer or inside it.
-		bool IsInside(const fs::path& inner, const fs::path& outer)
+		// Windows paths ignore case, so they are compared in lower case there.
+		fs::path Fold(fs::path path)
 		{
-			const fs::path relative = Canonical(inner).lexically_relative(Canonical(outer));
-			if (relative.empty()) return false;
-			return *relative.begin() != "..";
+#ifdef _WIN32
+			std::string text = path.generic_string();
+			std::transform(text.begin(), text.end(), text.begin(), [](char c)
+			{
+				return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+			});
+			return fs::path(text);
+#else
+			return path;
+#endif
 		}
 
-		bool IsPackagedScene(const fs::path& relative)
+		// True if relative (below the assets folder) is a .json file directly in sceneRelative, the scene folder
+		// as a path below the assets folder.
+		bool IsPackagedScene(const fs::path& relative, const fs::path& sceneRelative)
 		{
-			// relative is below the assets folder: scenes/<name>.json is a scene.
-			const auto begin = relative.begin();
-			if (begin == relative.end() || *begin != "scenes") return false;
-			return relative.extension() == ".json" && std::distance(relative.begin(), relative.end()) == 2;
+			return relative.extension() == ".json" && Fold(relative.parent_path()) == Fold(sceneRelative);
+		}
+
+		bool IsInside(const fs::path& inner, const fs::path& outer)
+		{
+			const fs::path relative = Fold(Canonical(inner)).lexically_relative(Fold(Canonical(outer)));
+			if (relative.empty()) return false;
+			return *relative.begin() != "..";
 		}
 
 		std::vector<std::string> SelectedSceneFiles(const BuildSettings& settings)
@@ -332,10 +347,24 @@ namespace engine::editor
 		const fs::path exeTarget = output / exeSource.filename();
 		if (IsInside(packageAssets, config.assetFolder) || IsInside(config.assetFolder, packageAssets))
 			return fail("The output folder would overwrite the game's own assets. Pick another folder.");
-		if (Canonical(exeTarget) == Canonical(exeSource))
-			return fail("The output folder is the executable's own folder. Pick another folder.");
+		{
+			std::error_code same;
+			if (fs::equivalent(exeTarget, exeSource, same) || Fold(Canonical(exeTarget)) == Fold(Canonical(exeSource)))
+				return fail("The output folder is the executable's own folder. Pick another folder.");
+		}
 
+		// The scene folder as a path below the assets folder (usually "scenes"); the unpicked scenes in it are left
+		// out.
+		if (!IsInside(config.sceneFolder, config.assetFolder))
+			return fail("The scenes folder is not inside the assets folder.");
+		const fs::path sceneRelative = Canonical(config.sceneFolder).lexically_relative(Canonical(config.assetFolder));
+		// Checked before anything is deleted, so a bad source leaves the last package as it was.
 		std::error_code error;
+		if (!fs::is_directory(config.assetFolder, error))
+			return fail("No such assets folder: " + config.assetFolder.string());
+		// Only a folder an earlier package made (it has build.json) is replaced; someone else's assets are not deleted.
+		if (fs::exists(packageAssets, error) && !fs::exists(output / kManifestName, error))
+			return fail(packageAssets.string() + " exists and is not from a package. Pick another folder.");
 		fs::create_directories(output, error);
 		if (error) return fail("Could not make " + output.string() + ": " + error.message());
 		fs::remove_all(packageAssets, error);
@@ -349,7 +378,8 @@ namespace engine::editor
 			std::error_code entryError;
 			if (!it->is_regular_file(entryError)) continue;
 			const fs::path relative = it->path().lexically_relative(config.assetFolder);
-			if (IsPackagedScene(relative) && !Contains(sceneFiles, relative.filename().generic_string())) continue;
+			if (IsPackagedScene(relative, sceneRelative) && !Contains(sceneFiles, relative.filename().generic_string()))
+				continue;
 			const fs::path target = packageAssets / relative;
 			fs::create_directories(target.parent_path(), entryError);
 			if (entryError)

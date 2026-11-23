@@ -155,3 +155,38 @@ TEST_CASE("Packaging refuses an output that would overwrite the source assets or
 	CHECK_FALSE(PackageGame(box.Config(), onExe).ok);
 	CHECK(fs::exists(box.root / "bin" / "game.exe"));
 }
+
+TEST_CASE("Packaging leaves alone an assets folder it did not make, and keeps the last package if the source is gone",
+          "[buildsettings]")
+{
+	const Sandbox box;
+	Write(box.root / "out" / "assets" / "mine.txt", "keep");
+	CHECK_FALSE(PackageGame(box.Config(), box.Settings()).ok);
+	CHECK(fs::exists(box.root / "out" / "assets" / "mine.txt"));
+
+	fs::remove_all(box.root / "out");
+	REQUIRE(PackageGame(box.Config(), box.Settings()).ok);
+	BuildSettingsConfig missing = box.Config();
+	missing.assetFolder = box.root / "nope";
+	missing.sceneFolder = box.root / "nope" / "scenes";
+	CHECK_FALSE(PackageGame(missing, box.Settings()).ok);
+	CHECK(fs::exists(box.root / "out" / "assets" / "scenes" / "title.json"));
+}
+
+TEST_CASE("Unpicked scenes are left out wherever the scene folder is below the assets", "[buildsettings]")
+{
+	const Sandbox box;
+	Write(box.root / "assets" / "levels" / "one.json", "{}");
+	Write(box.root / "assets" / "levels" / "two.json", "{}");
+	BuildSettingsConfig config = box.Config();
+	config.sceneFolder = box.root / "assets" / "levels";
+	BuildSettings settings = box.Settings();
+	settings.scenes = {"one"};
+	settings.startupScene = "one";
+	REQUIRE(PackageGame(config, settings).ok);
+	CHECK(fs::exists(box.root / "out" / "assets" / "levels" / "one.json"));
+	CHECK_FALSE(fs::exists(box.root / "out" / "assets" / "levels" / "two.json"));
+
+	config.sceneFolder = box.root / "elsewhere";
+	CHECK_FALSE(PackageGame(config, settings).ok);
+}
