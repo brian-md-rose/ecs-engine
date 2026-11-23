@@ -173,13 +173,25 @@ TEST_CASE("SaveSpriteSettings writes a manifest that loads and refuses one that 
 	// A different cut of the same 16 x 8 picture is fine.
 	CHECK(
 	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 4, .frameHeight = 8, .frames = 4}).empty());
-	CHECK(AssetCatalog(folder).Entries(AssetKind::Sprite)[0].settings.frames == 4);
+	{
+		const AssetCatalog rescanned(folder);
+		const auto& found = rescanned.Entries(AssetKind::Sprite);
+		REQUIRE(found.size() == 1);
+		const int frames = found.front().settings.frames;
+		CHECK(frames == 4);
+	}
 
 	// One that does not match the picture is refused and the file stays as it was.
 	const std::string reason =
 	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 8, .frameHeight = 8, .frames = 5});
 	CHECK_FALSE(reason.empty());
-	CHECK(AssetCatalog(folder).Entries(AssetKind::Sprite)[0].settings.frames == 4);
+	{
+		const AssetCatalog rescanned(folder);
+		const auto& found = rescanned.Entries(AssetKind::Sprite);
+		REQUIRE(found.size() == 1);
+		const int frames = found.front().settings.frames;
+		CHECK(frames == 4);
+	}
 	CHECK_FALSE(SaveSpriteSettings(sheet, 1, "other", SpriteSettings{.frameWidth = 8, .frameHeight = 8})
 	                .empty()); // a different sprite is on that line now
 	CHECK_FALSE(SaveSpriteSettings(sheet, 7, "strip", SpriteSettings{}).empty());
