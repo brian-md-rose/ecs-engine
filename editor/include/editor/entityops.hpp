@@ -11,6 +11,8 @@
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "ecs/typeregistry.hpp"
+#include "graphics/image.hpp"
+#include "graphics/transform.hpp"
 
 // What the hierarchy and inspector panels do to entities, as plain functions on a Registry so they can be
 // tested without a window. The panels call these between frames, never inside a system.
@@ -40,6 +42,11 @@ namespace engine::editor
 
 	// A new entity called name, under parent unless that is null.
 	ecs::Entity CreateEntity(ecs::Registry& registry, const std::string& name, ecs::Entity parent = ecs::Entity::Null);
+
+	// A new top-level entity called name with a Transform and a Sprite showing source, centred on centre (picture
+	// pixels). The Sprite is as big as source unless that is empty.
+	ecs::Entity CreateSpriteEntity(ecs::Registry& registry, const std::string& name, const graphics::PixelRect& source,
+	                               graphics::Position centre);
 
 	// True if making parent the parent of child would make a loop (parent is child, or under it).
 	[[nodiscard]] bool WouldMakeLoop(const ecs::Registry& registry, ecs::Entity child, ecs::Entity parent);
