@@ -118,12 +118,12 @@ namespace engine::application
 		std::array<std::uint32_t, input::kMaxPads> padIds{};
 		double updateStep;
 		int maxUpdatesPerFrame;
-		graphics::DisplaySettings display;                         // what is in force
-		bool displayInfoStale = true;                              // DisplayInfo needs refreshing
-		EditorHost* editor = nullptr;                              // the overlay, when there is one (not owned)
-		std::filesystem::path screenshotFolder;                    // where screenshots go
-		std::optional<input::Key> screenshotKey = input::Key::F9;  // the key that takes one, if any
-		bool screenshotAsked = false;                              // the key was pressed since the last frame
+		graphics::DisplaySettings display;                        // what is in force
+		bool displayInfoStale = true;                             // DisplayInfo needs refreshing
+		EditorHost* editor = nullptr;                             // the overlay, when there is one (not owned)
+		std::filesystem::path screenshotFolder;                   // where screenshots go
+		std::optional<input::Key> screenshotKey = input::Key::F9; // the key that takes one, if any
+		bool screenshotAsked = false;                             // the key was pressed since the last frame
 		int screenshotAfter = 0; // save the screenshot at this frame, then quit (0: off)
 		int framesDrawn = 0;
 
