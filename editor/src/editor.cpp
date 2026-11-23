@@ -4,8 +4,11 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
+#include <imgui_internal.h> // DockBuilder, the layout API that is not in the public header
 
 #include <cstddef>
+#include <fstream>
+#include <string>
 #include <utility>
 
 #include "core/version.hpp"
@@ -15,6 +18,17 @@ namespace engine::editor
 	namespace
 	{
 		constexpr SDL_Scancode kToggleKey = SDL_SCANCODE_F1;
+
+		// True when the layout file exists and holds dock data, so a saved layout is kept rather than rebuilt.
+		bool LayoutFileHasDocking(const std::filesystem::path& file)
+		{
+			if (file.empty()) return false;
+			std::ifstream in(file);
+			std::string line;
+			while (std::getline(in, line))
+				if (line.rfind("[Docking]", 0) == 0) return true;
+			return false;
+		}
 
 		bool IsMouseEvent(Uint32 type)
 		{
@@ -37,7 +51,7 @@ namespace engine::editor
 
 	void Editor::AddPanel(std::string name, PanelFunction draw)
 	{
-		panels.push_back({std::move(name), std::move(draw), false, 0, 0});
+		panels.push_back({std::move(name), std::move(draw), false, 0, 0, DockArea::None});
 	}
 
 	bool Editor::SetPanelOpen(std::string_view name, bool open)
@@ -46,6 +60,17 @@ namespace engine::editor
 		{
 			if (panel.name != name) continue;
 			panel.open = open;
+			return true;
+		}
+		return false;
+	}
+
+	bool Editor::SetPanelDock(std::string_view name, DockArea area)
+	{
+		for (Panel& panel : panels)
+		{
+			if (panel.name != name) continue;
+			panel.dock = area;
 			return true;
 		}
 		return false;
@@ -77,6 +102,10 @@ namespace engine::editor
 		layoutFileText = layoutFile.string();
 		io.IniFilename = layoutFileText.empty() ? nullptr : layoutFileText.c_str();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigDockingWithShift = false; // panels dock by dragging their title, no Shift needed
+		// A layout saved before docking existed (or none) has no dock data: start from the default arrangement.
+		buildLayout = !LayoutFileHasDocking(layoutFile);
 		ImGui::StyleColorsDark();
 		if (!ImGui_ImplSDL3_InitForSDLRenderer(window, sdlRenderer))
 		{
@@ -125,7 +154,8 @@ namespace engine::editor
 		if (IsMouseEvent(event.type)) return io.WantCaptureMouse;
 		if (IsKeyboardEvent(event.type))
 		{
-			// The game is being played with the pointer over its picture: it gets the keys, unless a text box wants them.
+			// The game is being played with the pointer over its picture: it gets the keys, unless a text box wants
+			// them.
 			if (gameKeys && !io.WantTextInput) return false;
 			return io.WantCaptureKeyboard;
 		}
@@ -165,6 +195,7 @@ namespace engine::editor
 				for (Panel& panel : panels)
 					ImGui::MenuItem(panel.name.c_str(), nullptr, &panel.open);
 				if (!panels.empty()) ImGui::Separator();
+				if (ImGui::MenuItem("Reset layout")) buildLayout = true;
 				ImGui::MenuItem("ImGui demo", nullptr, &showImGuiDemo);
 				ImGui::EndMenu();
 			}
@@ -178,6 +209,16 @@ namespace engine::editor
 		}
 		if (menuDialogs) menuDialogs();
 
+		// The panels dock into this; its middle stays see-through, so the game (or a viewport-less overlay) shows
+		// there.
+		const ImGuiID dockSpaceId =
+		    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+		if (buildLayout)
+		{
+			buildLayout = false;
+			BuildDefaultLayout(dockSpaceId);
+		}
+
 		// By index, since a panel may add panels (the deque keeps the ones already there in place).
 		for (std::size_t i = 0; i < panels.size(); ++i)
 		{
@@ -189,6 +230,34 @@ namespace engine::editor
 		}
 		if (showAbout) DrawAbout();
 		if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
+	}
+
+	void Editor::BuildDefaultLayout(unsigned int dockSpaceId)
+	{
+		// Left strip, right strip and a bottom strip under the middle; what is left is the center.
+		const ImGuiViewport* const viewport = ImGui::GetMainViewport();
+		ImGui::DockBuilderRemoveNode(dockSpaceId);
+		ImGui::DockBuilderAddNode(dockSpaceId, static_cast<ImGuiDockNodeFlags>(ImGuiDockNodeFlags_DockSpace) |
+		                                           ImGuiDockNodeFlags_PassthruCentralNode);
+		ImGui::DockBuilderSetNodeSize(dockSpaceId, viewport->WorkSize);
+		ImGuiID rest = dockSpaceId;
+		const ImGuiID left = ImGui::DockBuilderSplitNode(rest, ImGuiDir_Left, 0.2F, nullptr, &rest);
+		const ImGuiID right = ImGui::DockBuilderSplitNode(rest, ImGuiDir_Right, 0.28F, nullptr, &rest);
+		const ImGuiID bottom = ImGui::DockBuilderSplitNode(rest, ImGuiDir_Down, 0.28F, nullptr, &rest);
+		for (const Panel& panel : panels)
+		{
+			ImGuiID target = 0;
+			if (panel.dock == DockArea::Center)
+				target = rest;
+			else if (panel.dock == DockArea::Left)
+				target = left;
+			else if (panel.dock == DockArea::Right)
+				target = right;
+			else if (panel.dock == DockArea::Bottom)
+				target = bottom;
+			if (target != 0) ImGui::DockBuilderDockWindow(panel.name.c_str(), target);
+		}
+		ImGui::DockBuilderFinish(dockSpaceId);
 	}
 
 	void Editor::DrawAbout()

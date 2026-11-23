@@ -687,6 +687,8 @@ namespace engine::editor
 		{
 			DrawInspector(world(), *state);
 		});
+		editor.SetPanelDock("Hierarchy", Editor::DockArea::Left);
+		editor.SetPanelDock("Inspector", Editor::DockArea::Right);
 		editor.SetPanelOpen("Hierarchy", true);
 		editor.SetPanelOpen("Inspector", true);
 		return state;

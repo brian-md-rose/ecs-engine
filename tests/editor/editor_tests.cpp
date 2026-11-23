@@ -3,7 +3,11 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iterator>
+#include <string>
 
 #include "application/application.hpp"
 #include "application/editorhost.hpp"
@@ -164,6 +168,40 @@ TEST_CASE("An open panel is drawn every frame and may add panels", "[editor][app
 
 	CHECK(panelCalls == game.renders);
 	CHECK(innerCalls == game.renders); // drawn in the frame it was added, too
+}
+
+TEST_CASE("Panels start docked in the default layout, and the layout is saved with its dock data",
+          "[editor][application]")
+{
+	const std::filesystem::path layoutFile = std::filesystem::temp_directory_path() / "ecs-engine-dock-test.ini";
+	std::error_code ignored;
+	std::filesystem::remove(layoutFile, ignored);
+	{
+		Application app(TestConfig());
+		ScriptedGame game;
+		game.pressF1 = false;
+		engine::editor::Editor editor;
+		editor.AddPanel("Left", [] {});
+		editor.AddPanel("Middle", [] {});
+		CHECK(editor.SetPanelDock("Left", engine::editor::Editor::DockArea::Left));
+		CHECK(editor.SetPanelDock("Middle", engine::editor::Editor::DockArea::Center));
+		CHECK_FALSE(editor.SetPanelDock("Missing", engine::editor::Editor::DockArea::Left));
+		editor.SetPanelOpen("Left", true);
+		editor.SetPanelOpen("Middle", true);
+		editor.SetVisible(true);
+		editor.SetLayoutFile(layoutFile);
+		app.SetEditorHost(&editor);
+		if (app.Run(game) != 0) SKIP("no offscreen video driver");
+	}
+
+	std::string saved;
+	{
+		std::ifstream in(layoutFile);
+		saved.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	} // closed before the file is removed, which Windows needs
+	CHECK(saved.find("[Docking][Data]") != std::string::npos);
+	CHECK(saved.find("DockId=") != std::string::npos);
+	std::filesystem::remove(layoutFile, ignored);
 }
 
 TEST_CASE("The editor swallows F1 but never a quit request", "[editor][application]")

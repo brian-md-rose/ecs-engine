@@ -39,6 +39,8 @@ app.Run(game);
 
 and link `engine::editor`. A panel is any function that calls ImGui; it gets its own window, opened from the Panels menu.
 
+Panels dock (Dear ImGui's docking branch): drag a panel by its title into a screen edge or onto another panel to tab it. `Editor::SetPanelDock(name, DockArea)` says where a panel starts in the default layout (Left, Right, Bottom, Center; none leaves it floating); the default is built when the layout file has no dock data, and **Panels > Reset layout** rebuilds it. The middle of the dock space is see-through, so in overlay mode the game still shows there and takes the mouse.
+
 ## The standalone editor
 
 `tangle_run_editor` starts as a standalone editor (`--overlay` gives the F1 overlay on the running game instead). `EditorGame` (`editor/editorgame.hpp`) is the `Game` it runs. It holds two copies of the game, both made by `EditorGameConfig::makeGame`:
@@ -85,7 +87,7 @@ This differs from the plan's per-component commands: each step is the whole scen
 
 With no host set, none of this costs anything. The overlay draws at real window pixels, not the game's logical size, so its text stays sharp: `Editor::Draw` turns the renderer's logical presentation off for the overlay's draw calls and back on after. It writes no `imgui.ini`.
 
-ImGui is a submodule pinned to a release tag (v1.92.9b); to update it, check out another tag in `thirdparty/imgui` and commit.
+ImGui is a submodule pinned to a release tag of the docking branch (v1.92.9b-docking); to update it, check out another tag in `thirdparty/imgui` and commit.
 
 ## Shortcuts
 
