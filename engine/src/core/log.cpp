@@ -26,6 +26,7 @@ namespace engine::core
 			std::deque<LogRecord> history;
 			std::size_t historyCapacity = 0;
 			std::uint64_t nextId = 1;
+			std::uint64_t version = 0;
 		};
 
 		LogState& State()
@@ -132,9 +133,17 @@ namespace engine::core
 		LogState& state = State();
 		const std::lock_guard<std::mutex> lock(state.mutex);
 		state.historyCapacity = capacity;
+		++state.version;
 		while (state.history.size() > capacity)
 			state.history.pop_front();
 		if (capacity == 0) state.history.shrink_to_fit();
+	}
+
+	std::uint64_t LogHistoryVersion()
+	{
+		LogState& state = State();
+		const std::lock_guard<std::mutex> lock(state.mutex);
+		return state.version;
 	}
 
 	std::vector<LogRecord> LogHistory()
@@ -149,6 +158,7 @@ namespace engine::core
 		LogState& state = State();
 		const std::lock_guard<std::mutex> lock(state.mutex);
 		state.history.clear();
+		++state.version;
 	}
 
 	void Log(LogLevel level, std::string_view message)
@@ -162,6 +172,7 @@ namespace engine::core
 		{
 			if (state.history.size() >= state.historyCapacity) state.history.pop_front();
 			state.history.push_back({state.nextId++, level, time, std::string(message)});
+			++state.version;
 		}
 
 		std::string line = time;

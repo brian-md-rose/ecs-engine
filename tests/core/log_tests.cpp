@@ -146,7 +146,9 @@ TEST_CASE("The log history keeps the last messages and can be cleared", "[log]")
 	CHECK(history[1].id < history[2].id);
 	CHECK(history[0].time.size() >= 12);
 
+	const std::uint64_t kept = LogHistoryVersion();
 	ClearLogHistory();
+	CHECK(LogHistoryVersion() != kept);
 	CHECK(LogHistory().empty());
 	LogInfo("after clear"); // no session, still kept
 	history = LogHistory();

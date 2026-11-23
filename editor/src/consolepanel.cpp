@@ -4,6 +4,8 @@
 #include <cctype>
 #include <cfloat>
 #include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -60,7 +62,13 @@ namespace engine::editor
 		{
 			ConsoleFilter filter;
 			bool autoScroll = true;
-			std::vector<core::LogRecord> records; // refreshed each frame
+			std::vector<core::LogRecord> records; // a copy of the log history, refreshed when it changes
+			std::uint64_t version = 0;
+			bool loaded = false;
+			std::size_t counts[4] = {};
+			std::vector<std::size_t> shown; // indices into records that pass the filter
+			ConsoleFilter shownFor;         // the filter `shown` was built with
+			bool shownValid = false;
 		};
 
 		bool& LevelFlag(ConsoleFilter& filter, core::LogLevel level)
@@ -81,16 +89,30 @@ namespace engine::editor
 
 		void DrawConsole(ConsoleState& state)
 		{
-			state.records = core::LogHistory();
-			std::size_t counts[4] = {};
-			for (const core::LogRecord& record : state.records)
-				++counts[static_cast<std::size_t>(record.level)];
+			const std::uint64_t version = core::LogHistoryVersion();
+			if (!state.loaded || version != state.version)
+			{
+				state.records = core::LogHistory();
+				state.version = version;
+				state.loaded = true;
+				state.shownValid = false;
+				for (std::size_t& count : state.counts)
+					count = 0;
+				for (const core::LogRecord& record : state.records)
+				{
+					const std::size_t index = static_cast<std::size_t>(record.level);
+					if (index < std::size(state.counts)) ++state.counts[index];
+				}
+			}
 
 			if (ImGui::Button("Clear"))
 			{
 				core::ClearLogHistory();
 				state.records.clear();
-				counts[0] = counts[1] = counts[2] = counts[3] = 0;
+				state.version = core::LogHistoryVersion();
+				state.shownValid = false;
+				for (std::size_t& count : state.counts)
+					count = 0;
 			}
 			ImGui::SameLine();
 			const bool copyAll = ImGui::Button("Copy");
@@ -101,8 +123,8 @@ namespace engine::editor
 			     {core::LogLevel::Debug, core::LogLevel::Info, core::LogLevel::Warning, core::LogLevel::Error})
 			{
 				ImGui::SameLine();
-				const std::string label =
-				    std::string(LevelLabel(level)) + " " + std::to_string(counts[static_cast<std::size_t>(level)]);
+				const std::string label = std::string(LevelLabel(level)) + " " +
+				                          std::to_string(state.counts[static_cast<std::size_t>(level)]);
 				ImGui::PushStyleColor(ImGuiCol_Text, LevelColour(level));
 				ImGui::Checkbox(label.c_str(), &LevelFlag(state.filter, level));
 				ImGui::PopStyleColor();
@@ -110,16 +132,25 @@ namespace engine::editor
 			ImGui::SetNextItemWidth(-FLT_MIN);
 			ImGui::InputTextWithHint("##consolefilter", "filter", &state.filter.text);
 
-			std::vector<const core::LogRecord*> shown;
-			shown.reserve(state.records.size());
-			for (const core::LogRecord& record : state.records)
-				if (ConsoleMatches(record, state.filter)) shown.push_back(&record);
+			// Filtering reads every record, so only redo it when the history or the filter changed.
+			const ConsoleFilter& f = state.filter;
+			const ConsoleFilter& was = state.shownFor;
+			if (!state.shownValid || f.debug != was.debug || f.info != was.info || f.warning != was.warning ||
+			    f.error != was.error || f.text != was.text)
+			{
+				state.shown.clear();
+				for (std::size_t i = 0; i < state.records.size(); ++i)
+					if (ConsoleMatches(state.records[i], state.filter)) state.shown.push_back(i);
+				state.shownFor = state.filter;
+				state.shownValid = true;
+			}
+			const std::vector<std::size_t>& shown = state.shown;
 
 			if (copyAll)
 			{
 				std::string text;
-				for (const core::LogRecord* record : shown)
-					text += ConsoleLine(*record) + '\n';
+				for (const std::size_t index : shown)
+					text += ConsoleLine(state.records[index]) + '\n';
 				ImGui::SetClipboardText(text.c_str());
 			}
 
@@ -135,7 +166,7 @@ namespace engine::editor
 			{
 				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
 				{
-					const core::LogRecord& record = *shown[static_cast<std::size_t>(row)];
+					const core::LogRecord& record = state.records[shown[static_cast<std::size_t>(row)]];
 					ImGui::PushStyleColor(ImGuiCol_Text, LevelColour(record.level));
 					const std::string line = ConsoleLine(record);
 					ImGui::TextUnformatted(line.c_str(), line.c_str() + line.size());

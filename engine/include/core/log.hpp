@@ -73,6 +73,10 @@ namespace engine::core
 	// The remembered messages, oldest first. Safe to call from any thread.
 	[[nodiscard]] std::vector<LogRecord> LogHistory();
 
+	// A number that changes whenever the remembered messages do (a message kept, Clear, a new capacity), so a viewer
+	// can skip copying LogHistory() on frames where nothing happened. Cheap.
+	[[nodiscard]] std::uint64_t LogHistoryVersion();
+
 	// Forgets the remembered messages (ids keep counting).
 	void ClearLogHistory();
 
