@@ -9,6 +9,8 @@
 #include "ecs/typeregistry.hpp"
 #include "editor/assetbrowser.hpp"
 #include "editor/assetcatalog.hpp"
+#include "graphics/image.hpp"
+#include "graphics/imagefile.hpp"
 
 using engine::ecs::AssetKind;
 using engine::editor::AssetCatalog;
@@ -114,4 +116,83 @@ TEST_CASE("Sprite::source is marked as a sprite asset, so the Inspector can pick
 		CHECK(field.hints.assetKind == AssetKind::Sprite);
 	}
 	CHECK(found);
+}
+
+TEST_CASE("Entries know their manifest line and numbers", "[editor][assets]")
+{
+	const auto folder = FreshFolder("settings");
+	Write(folder / "sprites" / "s.sheet", "# top\n"
+	                                      "\n"
+	                                      "sprite player sprites/player.png 8 8 2\n"
+	                                      "image icons.png\n"
+	                                      "region heart 3 4 9 10\n");
+	const AssetCatalog catalog(folder);
+	const auto& entries = catalog.Entries(AssetKind::Sprite);
+	REQUIRE(entries.size() == 2);
+	CHECK(entries[0].name == "heart");
+	CHECK(entries[0].region);
+	CHECK(entries[0].line == 5);
+	CHECK(entries[0].settings ==
+	      engine::editor::SpriteSettings{.x = 3, .y = 4, .frameWidth = 9, .frameHeight = 10, .frames = 1});
+	CHECK(entries[1].line == 3);
+	CHECK_FALSE(entries[1].region);
+	CHECK(entries[1].settings == engine::editor::SpriteSettings{.frameWidth = 8, .frameHeight = 8, .frames = 2});
+}
+
+TEST_CASE("ApplySpriteSettings rewrites one line and keeps the rest", "[editor][assets]")
+{
+	using engine::editor::ApplySpriteSettings;
+	using engine::editor::SpriteSettings;
+	const std::string text = "# c\nsprite a sprites/a.png 8 8\r\n  region b 1 2 3 4 2\nimage x.png\n";
+
+	const auto sprite =
+	    ApplySpriteSettings(text, 2, "a", SpriteSettings{.frameWidth = 4, .frameHeight = 5, .frames = 3});
+	REQUIRE(sprite);
+	CHECK(*sprite == "# c\nsprite a sprites/a.png 4 5 3\r\n  region b 1 2 3 4 2\nimage x.png\n");
+
+	const auto region = ApplySpriteSettings(
+	    text, 3, "b", SpriteSettings{.x = 9, .y = 8, .frameWidth = 7, .frameHeight = 6, .frames = 1});
+	REQUIRE(region);
+	CHECK(*region == "# c\nsprite a sprites/a.png 8 8\r\n  region b 9 8 7 6 1\nimage x.png\n");
+
+	CHECK_FALSE(ApplySpriteSettings(text, 1, "a", SpriteSettings{}));     // a comment
+	CHECK_FALSE(ApplySpriteSettings(text, 4, "x", SpriteSettings{}));     // an image line
+	CHECK_FALSE(ApplySpriteSettings(text, 2, "b", SpriteSettings{}));     // another sprite's line
+	CHECK_FALSE(ApplySpriteSettings(text, 9, "NAME9", SpriteSettings{})); // past the end
+}
+
+TEST_CASE("SaveSpriteSettings writes a manifest that loads and refuses one that does not", "[editor][assets]")
+{
+	using engine::editor::SaveSpriteSettings;
+	using engine::editor::SpriteSettings;
+	const auto folder = FreshFolder("save");
+	REQUIRE(engine::graphics::SaveImage(engine::graphics::Image(16, 8), folder / "sprites" / "strip.png"));
+	const auto sheet = folder / "sprites" / "s.sheet";
+	Write(sheet, "sprite strip strip.png 8 8 2\n");
+
+	// A different cut of the same 16 x 8 picture is fine.
+	CHECK(
+	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 4, .frameHeight = 8, .frames = 4}).empty());
+	{
+		const AssetCatalog rescanned(folder);
+		const auto& found = rescanned.Entries(AssetKind::Sprite);
+		REQUIRE(found.size() == 1);
+		const int frames = found.front().settings.frames;
+		CHECK(frames == 4);
+	}
+
+	// One that does not match the picture is refused and the file stays as it was.
+	const std::string reason =
+	    SaveSpriteSettings(sheet, 1, "strip", SpriteSettings{.frameWidth = 8, .frameHeight = 8, .frames = 5});
+	CHECK_FALSE(reason.empty());
+	{
+		const AssetCatalog rescanned(folder);
+		const auto& found = rescanned.Entries(AssetKind::Sprite);
+		REQUIRE(found.size() == 1);
+		const int frames = found.front().settings.frames;
+		CHECK(frames == 4);
+	}
+	CHECK_FALSE(SaveSpriteSettings(sheet, 1, "other", SpriteSettings{.frameWidth = 8, .frameHeight = 8})
+	                .empty()); // a different sprite is on that line now
+	CHECK_FALSE(SaveSpriteSettings(sheet, 7, "strip", SpriteSettings{}).empty());
 }
