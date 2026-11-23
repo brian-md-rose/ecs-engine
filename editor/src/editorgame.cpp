@@ -86,7 +86,10 @@ namespace engine::editor
 		{
 			return CurrentWorld();
 		});
-		if (!config.assetFolder.empty()) panels->assets = AddAssetBrowser(editor, config.assetFolder);
+		if (!config.assetFolder.empty()) {
+			thumbnails = std::make_shared<AssetThumbnails>();
+			panels->assets = AddAssetBrowser(editor, config.assetFolder, thumbnails);
+		}
 		if (config.spriteRect)
 			panels->spriteRect = [this](const std::string& name)
 			{
@@ -637,6 +640,7 @@ namespace engine::editor
 
 	void EditorGame::Render(graphics::Renderer& renderer, double alpha)
 	{
+		if (thumbnails) thumbnails->SetRenderer(&renderer);
 		application::ScheduledGame& current = play ? *play : *edit;
 		if (!play)
 		{

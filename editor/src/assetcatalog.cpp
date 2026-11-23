@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <string_view>
 #include <system_error>
 #include <utility>
 
 #include "core/text.hpp"
+#include "graphics/sheetmanifest.hpp"
 
 namespace engine::editor
 {
@@ -38,6 +40,29 @@ namespace engine::editor
 			return text;
 		}
 
+		int NumberOr(const std::vector<core::Word>& words, std::size_t index, int fallback)
+		{
+			if (index >= words.size()) return fallback;
+			return core::ParseInt(words[index].text).value_or(fallback);
+		}
+
+		// The numbers after the name (and the PNG, for a sprite): sprite is "w h [frames]" from word 3, region is
+		// "x y w h [frames]" from word 2.
+		SpriteSettings NumbersOf(const std::vector<core::Word>& words, std::size_t first)
+		{
+			SpriteSettings settings;
+			if (first == 2)
+			{
+				settings.x = NumberOr(words, 2, 0);
+				settings.y = NumberOr(words, 3, 0);
+				first = 4;
+			}
+			settings.frameWidth = NumberOr(words, first, 0);
+			settings.frameHeight = NumberOr(words, first + 1, 0);
+			settings.frames = NumberOr(words, first + 2, 1);
+			return settings;
+		}
+
 		// The entries of one manifest, added to sprites or fonts.
 		void ReadSheet(const std::filesystem::path& file, std::vector<AssetEntry>& sprites,
 		               std::vector<AssetEntry>& fonts)
@@ -47,8 +72,10 @@ namespace engine::editor
 			std::vector<AssetEntry> found;
 			bool allGlyphs = true;
 			std::size_t regions = 0;
+			std::size_t lineNumber = 0;
 			for (const std::string_view line : core::SplitLines(*text))
 			{
+				++lineNumber;
 				const std::vector<core::Word> words = core::SplitWords(line);
 				if (words.size() < 2 || words[0].text.starts_with('#')) continue;
 				if (words[0].text == "sprite" && words.size() >= 5)
@@ -56,7 +83,10 @@ namespace engine::editor
 					found.push_back(
 					    {.name = std::string(words[1].text),
 					     .file = file,
-					     .detail = FrameDetail(words[3].text, words[4].text, words.size() > 5 ? words[5].text : "1")});
+					     .detail = FrameDetail(words[3].text, words[4].text, words.size() > 5 ? words[5].text : "1"),
+					     .line = lineNumber,
+					     .region = false,
+					     .settings = NumbersOf(words, 3)});
 					allGlyphs = false;
 				}
 				else if (words[0].text == "region" && words.size() >= 6)
@@ -64,7 +94,10 @@ namespace engine::editor
 					found.push_back(
 					    {.name = std::string(words[1].text),
 					     .file = file,
-					     .detail = FrameDetail(words[4].text, words[5].text, words.size() > 6 ? words[6].text : "1")});
+					     .detail = FrameDetail(words[4].text, words[5].text, words.size() > 6 ? words[6].text : "1"),
+					     .line = lineNumber,
+					     .region = true,
+					     .settings = NumbersOf(words, 2)});
 					++regions;
 					if (words[1].text.size() != 1) allGlyphs = false;
 				}
@@ -201,5 +234,57 @@ namespace engine::editor
 			break;
 		}
 		return "";
+	}
+
+	std::optional<std::string> ApplySpriteSettings(std::string_view text, std::size_t line,
+	                                               const SpriteSettings& settings)
+	{
+		std::size_t begin = 0;
+		for (std::size_t i = 1; i < line; ++i)
+		{
+			begin = text.find('\n', begin);
+			if (begin == std::string_view::npos) return std::nullopt;
+			++begin;
+		}
+		std::size_t end = text.find('\n', begin);
+		if (end == std::string_view::npos) end = text.size();
+		std::string_view old = text.substr(begin, end - begin);
+		const bool carriageReturn = !old.empty() && old.back() == '\r';
+		if (carriageReturn) old.remove_suffix(1);
+
+		const std::vector<core::Word> words = core::SplitWords(old);
+		const bool isRegion = !words.empty() && words[0].text == "region";
+		if (words.size() < 2 || (!isRegion && words[0].text != "sprite")) return std::nullopt;
+		const std::size_t keep = isRegion ? 2 : 3; // keyword and name, and the PNG of a sprite
+		if (words.size() < keep + (isRegion ? 4 : 2)) return std::nullopt;
+
+		std::string row(old.substr(0, words[0].column - 1)); // the indentation
+		for (std::size_t i = 0; i < keep; ++i)
+			row += (i == 0 ? "" : " ") + std::string(words[i].text);
+		if (isRegion) row += " " + std::to_string(settings.x) + " " + std::to_string(settings.y);
+		row += " " + std::to_string(settings.frameWidth) + " " + std::to_string(settings.frameHeight);
+		if (settings.frames != 1 || words.size() > keep + (isRegion ? 4 : 2))
+			row += " " + std::to_string(settings.frames);
+		if (carriageReturn) row += '\r';
+
+		std::string result(text.substr(0, begin));
+		result += row;
+		result += text.substr(end);
+		return result;
+	}
+
+	std::string SaveSpriteSettings(const std::filesystem::path& file, std::size_t line, const SpriteSettings& settings)
+	{
+		const auto text = core::ReadTextFile(file);
+		if (!text) return "can't read " + core::PathText(file);
+		const auto edited = ApplySpriteSettings(*text, line, settings);
+		if (!edited) return "line " + std::to_string(line) + " is not a sprite or region line any more; Rescan";
+		const graphics::PixelSheetResult check = graphics::ParseSheetManifest(*edited, file.parent_path());
+		if (!check.sheet) return "line " + std::to_string(check.error.line) + ": " + check.error.message;
+		std::ofstream out(file, std::ios::binary | std::ios::trunc);
+		out << *edited;
+		out.close();
+		if (!out) return "can't write " + core::PathText(file);
+		return {};
 	}
 } // namespace engine::editor

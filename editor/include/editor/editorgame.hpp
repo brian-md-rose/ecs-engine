@@ -11,6 +11,7 @@
 #include "application/application.hpp"
 #include "application/scheduledgame.hpp"
 #include "ecs/entity.hpp"
+#include "editor/assetthumbnails.hpp"
 #include "editor/editor.hpp"
 #include "editor/entitypanels.hpp"
 #include "editor/gridtool.hpp"
@@ -133,6 +134,7 @@ namespace engine::editor
 
 		// The viewport: the game is drawn into target (as big as the game's logical screen) and the Viewport panel
 		// shows it, panned and zoomed. The renderer owns the texture, so it is never freed here.
+		std::shared_ptr<AssetThumbnails> thumbnails; // the Assets panel's sprite pictures; null without an assets folder
 		graphics::TextureId target = graphics::kNoTexture;
 		int targetWidth = 0;
 		int targetHeight = 0;
