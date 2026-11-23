@@ -66,8 +66,8 @@ namespace engine::editor
 		const Entity entity = CreateEntity(registry, name);
 		const float halfWidth = static_cast<float>(source.width) * 0.5F;
 		const float halfHeight = static_cast<float>(source.height) * 0.5F;
-		registry.Add<graphics::Transform>(
-		    entity, graphics::Transform{{std::round(centre.x - halfWidth), std::round(centre.y - halfHeight)}});
+		registry.Add<graphics::Transform>(entity, graphics::Transform{.position = {std::round(centre.x - halfWidth),
+		                                                                           std::round(centre.y - halfHeight)}});
 		graphics::Sprite sprite;
 		sprite.source = source;
 		registry.Add<graphics::Sprite>(entity, sprite);

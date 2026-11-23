@@ -38,6 +38,43 @@ namespace engine::graphics
 			return {std::floor(position.x + 0.5f), std::floor(position.y + 0.5f)};
 		}
 
+		// The corner at (dx, dy) from origin of a box turned by an angle (cosine c, sine s) and stretched by k.
+		[[nodiscard]] Position Corner(Position origin, float c, float s, Scale k, float dx, float dy)
+		{
+			const float sx = dx * k.x;
+			const float sy = dy * k.y;
+			return {origin.x + sx * c - sy * s, origin.y + sx * s + sy * c};
+		}
+
+		[[nodiscard]] float Radians(float degrees)
+		{
+			return degrees * (std::numbers::pi_v<float> / 180.0f);
+		}
+
+		// The box (top-left and size) that surrounds a width x height box at origin after it is turned
+		// and stretched. Untouched when there is neither.
+		struct Extent
+		{
+			Position topLeft;
+			float width;
+			float height;
+		};
+		[[nodiscard]] Extent Surround(Position origin, float width, float height, float rotation, Scale k)
+		{
+			if (rotation == 0.0f && k.x == 1.0f && k.y == 1.0f) return {origin, width, height};
+			const float c = std::cos(Radians(rotation));
+			const float s = std::sin(Radians(rotation));
+			const Position a = Corner(origin, c, s, k, 0.0f, 0.0f);
+			const Position b = Corner(origin, c, s, k, width, 0.0f);
+			const Position d = Corner(origin, c, s, k, width, height);
+			const Position e = Corner(origin, c, s, k, 0.0f, height);
+			const float left = std::min({a.x, b.x, d.x, e.x});
+			const float right = std::max({a.x, b.x, d.x, e.x});
+			const float top = std::min({a.y, b.y, d.y, e.y});
+			const float bottom = std::max({a.y, b.y, d.y, e.y});
+			return {{left, top}, right - left, bottom - top};
+		}
+
 		[[nodiscard]] std::uint8_t Multiply(std::uint8_t a, std::uint8_t b)
 		{
 			return static_cast<std::uint8_t>((static_cast<unsigned>(a) * static_cast<unsigned>(b) + 127u) / 255u);
@@ -110,13 +147,17 @@ namespace engine::graphics
 			drawn.width *= factor;
 			drawn.height *= factor;
 			drawn.radius *= factor;
-			if (!visible(placement, placement.screen, drawn.BoundsWidth(), drawn.BoundsHeight())) return;
+			const Extent extent = Surround(placement.screen, drawn.BoundsWidth(), drawn.BoundsHeight(),
+			                               transform.rotation, transform.scale);
+			if (!visible(placement, extent.topLeft, extent.width, extent.height)) return;
 			entries.push_back({.screen = placement.screen,
 			                   .layer = shape.layer,
 			                   .color = shape.color,
 			                   .clipped = placement.clipped,
 			                   .clip = placement.clip,
-			                   .shape = drawn});
+			                   .shape = drawn,
+			                   .rotation = transform.rotation,
+			                   .scale = transform.scale});
 		};
 		registry.Each<Transform, Shape>(collectShape);
 
@@ -132,7 +173,8 @@ namespace engine::graphics
 				    static_cast<float>((sprite.width > 0 ? sprite.width : sprite.source.width) * placement.zoom);
 				const auto height =
 				    static_cast<float>((sprite.height > 0 ? sprite.height : sprite.source.height) * placement.zoom);
-				if (!visible(placement, screen, width, height)) return;
+				const Extent extent = Surround(screen, width, height, transform.rotation, transform.scale);
+				if (!visible(placement, extent.topLeft, extent.width, extent.height)) return;
 				entries.push_back({.screen = screen,
 				                   .layer = sprite.layer,
 				                   .color = sprite.tint,
@@ -141,7 +183,9 @@ namespace engine::graphics
 				                   .textured = true,
 				                   .source = sprite.source,
 				                   .size = {width, height},
-				                   .flipX = sprite.flipX});
+				                   .flipX = sprite.flipX,
+				                   .rotation = transform.rotation,
+				                   .scale = transform.scale});
 			};
 			registry.Each<Transform, Sprite>(collectSprite);
 		}
@@ -218,15 +262,15 @@ namespace engine::graphics
 	void DrawBatch::AddRectangle(const Entry& entry, Position uv)
 	{
 		const int first = static_cast<int>(vertices.size());
-		const float left = entry.screen.x;
-		const float top = entry.screen.y;
-		const float right = left + entry.shape.width;
-		const float bottom = top + entry.shape.height;
+		const float c = std::cos(Radians(entry.rotation));
+		const float s = std::sin(Radians(entry.rotation));
+		const float width = entry.shape.width;
+		const float height = entry.shape.height;
 
-		vertices.push_back({{left, top}, entry.color, uv});
-		vertices.push_back({{right, top}, entry.color, uv});
-		vertices.push_back({{right, bottom}, entry.color, uv});
-		vertices.push_back({{left, bottom}, entry.color, uv});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, 0.0f), entry.color, uv});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, 0.0f), entry.color, uv});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, height), entry.color, uv});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, height), entry.color, uv});
 
 		for (const int corner : {0, 1, 2, 0, 2, 3})
 		{
@@ -240,15 +284,17 @@ namespace engine::graphics
 		// triangle per segment.
 		const int centre = static_cast<int>(vertices.size());
 		const float radius = entry.shape.radius;
-		const float cx = entry.screen.x + radius;
-		const float cy = entry.screen.y + radius;
+		const float c = std::cos(Radians(entry.rotation));
+		const float s = std::sin(Radians(entry.rotation));
 
-		vertices.push_back({{cx, cy}, entry.color, uv});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, radius, radius), entry.color, uv});
 		for (int i = 0; i < kCircleSegments; ++i)
 		{
 			const float angle =
 			    2.0f * std::numbers::pi_v<float> * static_cast<float>(i) / static_cast<float>(kCircleSegments);
-			vertices.push_back({{cx + radius * std::cos(angle), cy + radius * std::sin(angle)}, entry.color, uv});
+			vertices.push_back({Corner(entry.screen, c, s, entry.scale, radius + radius * std::cos(angle),
+			                           radius + radius * std::sin(angle)),
+			                    entry.color, uv});
 		}
 
 		for (int i = 0; i < kCircleSegments; ++i)
@@ -262,10 +308,10 @@ namespace engine::graphics
 	void DrawBatch::AddQuad(const Entry& entry, const BatchSettings& settings)
 	{
 		const int first = static_cast<int>(vertices.size());
-		const float left = entry.screen.x;
-		const float top = entry.screen.y;
-		const float right = left + entry.size.x;
-		const float bottom = top + entry.size.y;
+		const float c = std::cos(Radians(entry.rotation));
+		const float s = std::sin(Radians(entry.rotation));
+		const float width = entry.size.x;
+		const float height = entry.size.y;
 
 		const auto atlasWidth = static_cast<float>(settings.atlasWidth);
 		const auto atlasHeight = static_cast<float>(settings.atlasHeight);
@@ -275,10 +321,10 @@ namespace engine::graphics
 		const float v1 = static_cast<float>(entry.source.y + entry.source.height) / atlasHeight;
 		if (entry.flipX) std::swap(u0, u1);
 
-		vertices.push_back({{left, top}, entry.color, {u0, v0}});
-		vertices.push_back({{right, top}, entry.color, {u1, v0}});
-		vertices.push_back({{right, bottom}, entry.color, {u1, v1}});
-		vertices.push_back({{left, bottom}, entry.color, {u0, v1}});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, 0.0f), entry.color, {u0, v0}});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, 0.0f), entry.color, {u1, v0}});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, width, height), entry.color, {u1, v1}});
+		vertices.push_back({Corner(entry.screen, c, s, entry.scale, 0.0f, height), entry.color, {u0, v1}});
 
 		for (const int corner : {0, 1, 2, 0, 2, 3})
 		{

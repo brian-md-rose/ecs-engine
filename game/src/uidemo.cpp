@@ -101,7 +101,7 @@ namespace game
 				const std::string value = DemoRowText(row);
 				const Entity text = SpawnScoped(registry, {kListX + kRowIndent, kListY + y});
 				registry.Add<Parent>(text, Parent{content});
-				registry.Add<LocalTransform>(text, LocalTransform{{kRowIndent, y}});
+				registry.Add<LocalTransform>(text, LocalTransform{.position = {kRowIndent, y}});
 				registry.Add<Text>(
 				    text, Text{.value = value, .color = kTextColor, .layer = kDemoRowLayer, .wrapWidth = kRowWrap});
 				y += static_cast<float>(engine::graphics::MeasureText(metrics, value, kRowWrap).height + kRowGap);
