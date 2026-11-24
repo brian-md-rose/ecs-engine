@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 #include <fstream>
+#include <source_location>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -189,4 +190,20 @@ TEST_CASE("Shrinking the log history capacity drops the oldest messages", "[log]
 	REQUIRE(history.size() == 2);
 	CHECK(history[0].message == "d");
 	CHECK(history[1].message == "e");
+}
+
+TEST_CASE("A remembered message carries the file and line of the call that logged it", "[log]")
+{
+	const HistoryGuard guard;
+	SetLogHistoryCapacity(5);
+	ClearLogHistory();
+	const std::uint32_t line = std::source_location::current().line() + 1;
+	LogWarning("where am I");
+	LogAt(LogLevel::Info, "from elsewhere", "", 0);
+	const std::vector<LogRecord> history = LogHistory();
+	REQUIRE(history.size() == 2);
+	CHECK(history[0].line == line);
+	CHECK(history[0].file.find("log_tests.cpp") != std::string::npos);
+	CHECK(history[1].file.empty());
+	CHECK(history[1].line == 0);
 }
