@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="256" height="256">
+  <!-- ecs-engine icon: a sparse 3x3 archetype grid. Rows are entities, columns are component types. -->
+  <rect x="0" y="0" width="16" height="16" rx="3" fill="#161c2b"/>
+  <g>
+    <!-- row 0: has all three components -->
+    <rect x="1" y="1" width="4" height="4" rx="1" fill="#2ec4b6"/>
+    <rect x="6" y="1" width="4" height="4" rx="1" fill="#ffb627"/>
+    <rect x="11" y="1" width="4" height="4" rx="1" fill="#ff5d73"/>
+    <!-- row 1: missing the middle component -->
+    <rect x="1" y="6" width="4" height="4" rx="1" fill="#2ec4b6"/>
+    <rect x="6" y="6" width="4" height="4" rx="1" fill="#2a3349"/>
+    <rect x="11" y="6" width="4" height="4" rx="1" fill="#ff5d73"/>
+    <!-- row 2: missing the last component -->
+    <rect x="1" y="11" width="4" height="4" rx="1" fill="#2ec4b6"/>
+    <rect x="6" y="11" width="4" height="4" rx="1" fill="#ffb627"/>
+    <rect x="11" y="11" width="4" height="4" rx="1" fill="#2a3349"/>
+  </g>
+</svg>
