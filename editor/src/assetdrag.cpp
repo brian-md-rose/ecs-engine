@@ -32,7 +32,7 @@ namespace engine::editor
 	{
 		if (bytes.size() < 2) return std::nullopt; // a kind and at least one character
 		const int kind = static_cast<int>(bytes[0]);
-		if (kind < static_cast<int>(DragKind::Sprite) || kind > static_cast<int>(DragKind::Scene)) return std::nullopt;
+		if (kind < static_cast<int>(DragKind::Sprite) || kind > static_cast<int>(DragKind::Prefab)) return std::nullopt;
 		return AssetDrag{static_cast<DragKind>(kind), std::string(bytes.begin() + 1, bytes.end())};
 	}
 
