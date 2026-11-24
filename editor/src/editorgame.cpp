@@ -1262,7 +1262,7 @@ namespace engine::editor
 			if (ImGui::IsKeyPressed(ImGuiKey_F8, true)) StepPlay();
 			return; // the rest edit the scene
 		}
-		if (inViewport && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift)
+		if (inViewport && gizmoHandle == GizmoHandle::None && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift)
 		{
 			if (ImGui::IsKeyPressed(ImGuiKey_W, false)) gizmoTool = GizmoTool::Translate;
 			if (ImGui::IsKeyPressed(ImGuiKey_E, false)) gizmoTool = GizmoTool::Rotate;
