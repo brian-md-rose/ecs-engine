@@ -97,6 +97,12 @@ namespace engine::editor
 		{
 			state.note.clear();
 			std::error_code error;
+			if (!std::filesystem::path(record.file).is_absolute())
+			{
+				state.note = "The source path is relative (this build does not use absolute source paths), so it "
+				             "cannot be opened.";
+				return;
+			}
 			if (!std::filesystem::exists(std::filesystem::path(record.file), error))
 			{
 				state.note = "That file is not on this computer (the game was built elsewhere).";
