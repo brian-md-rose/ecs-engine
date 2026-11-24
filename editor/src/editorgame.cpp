@@ -123,6 +123,10 @@ namespace engine::editor
 		{
 			DrawViewport();
 		});
+		editor.AddPanel("Game", [this]
+		{
+			DrawGame();
+		});
 		editor.AddPanel("Issues", [this]
 		{
 			DrawIssues();
@@ -133,6 +137,8 @@ namespace engine::editor
 		});
 		editor.SetPanelSize("Viewport", 700, 480);
 		editor.SetPanelDock("Viewport", Editor::DockArea::Center);
+		editor.SetPanelSize("Game", 480, 360);
+		editor.SetPanelDock("Game", Editor::DockArea::Center);
 		editor.SetPanelDock("Issues", Editor::DockArea::Bottom);
 		editor.SetPanelDock("Scene", Editor::DockArea::Right);
 		editor.SetPanelOpen("Viewport", true);
@@ -182,7 +188,7 @@ namespace engine::editor
 	void EditorGame::DrawSceneSettings()
 	{
 		ecs::SceneSettings& settings = SettingsOf(edit->world);
-		if (play) ImGui::BeginDisabled();
+		if (!Editing()) ImGui::BeginDisabled();
 		ImGui::TextDisabled("How the scene is drawn. Left off, the game decides.");
 		bool hasCamera = settings.camera.has_value();
 		if (ImGui::Checkbox("Camera", &hasCamera))
@@ -208,7 +214,7 @@ namespace engine::editor
 					color[i] = static_cast<std::uint8_t>(std::clamp(channels[i], 0.0F, 1.0F) * 255.0F + 0.5F);
 			}
 		}
-		if (play) ImGui::EndDisabled();
+		if (!Editing()) ImGui::EndDisabled();
 	}
 
 	void EditorGame::DrawIssues()
@@ -249,7 +255,7 @@ namespace engine::editor
 	{
 		lastAutosave = std::chrono::steady_clock::now();
 		const std::filesystem::path file = AutosavePath();
-		if (file.empty() || play) return false;
+		if (file.empty() || !Editing()) return false;
 		// Compared directly, not through CheckDirty, which would also add an undo step in the middle of an edit.
 		const std::string text = SceneText();
 		if (text == savedText)
@@ -358,8 +364,8 @@ namespace engine::editor
 			DropAutosave(); // changes undone or saved: nothing left to bring back
 			autosaveWritten = false;
 		}
-		if (!play && !history.empty() && text != history[historyPos]) problemsStale = true;
-		if (!play && !history.empty() && text != history[historyPos]) Commit(text);
+		if (Editing() && !history.empty() && text != history[historyPos]) problemsStale = true;
+		if (Editing() && !history.empty() && text != history[historyPos]) Commit(text);
 	}
 
 	void EditorGame::ResetHistory()
@@ -383,7 +389,7 @@ namespace engine::editor
 
 	bool EditorGame::GoTo(std::size_t position)
 	{
-		if (play || position >= history.size()) return false;
+		if (!Editing() || position >= history.size()) return false;
 		const core::JsonResult parsed = core::ParseJson(history[position]);
 		if (!parsed.value) return false;
 		ecs::World& world = edit->world;
@@ -431,14 +437,14 @@ namespace engine::editor
 
 	bool EditorGame::Undo()
 	{
-		if (play) return false;
+		if (!Editing()) return false;
 		CheckDirty(); // a change not yet looked at becomes a step first, so undoing it is possible
 		return historyPos > 0 && GoTo(historyPos - 1);
 	}
 
 	bool EditorGame::Redo()
 	{
-		if (play) return false;
+		if (!Editing()) return false;
 		CheckDirty();
 		return GoTo(historyPos + 1);
 	}
@@ -652,17 +658,44 @@ namespace engine::editor
 		return BeginPlay();
 	}
 
+	namespace
+	{
+		graphics::Camera CameraOf(ecs::World& world)
+		{
+			if (const auto* renderer2D = world.resources.TryGet<graphics::Renderer2D>()) return renderer2D->camera;
+			return {};
+		}
+
+		// Makes the picture a view shows when the game's logical screen changes size.
+		void FitTarget(graphics::Renderer& renderer, const graphics::Camera& camera, graphics::TextureId& target, int& width,
+		               int& height, SDL_Texture*& handle)
+		{
+			if (camera.logicalWidth <= 0 || camera.logicalHeight <= 0 ||
+			    (camera.logicalWidth == width && camera.logicalHeight == height))
+				return;
+			renderer.DestroyTexture(target);
+			target = renderer.CreateRenderTarget(camera.logicalWidth, camera.logicalHeight);
+			width = camera.logicalWidth;
+			height = camera.logicalHeight;
+			handle = renderer.GetTextureHandle(target);
+		}
+	} // namespace
+
 	graphics::Camera EditorGame::CurrentCamera()
 	{
-		if (const auto* renderer2D = CurrentWorld().resources.TryGet<graphics::Renderer2D>()) return renderer2D->camera;
-		return {};
+		return CameraOf(CurrentWorld());
 	}
 
 	void EditorGame::Render(graphics::Renderer& renderer, double alpha)
 	{
 		if (thumbnails) thumbnails->SetRenderer(&renderer);
-		application::ScheduledGame& current = play ? *play : *edit;
-		if (!play)
+		// The Game panel is shown (it says so each time it is drawn): the game plays there and the scene stays here.
+		const bool wasSplit = split;
+		split = play != nullptr && gameDrawn;
+		gameDrawn = false;
+		if (split != wasSplit) panels->Select(ecs::Entity::Null); // the selection belongs to the other world
+		application::ScheduledGame& current = play && !split ? *play : *edit;
+		if (Editing())
 		{
 			// Look when nothing is being dragged or typed, so a drag is one step, not one per frame.
 			const bool busy =
@@ -684,20 +717,18 @@ namespace engine::editor
 
 		// Into a picture the viewport shows (made again only when the game's screen size changes, so a failure is
 		// logged once). If none can be made, the game is drawn straight to the window.
-		const graphics::Camera camera = CurrentCamera();
-		if (camera.logicalWidth > 0 && camera.logicalHeight > 0 &&
-		    (camera.logicalWidth != targetWidth || camera.logicalHeight != targetHeight))
-		{
-			renderer.DestroyTexture(target);
-			target = renderer.CreateRenderTarget(camera.logicalWidth, camera.logicalHeight);
-			targetWidth = camera.logicalWidth;
-			targetHeight = camera.logicalHeight;
-			targetHandle = renderer.GetTextureHandle(target);
-		}
+		FitTarget(renderer, CurrentCamera(), target, targetWidth, targetHeight, targetHandle);
+		if (split)
+			FitTarget(renderer, CameraOf(play->world), gameTarget, gameTargetWidth, gameTargetHeight, gameTargetHandle);
 		if (target != graphics::kNoTexture && renderer.SetRenderTarget(target))
 		{
 			current.Render(renderer, alpha);
 			(void)renderer.SetRenderTarget(graphics::kNoTexture);
+			if (split && gameTarget != graphics::kNoTexture && renderer.SetRenderTarget(gameTarget))
+			{
+				play->Render(renderer, alpha);
+				(void)renderer.SetRenderTarget(graphics::kNoTexture);
+			}
 			renderer.Clear(30, 30, 34); // behind the panels
 			return;
 		}
@@ -882,8 +913,66 @@ namespace engine::editor
 		message.clear();
 	}
 
+	// The Game panel: the playing game in a picture of its own, with the mouse and keys, while the Viewport stays the
+	// scene being edited.
+	void EditorGame::DrawGame()
+	{
+		gameDrawn = true;
+		if (!play || !split || gameTargetHandle == nullptr || gameTarget == graphics::kNoTexture)
+		{
+			ImGui::TextDisabled(play ? "Starting the game view..."
+			                         : "Press Play (F5) to see the game here. The Viewport keeps showing the scene, so\nyou can "
+			                           "keep editing it while the game runs (changes are not carried into the run).");
+			return;
+		}
+		if (ImGui::Button("Reset view")) gameView = ViewTransform{};
+		ImGui::SameLine();
+		ImGui::Text("%.0f%%   the game has the mouse and keys; hold Ctrl to zoom and pan",
+		            static_cast<double>(gameView.zoom) * 100.0);
+		ImVec2 size = ImGui::GetContentRegionAvail();
+		size.x = std::max(size.x, 16.0F);
+		size.y = std::max(size.y, 16.0F);
+		ImGui::InvisibleButton("##game", size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+		const bool hovered = ImGui::IsItemHovered();
+		gameActive = hovered || ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		const ImVec2 min = ImGui::GetItemRectMin();
+		const ImVec2 max = ImGui::GetItemRectMax();
+		const graphics::Position origin{min.x, min.y};
+		const ImGuiIO& io = ImGui::GetIO();
+		if (hovered && io.KeyCtrl && io.MouseWheel != 0.0F)
+			gameView.ZoomAt(std::pow(1.15F, io.MouseWheel), {io.MousePos.x, io.MousePos.y}, origin);
+		if (hovered && io.KeyCtrl &&
+		    (ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F) || ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0F)))
+		{
+			gameView.panX += io.MouseDelta.x;
+			gameView.panY += io.MouseDelta.y;
+		}
+		PointerSample sample;
+		sample.window = {io.MousePos.x, io.MousePos.y};
+		sample.hovered = hovered && !io.KeyCtrl;
+		for (std::size_t i = 0; i < sample.down.size(); ++i)
+			sample.down[i] = ImGui::IsMouseDown(static_cast<int>(i));
+		sample.wheel = io.MouseWheel;
+		playMouse.Feed(sample, gameView, origin, gameTargetWidth, gameTargetHeight);
+		mouseFed = true;
+
+		ImDrawList* const draw = ImGui::GetWindowDrawList();
+		draw->PushClipRect(min, max, true);
+		draw->AddRectFilled(min, max, IM_COL32(20, 20, 24, 255));
+		const graphics::Position topLeft = gameView.ToWindow({0, 0}, origin);
+		const graphics::Position bottomRight = gameView.ToWindow(
+		    {static_cast<float>(gameTargetWidth), static_cast<float>(gameTargetHeight)}, origin);
+		draw->AddImage(ImTextureRef(reinterpret_cast<ImTextureID>(gameTargetHandle)), ImVec2(topLeft.x, topLeft.y),
+		               ImVec2(bottomRight.x, bottomRight.y));
+		draw->AddRect(ImVec2(topLeft.x, topLeft.y), ImVec2(bottomRight.x, bottomRight.y), IM_COL32(90, 90, 100, 255));
+		draw->PopClipRect();
+	}
+
 	void EditorGame::DrawViewport()
 	{
+		// Playing over this view: the game has its mouse. With the Game panel shown the game is there instead, and this
+		// view stays the scene.
+		const bool playing = play != nullptr && !split;
 		if (targetHandle == nullptr || target == graphics::kNoTexture)
 		{
 			ImGui::TextDisabled("The game has not drawn a picture yet.");
@@ -891,11 +980,11 @@ namespace engine::editor
 		}
 		if (ImGui::Button("Reset view")) view = ViewTransform{};
 		ImGui::SameLine();
-		ImGui::Text(play ? "%.0f%%   the game has the mouse; hold Ctrl to zoom and pan"
+		ImGui::Text(playing ? "%.0f%%   the game has the mouse; hold Ctrl to zoom and pan"
 		                 : "%.0f%%   wheel zooms, middle or right drag pans, click selects",
 		            static_cast<double>(view.zoom) * 100.0);
 
-		if (!play)
+		if (Editing())
 		{
 			ImGui::SameLine();
 			const std::array<std::pair<const char*, GizmoTool>, 3> tools{
@@ -916,10 +1005,16 @@ namespace engine::editor
 			ImGui::SetNextItemWidth(56.0F);
 			ImGui::InputInt("grid", &snapSize, 0);
 			snapSize = std::clamp(snapSize, 1, 256);
+			ImGui::SameLine();
+			ImGui::Checkbox("Gizmos", &showGizmos);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Show the gizmo on the selection.");
+			ImGui::SameLine();
+			ImGui::Checkbox("Grid lines", &showSnapGrid);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("Draw a line at every grid size over the scene.");
 		}
 		// The grid tool's palette, when the scene being edited has a grid (a maze).
 		std::optional<GridInfo> grid;
-		if (!play && config.gridTool.grid) grid = config.gridTool.grid(edit->world);
+		if (Editing() && config.gridTool.grid) grid = config.gridTool.grid(edit->world);
 		if (grid)
 		{
 			const GridTool& tool = config.gridTool;
@@ -984,10 +1079,10 @@ namespace engine::editor
 		const ImVec2 max = ImGui::GetItemRectMax();
 		const graphics::Position origin{min.x, min.y};
 		const ImGuiIO& io = ImGui::GetIO();
-		if (!play) TakeAssetDrop(origin);
+		if (Editing()) TakeAssetDrop(origin);
 
 		// While playing, the game gets the wheel and the buttons; hold Ctrl to zoom and pan the view instead.
-		const bool viewKeys = !play || io.KeyCtrl;
+		const bool viewKeys = !playing || io.KeyCtrl;
 		if (hovered && viewKeys && io.MouseWheel != 0.0F)
 			view.ZoomAt(std::pow(1.15F, io.MouseWheel), {io.MousePos.x, io.MousePos.y}, origin);
 		if (hovered && viewKeys &&
@@ -998,7 +1093,7 @@ namespace engine::editor
 			view.panY += io.MouseDelta.y;
 		}
 
-		if (play)
+		if (playing)
 		{
 			PointerSample sample;
 			sample.window = {io.MousePos.x, io.MousePos.y};
@@ -1022,11 +1117,32 @@ namespace engine::editor
 
 		ecs::World& world = CurrentWorld();
 		const graphics::Camera camera = CurrentCamera();
+		if (showSnapGrid && snapSize > 0 && !playing)
+		{
+			// A line at every grid size in world units, as far as the picture shows (not when they would be a haze).
+			const auto cell = static_cast<float>(snapSize);
+			const auto zoom = static_cast<float>(camera.EffectiveZoom());
+			if (cell * zoom * view.zoom >= 4.0F)
+			{
+				const graphics::Position shown = camera.ViewSize();
+				const ImU32 lines = IM_COL32(255, 255, 255, 28);
+				for (float x = std::floor(camera.position.x / cell) * cell; x <= camera.position.x + shown.x; x += cell)
+				{
+					const graphics::Position top = view.ToWindow(camera.WorldToScreen({x, camera.position.y}), origin);
+					draw->AddLine(ImVec2(top.x, topLeft.y), ImVec2(top.x, bottomRight.y), lines);
+				}
+				for (float y = std::floor(camera.position.y / cell) * cell; y <= camera.position.y + shown.y; y += cell)
+				{
+					const graphics::Position left = view.ToWindow(camera.WorldToScreen({camera.position.x, y}), origin);
+					draw->AddLine(ImVec2(topLeft.x, left.y), ImVec2(bottomRight.x, left.y), lines);
+				}
+			}
+		}
 		// The translate gizmo sits at the middle of the selection (window pixels). A press on one of its handles moves
 		// the selection along that axis, or freely from the square; it goes first, so it wins over picking.
 		const auto gizmoPivot = [&]() -> std::optional<graphics::Position>
 		{
-			if (play || painting) return std::nullopt;
+			if (!showGizmos || !Editing() || painting) return std::nullopt;
 			const auto centre = SelectionCentre(world.registry, SelectionRoots(world.registry, *panels), camera);
 			if (!centre) return std::nullopt;
 			return view.ToWindow(*centre, origin);
@@ -1059,7 +1175,7 @@ namespace engine::editor
 			else
 				gizmoHover = PickGizmo(*pivot, mouse, {}, gizmoTool == GizmoTool::Scale ? gizmoRotation : 0.0F);
 		}
-		if (!play && !painting && gizmoHover != GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (Editing() && !painting && gizmoHover != GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			boxStart.reset();
 			gizmoHandle = gizmoHover;
@@ -1071,7 +1187,7 @@ namespace engine::editor
 		// part of), so no separate handle is needed. Ctrl or Shift adds to the selection or takes the entity out of it.
 		// A press on empty space starts a box: what it covers when released is selected (added to the selection with
 		// Ctrl or Shift).
-		if (!play && !painting && gizmoHover == GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+		if (Editing() && !painting && gizmoHover == GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			const graphics::Position picture = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
 			const ecs::Entity picked = PickEntity(world.registry, camera, picture);
@@ -1109,13 +1225,13 @@ namespace engine::editor
 		if (panels->selected != shownSelection)
 		{
 			shownSelection = panels->selected;
-			if (!play && shownSelection != ecs::Entity::Null && world.registry.IsAlive(shownSelection))
+			if (Editing() && shownSelection != ecs::Entity::Null && world.registry.IsAlive(shownSelection))
 			{
 				if (const auto rect = EntityScreenRect(world.registry, shownSelection, camera))
 					(void)view.ScrollIntoView(*rect, max.x - min.x, max.y - min.y);
 			}
 		}
-		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
+		if (Editing() && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
 			const bool snapping = snapToGrid != io.KeyCtrl;
@@ -1220,7 +1336,7 @@ namespace engine::editor
 		}
 		if (painting) PaintStroke(*grid, origin, draw);
 		// A right click that did not pan: a menu to Play with the game starting at that cell.
-		if (!play && grid && config.onPlayFrom && hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+		if (Editing() && grid && config.onPlayFrom && hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
 		    ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 4.0F).x == 0.0F &&
 		    ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 4.0F).y == 0.0F)
 		{
@@ -1369,8 +1485,11 @@ namespace engine::editor
 		viewportActive = false;
 		// The game gets the keys while it is played over the Viewport. ImGui's own keyboard navigation is off then, or
 		// the arrow keys would also move its focus around the panels.
-		editor.SetGameKeys(play != nullptr && inViewport);
-		const bool gameHasKeys = play != nullptr && inViewport;
+		// With the Game panel shown the keys go to the game only while that panel has the pointer or focus.
+		const bool inGame = gameActive;
+		gameActive = false;
+		const bool gameHasKeys = play != nullptr && (split ? inGame : inViewport);
+		editor.SetGameKeys(gameHasKeys);
 		if (gameHasKeys && (io.ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard) != 0)
 		{
 			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
@@ -1402,7 +1521,7 @@ namespace engine::editor
 			if (ImGui::IsKeyPressed(ImGuiKey_F6, false)) (void)RestartPlay();
 			if (ImGui::IsKeyPressed(ImGuiKey_F7, false)) playPaused = !playPaused;
 			if (ImGui::IsKeyPressed(ImGuiKey_F8, true)) StepPlay();
-			return; // the rest edit the scene
+			if (!split || gameHasKeys) return; // the rest edit the scene, which the game's keys must not
 		}
 		if (inViewport && gizmoHandle == GizmoHandle::None && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift)
 		{
@@ -1574,10 +1693,10 @@ namespace engine::editor
 			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, CanUndo())) (void)Undo();
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, CanRedo())) (void)Redo();
 			ImGui::Separator();
-			if (ImGui::MenuItem("Copy", "Ctrl+C", false, !play && !panels->selected.IsNull())) CopySelection();
-			if (ImGui::MenuItem("Paste", "Ctrl+V", false, !play)) PasteClipboard();
+			if (ImGui::MenuItem("Copy", "Ctrl+C", false, Editing() && !panels->selected.IsNull())) CopySelection();
+			if (ImGui::MenuItem("Paste", "Ctrl+V", false, Editing())) PasteClipboard();
 			ImGui::Separator();
-			if (ImGui::BeginMenu("Prefab", !play && !config.assetFolder.empty()))
+			if (ImGui::BeginMenu("Prefab", Editing() && !config.assetFolder.empty()))
 			{
 				panels->Prune(edit->world.registry);
 				const bool hasSelection = !panels->selected.IsNull();
@@ -1598,7 +1717,7 @@ namespace engine::editor
 			}
 			ImGui::EndMenu();
 		}
-		if (config.menu && !play) config.menu(edit->world);
+		if (config.menu && Editing()) config.menu(edit->world);
 		if (ImGui::BeginMenu("Scene"))
 		{
 			if (ImGui::MenuItem("New", "Ctrl+N")) Request(Action::New, {});
@@ -1627,7 +1746,7 @@ namespace engine::editor
 					if (ImGui::MenuItem(name.c_str(), nullptr, name == sceneName)) Request(Action::Open, name);
 				ImGui::EndMenu();
 			}
-			if (ImGui::MenuItem("Save", "Ctrl+S", false, !play))
+			if (ImGui::MenuItem("Save", "Ctrl+S", false, Editing()))
 			{
 				if (!SaveScene())
 				{
@@ -1636,7 +1755,7 @@ namespace engine::editor
 					openDialog = true;
 				}
 			}
-			if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S", false, !play))
+			if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S", false, Editing()))
 			{
 				saveAsName = sceneName;
 				dialog = Dialog::SaveAs;
