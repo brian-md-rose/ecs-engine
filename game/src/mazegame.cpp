@@ -47,6 +47,7 @@
 #include "scoring.hpp"
 #include "screens.hpp"
 #include "sounds.hpp"
+#include "startup.hpp"
 #include "systems.hpp"
 #include "targeting.hpp"
 #include "ui/ui.hpp"
@@ -57,7 +58,6 @@ namespace game
 {
 	namespace
 	{
-		constexpr std::string_view kFirstMaze = "level1.json";
 
 		// Loads assets/scenes/<fileName> (a maze scene, mazescene.hpp) from next to the executable (see game/assets/README.md).
 		// On failure, logs the error with the file, line and column and returns
@@ -86,7 +86,16 @@ namespace game
 	MazeGame::MazeGame()
 	{
 		const std::filesystem::path folder = engine::core::ExecutableDirectory() / "assets";
-		const std::optional<TileMap> maze = LoadMazeAsset(folder, kFirstMaze);
+		// The startup scene the editor packaged the game with (build.json next to the executable), if it loads;
+		// otherwise the default first maze.
+		const std::string startup = ReadStartupScene(engine::core::ExecutableDirectory() / kManifestFileName);
+		std::optional<TileMap> maze;
+		if (!startup.empty() && startup != kDefaultStartupScene)
+		{
+			maze = LoadMazeAsset(folder, startup + ".json");
+			if (!maze) engine::core::LogWarning("Startup scene " + startup + " is not a maze; starting on level1.");
+		}
+		if (!maze) maze = LoadMazeAsset(folder, std::string(kDefaultStartupScene) + ".json");
 		const std::optional<GameAssets> assets = LoadGameAssets(folder);
 		if (!maze || !assets)
 		{
