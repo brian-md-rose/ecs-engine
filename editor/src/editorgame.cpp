@@ -833,6 +833,12 @@ namespace engine::editor
 			lastCell.reset();
 		}
 		if (!corners) shapeStart.reset();
+		// A stroke ends when the button is up, whatever else changed meanwhile (the brush or shape picked mid-drag).
+		if (released)
+		{
+			stroking = false;
+			lastCell.reset();
+		}
 	}
 
 	void EditorGame::TakeAssetDrop(graphics::Position origin)
