@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -409,6 +410,19 @@ namespace game
 		});
 		for (const Entity entity : found)
 			registry.Destroy(entity);
+	}
+
+	std::optional<std::size_t> MazeTileKindAt(Registry& registry, int column, int row)
+	{
+		constexpr std::string_view kCharacters = "#-.oPET"; // MazePaletteNames order
+		std::optional<std::size_t> kind;
+		registry.Each<TileCell>([&](Entity entity, const TileCell& cell)
+		{
+			if (cell.column != column || cell.row != row) return;
+			const std::size_t found = kCharacters.find(TileCharacter(registry, entity));
+			if (found != std::string_view::npos) kind = found;
+		});
+		return kind;
 	}
 
 	void PaintMazeTile(Registry& registry, std::size_t kind, int column, int row)

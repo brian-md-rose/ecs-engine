@@ -150,9 +150,14 @@ namespace engine::editor
 		static constexpr std::size_t kRecentScenes = 8; // how many scene names are kept
 		static constexpr int kBrushSelect = -1;
 		static constexpr int kBrushErase = -2;
+		static constexpr int kBrushCopy = -3;  // drag a rectangle of cells to copy it as a stamp
+		static constexpr int kBrushStamp = -4; // click to put the copied cells down
 		int brush = kBrushSelect;
-		bool stroking = false;    // a paint or erase drag is in progress
-		std::string gridProblems; // the grid tool's problem line, kept until the scene changes
+		GridShape gridShape = GridShape::Freehand; // how a palette brush or the eraser is dragged
+		std::optional<GridCell> shapeStart;        // where a line, rectangle or copy drag began
+		GridStamp stamp;                           // the cells last copied
+		bool stroking = false;                     // a paint or erase drag is in progress
+		std::string gridProblems;                  // the grid tool's problem line, kept until the scene changes
 		bool problemsStale = true;
 		std::optional<GridCell> lastCell;        // the cell the stroke last touched, so a fast drag leaves no gaps
 		PlayMouse playMouse;                     // the mouse the playing game sees, from the pointer over the viewport
