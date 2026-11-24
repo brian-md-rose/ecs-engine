@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <numbers>
 #include <optional>
 #include <system_error>
 #include <utility>
@@ -31,6 +32,8 @@ namespace engine::editor
 	namespace
 	{
 		constexpr int kFramesBetweenDirtyChecks = 20;
+		constexpr float kRotateSnap = 15.0F; // degrees; what Snap rounds a rotate drag to
+		constexpr float kScaleSnap = 0.25F;  // what Snap rounds a scale drag to
 		constexpr std::size_t kMaxHistory = 100;
 
 		// The world's scene settings, made (empty) if it has none yet.
@@ -802,10 +805,20 @@ namespace engine::editor
 		if (!play)
 		{
 			ImGui::SameLine();
+			const std::array<std::pair<const char*, GizmoTool>, 3> tools{
+			    {{"Move", GizmoTool::Translate}, {"Rotate", GizmoTool::Rotate}, {"Scale", GizmoTool::Scale}}};
+			for (const auto& [label, which] : tools)
+			{
+				if (ImGui::RadioButton(label, gizmoTool == which)) gizmoTool = which;
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("The gizmo on the selection: W moves, E rotates, R scales (Viewport focused).");
+				ImGui::SameLine();
+			}
 			ImGui::Checkbox("Snap", &snapToGrid);
 			if (ImGui::IsItemHovered())
-				ImGui::SetTooltip("Dragging and nudging land on multiples of the grid size.\nHold Ctrl while dragging "
-				                  "to flip it; Shift keeps one axis.");
+				ImGui::SetTooltip(
+				    "Dragging and nudging land on multiples of the grid size; rotating on 15 degrees and\n"
+				    "scaling on 0.25.\nHold Ctrl while dragging to flip it; Shift keeps one axis.");
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth(56.0F);
 			ImGui::InputInt("grid", &snapSize, 0);
@@ -900,19 +913,41 @@ namespace engine::editor
 			if (!centre) return std::nullopt;
 			return view.ToWindow(*centre, origin);
 		};
+		// The rotate and scale gizmos follow the turn of the entity the Inspector shows, so a turned entity's axes lie
+		// along its own.
+		float gizmoRotation = 0;
+		if (const auto* shown = world.registry.TryGetComponent<graphics::Transform>(panels->selected))
+			gizmoRotation = shown->rotation;
+		// Everything a drag from here puts back: where each selected entity is, and how it is turned and stretched.
+		const auto grabSelection = [&]
+		{
+			dragged.clear();
+			for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
+			{
+				if (const auto at = MovablePosition(world.registry, entity))
+					dragged.push_back({entity, *at, MovableRotation(world.registry, entity).value_or(0.0F),
+					                   MovableScale(world.registry, entity).value_or(graphics::Scale{})});
+			}
+			dragPixels = {};
+			dragWindow = {};
+			dragDegrees = 0;
+		};
 		gizmoHover = GizmoHandle::None;
 		if (const auto pivot = gizmoPivot(); pivot && hovered)
-			gizmoHover = PickGizmo(*pivot, {io.MousePos.x, io.MousePos.y});
+		{
+			const graphics::Position mouse{io.MousePos.x, io.MousePos.y};
+			if (gizmoTool == GizmoTool::Rotate)
+				gizmoHover = PickRotateGizmo(*pivot, mouse);
+			else
+				gizmoHover = PickGizmo(*pivot, mouse, {}, gizmoTool == GizmoTool::Scale ? gizmoRotation : 0.0F);
+		}
 		if (!play && !painting && gizmoHover != GizmoHandle::None && ImGui::IsItemClicked(ImGuiMouseButton_Left))
 		{
 			boxStart.reset();
 			gizmoHandle = gizmoHover;
 			movingSelected = true;
 			collapseTo = ecs::Entity::Null;
-			dragged.clear();
-			for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
-				if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
-			dragPixels = {};
+			grabSelection();
 		}
 		// Press selects what is under the pointer; dragging from there moves it (and the rest of the selection it is
 		// part of), so no separate handle is needed. Ctrl or Shift adds to the selection or takes the entity out of it.
@@ -937,11 +972,7 @@ namespace engine::editor
 			}
 			movingSelected = !picked.IsNull() && panels->IsSelected(picked);
 			dragged.clear();
-			if (movingSelected)
-			{
-				for (const ecs::Entity entity : SelectionRoots(world.registry, *panels))
-					if (const auto at = MovablePosition(world.registry, entity)) dragged.push_back({entity, *at});
-			}
+			if (movingSelected) grabSelection();
 			dragPixels = {};
 			// A plain click on part of a multiple selection keeps it, so the group can be dragged; if the button comes
 			// up without a drag, the click narrows the selection to that entity.
@@ -969,23 +1000,76 @@ namespace engine::editor
 		if (!play && !painting && movingSelected && ImGui::IsItemActive() &&
 		    ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0F))
 		{
-			// The pointer's movement over the picture, in the picture's pixels. Each entity moves by that in its own
-			// units. Shift keeps one axis; the grid applies when snapping is on, and Ctrl flips that for the drag.
-			// A gizmo arrow lets only its own axis through, and the other axis stays exactly where it began.
-			const graphics::Position step = gizmoHandle == GizmoHandle::None
-			                                    ? graphics::Position{io.MouseDelta.x, io.MouseDelta.y}
-			                                    : GizmoMove(gizmoHandle, {io.MouseDelta.x, io.MouseDelta.y});
-			dragPixels.x += step.x / view.zoom;
-			dragPixels.y += step.y / view.zoom;
 			const bool snapping = snapToGrid != io.KeyCtrl;
-			for (const DraggedEntity& item : dragged)
+			const graphics::Position mouse{io.MousePos.x, io.MousePos.y};
+			if (gizmoHandle == GizmoHandle::Ring)
 			{
-				const float units = UnitsPerPixel(world.registry, item.entity, camera);
-				graphics::Position moveTo = DragTarget(item.start, {dragPixels.x * units, dragPixels.y * units},
-				                                       io.KeyShift, snapping ? static_cast<float>(snapSize) : 0.0F);
-				if (gizmoHandle == GizmoHandle::X) moveTo.y = item.start.y;
-				if (gizmoHandle == GizmoHandle::Y) moveTo.x = item.start.x;
-				(void)SetMovablePosition(world.registry, item.entity, moveTo);
+				// Turns every selected entity by how far the pointer has gone round the pivot, each about its own
+				// centre. Snap rounds the result to 15 degrees.
+				if (const auto pivot = gizmoPivot())
+					dragDegrees += AngleBetween(*pivot, {mouse.x - io.MouseDelta.x, mouse.y - io.MouseDelta.y}, mouse);
+				for (const DraggedEntity& item : dragged)
+					(void)SetMovableRotation(world.registry, item.entity,
+					                         TurnedRotation(item.rotation, dragDegrees, snapping ? kRotateSnap : 0.0F));
+			}
+			else if (gizmoTool == GizmoTool::Scale && gizmoHandle != GizmoHandle::None)
+			{
+				// Multiplies the scale of every selected entity by what the pointer's travel along the arrow comes to.
+				// Snap rounds the result to 0.25.
+				dragWindow.x += io.MouseDelta.x;
+				dragWindow.y += io.MouseDelta.y;
+				const float factor = ScaleFactor(gizmoHandle, gizmoRotation, dragWindow);
+				const float step = snapping ? kScaleSnap : 0.0F;
+				for (const DraggedEntity& item : dragged)
+				{
+					graphics::Scale scale = item.scale;
+					if (gizmoHandle != GizmoHandle::Y) scale.x = ScaledValue(item.scale.x, factor, step);
+					if (gizmoHandle != GizmoHandle::X) scale.y = ScaledValue(item.scale.y, factor, step);
+					(void)SetMovableScale(world.registry, item.entity, scale);
+				}
+			}
+			else
+			{
+				// The pointer's movement over the picture, in the picture's pixels. Each entity moves by that in its
+				// own units (and in its parent's axes, if the parent is turned or stretched). Shift keeps one axis; the
+				// grid applies when snapping is on, and Ctrl flips that for the drag. A gizmo arrow lets only its own
+				// axis through, and the other axis stays exactly where it began.
+				const graphics::Position step = gizmoHandle == GizmoHandle::None
+				                                    ? graphics::Position{io.MouseDelta.x, io.MouseDelta.y}
+				                                    : GizmoMove(gizmoHandle, {io.MouseDelta.x, io.MouseDelta.y});
+				dragPixels.x += step.x / view.zoom;
+				dragPixels.y += step.y / view.zoom;
+				for (const DraggedEntity& item : dragged)
+				{
+					const float units = UnitsPerPixel(world.registry, item.entity, camera);
+					const graphics::Position moved =
+					    DragTarget({}, {dragPixels.x * units, dragPixels.y * units}, io.KeyShift, 0.0F);
+					graphics::Position local = LocalDelta(world.registry, item.entity, moved);
+					const bool axisArrow = gizmoHandle == GizmoHandle::X || gizmoHandle == GizmoHandle::Y;
+					const bool turnedFrame = local.x != moved.x || local.y != moved.y;
+					graphics::Position moveTo{};
+					if (axisArrow && turnedFrame)
+					{
+						// The parent's axes are not the arrow's: snap how far it went along the arrow, in world units,
+						// and then turn that into the entity's own, so it stays on the arrow's line.
+						graphics::Position along = moved;
+						if (snapping)
+						{
+							const auto cellSize = static_cast<float>(snapSize);
+							along.x = std::round(along.x / cellSize) * cellSize;
+							along.y = std::round(along.y / cellSize) * cellSize;
+						}
+						local = LocalDelta(world.registry, item.entity, along);
+						moveTo = {item.start.x + local.x, item.start.y + local.y};
+					}
+					else
+					{
+						moveTo = DragTarget(item.start, local, false, snapping ? static_cast<float>(snapSize) : 0.0F);
+						if (gizmoHandle == GizmoHandle::X && local.y == 0.0F) moveTo.y = item.start.y;
+						if (gizmoHandle == GizmoHandle::Y && local.x == 0.0F) moveTo.x = item.start.x;
+					}
+					(void)SetMovablePosition(world.registry, item.entity, moveTo);
+				}
 			}
 		}
 		if (boxStart)
@@ -1033,14 +1117,19 @@ namespace engine::editor
 		panels->Prune(world.registry);
 		for (const ecs::Entity entity : panels->All())
 		{
-			if (const auto rect = EntityScreenRect(world.registry, entity, camera))
+			if (const auto corners = EntityScreenCorners(world.registry, entity, camera))
 			{
-				const graphics::Position a = view.ToWindow({rect->x, rect->y}, origin);
-				const graphics::Position b = view.ToWindow({rect->x + rect->width, rect->y + rect->height}, origin);
+				std::array<ImVec2, 4> points{};
+				for (std::size_t i = 0; i < points.size(); ++i)
+				{
+					const graphics::Position at = view.ToWindow((*corners)[i], origin);
+					points[i] = ImVec2(at.x, at.y);
+				}
 				// The primary selection, the one the Inspector shows, is brighter than the rest.
 				const ImU32 color =
 				    entity == panels->selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(255, 160, 40, 150);
-				draw->AddRect(ImVec2(a.x - 1, a.y - 1), ImVec2(b.x + 1, b.y + 1), color, 0.0F, 2.0F);
+				for (std::size_t i = 0; i < points.size(); ++i)
+					draw->AddLine(points[i], points[(i + 1) % points.size()], color, 2.0F);
 			}
 		}
 		if (const auto pivot = gizmoPivot())
@@ -1054,18 +1143,63 @@ namespace engine::editor
 			const ImU32 red = tint(GizmoHandle::X, IM_COL32(220, 60, 60, 255), IM_COL32(255, 150, 120, 255));
 			const ImU32 green = tint(GizmoHandle::Y, IM_COL32(70, 190, 70, 255), IM_COL32(150, 255, 130, 255));
 			const ImU32 white = tint(GizmoHandle::Free, IM_COL32(230, 230, 230, 255), IM_COL32(255, 230, 90, 255));
-			const float tip = shape.arrowLength;
 			const ImVec2 at(pivot->x, pivot->y);
-			draw->AddLine(at, ImVec2(at.x + tip, at.y), red, 2.0F);
-			draw->AddTriangleFilled(ImVec2(at.x + tip + 8, at.y), ImVec2(at.x + tip - 4, at.y - 5),
-			                        ImVec2(at.x + tip - 4, at.y + 5), red);
-			draw->AddLine(at, ImVec2(at.x, at.y + tip), green, 2.0F);
-			draw->AddTriangleFilled(ImVec2(at.x, at.y + tip + 8), ImVec2(at.x - 5, at.y + tip - 4),
-			                        ImVec2(at.x + 5, at.y + tip - 4), green);
-			draw->AddRectFilled(ImVec2(at.x - shape.centre, at.y - shape.centre),
-			                    ImVec2(at.x + shape.centre, at.y + shape.centre), IM_COL32(20, 20, 24, 200));
-			draw->AddRect(ImVec2(at.x - shape.centre, at.y - shape.centre),
-			              ImVec2(at.x + shape.centre, at.y + shape.centre), white, 0.0F, 2.0F);
+			const auto square = [&](ImVec2 middle, float half, ImU32 color)
+			{
+				draw->AddRectFilled(ImVec2(middle.x - half, middle.y - half), ImVec2(middle.x + half, middle.y + half),
+				                    IM_COL32(20, 20, 24, 200));
+				draw->AddRect(ImVec2(middle.x - half, middle.y - half), ImVec2(middle.x + half, middle.y + half), color,
+				              0.0F, 2.0F);
+			};
+			if (gizmoTool == GizmoTool::Translate)
+			{
+				const float tip = shape.arrowLength;
+				draw->AddLine(at, ImVec2(at.x + tip, at.y), red, 2.0F);
+				draw->AddTriangleFilled(ImVec2(at.x + tip + 8, at.y), ImVec2(at.x + tip - 4, at.y - 5),
+				                        ImVec2(at.x + tip - 4, at.y + 5), red);
+				draw->AddLine(at, ImVec2(at.x, at.y + tip), green, 2.0F);
+				draw->AddTriangleFilled(ImVec2(at.x, at.y + tip + 8), ImVec2(at.x - 5, at.y + tip - 4),
+				                        ImVec2(at.x + 5, at.y + tip - 4), green);
+				square(at, shape.centre, white);
+			}
+			else if (gizmoTool == GizmoTool::Scale)
+			{
+				// The arrows lie along the shown entity's own axes, each ending in a square.
+				const float radians = gizmoRotation * (std::numbers::pi_v<float> / 180.0F);
+				const ImVec2 along(std::cos(radians), std::sin(radians));
+				const ImVec2 down(-along.y, along.x);
+				const float tip = shape.arrowLength;
+				const ImVec2 xEnd(at.x + along.x * tip, at.y + along.y * tip);
+				const ImVec2 yEnd(at.x + down.x * tip, at.y + down.y * tip);
+				draw->AddLine(at, xEnd, red, 2.0F);
+				draw->AddLine(at, yEnd, green, 2.0F);
+				square(ImVec2(xEnd.x - along.x * 5.0F, xEnd.y - along.y * 5.0F), 5.0F, red);
+				square(ImVec2(yEnd.x - down.x * 5.0F, yEnd.y - down.y * 5.0F), 5.0F, green);
+				square(at, shape.centre, white);
+			}
+			else
+			{
+				const ImU32 ring = lit == GizmoHandle::Ring ? IM_COL32(255, 230, 90, 255) : IM_COL32(90, 150, 255, 255);
+				draw->AddCircle(at, shape.ringRadius, ring, 64, 2.0F);
+				// A tick on the ring where the shown entity points now, so a turn can be seen against it.
+				const float radians = gizmoRotation * (std::numbers::pi_v<float> / 180.0F);
+				draw->AddLine(
+				    at,
+				    ImVec2(at.x + std::cos(radians) * shape.ringRadius, at.y + std::sin(radians) * shape.ringRadius),
+				    IM_COL32(90, 150, 255, 120), 1.0F);
+				if (gizmoHandle == GizmoHandle::Ring)
+				{
+					char text[32];
+					// What the first dragged entity is being set to (its own rotation, not the world one it is drawn
+					// at).
+					const float shown = dragged.empty() ? gizmoRotation
+					                                    : TurnedRotation(dragged.front().rotation, dragDegrees,
+					                                                     snapToGrid != io.KeyCtrl ? kRotateSnap : 0.0F);
+					(void)std::snprintf(text, sizeof text, "%.0f deg", static_cast<double>(shown));
+					draw->AddText(ImVec2(at.x + shape.ringRadius + 8.0F, at.y - 8.0F), IM_COL32(255, 230, 90, 255),
+					              text);
+				}
+			}
 		}
 		draw->PopClipRect();
 	}
@@ -1152,6 +1286,12 @@ namespace engine::editor
 			if (ImGui::IsKeyPressed(ImGuiKey_F8, true)) StepPlay();
 			return; // the rest edit the scene
 		}
+		if (inViewport && gizmoHandle == GizmoHandle::None && !io.KeyCtrl && !io.KeyAlt && !io.KeyShift)
+		{
+			if (ImGui::IsKeyPressed(ImGuiKey_W, false)) gizmoTool = GizmoTool::Translate;
+			if (ImGui::IsKeyPressed(ImGuiKey_E, false)) gizmoTool = GizmoTool::Rotate;
+			if (ImGui::IsKeyPressed(ImGuiKey_R, false)) gizmoTool = GizmoTool::Scale;
+		}
 
 		if (io.KeyCtrl)
 		{
@@ -1204,9 +1344,9 @@ namespace engine::editor
 				for (const ecs::Entity entity : SelectionRoots(registry, *panels))
 				{
 					if (const auto at = MovablePosition(registry, entity))
-						(void)SetMovablePosition(
-						    registry, entity,
-						    DragTarget(*at, by, false, snapToGrid ? static_cast<float>(snapSize) : 0.0F));
+						(void)SetMovablePosition(registry, entity,
+						                         DragTarget(*at, LocalDelta(registry, entity, by), false,
+						                                    snapToGrid ? static_cast<float>(snapSize) : 0.0F));
 				}
 			}
 		}

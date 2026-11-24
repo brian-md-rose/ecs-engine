@@ -177,11 +177,16 @@ namespace engine::editor
 		{
 			ecs::Entity entity;
 			graphics::Position start; // where it was when the drag began (MovablePosition)
+			float rotation = 0;       // and how it was turned and stretched (MovableRotation, MovableScale)
+			graphics::Scale scale{};
 		};
 		std::vector<DraggedEntity> dragged;          // what a drag in the Viewport is moving
 		GizmoHandle gizmoHandle = GizmoHandle::None; // the gizmo handle being dragged
 		GizmoHandle gizmoHover = GizmoHandle::None;  // the one under the pointer, for its highlight
 		graphics::Position dragPixels{};             // how far the pointer has moved since it began, in picture pixels
+		graphics::Position dragWindow{};             // the same in window pixels, which a scale drag measures
+		float dragDegrees = 0;                       // how far a rotate drag has turned, clockwise
+		GizmoTool gizmoTool = GizmoTool::Translate;  // which gizmo the selection has (W, E and R pick them)
 		std::optional<graphics::Position> boxStart;  // where a box selection began, in picture pixels
 		ecs::Entity collapseTo =
 		    ecs::Entity::Null;            // a click on part of a multiple selection narrows to this on release

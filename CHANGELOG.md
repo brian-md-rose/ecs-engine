@@ -9,6 +9,12 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+### Added
+- **Editor rotate and scale gizmos**: a Move / Rotate / Scale tool choice above the Viewport (W, E, R). Rotate is a ring that turns the selection; Scale has axis squares and a uniform centre square, turned to the shown entity. Snap rounds to 15 degrees and 0.25.
+
+### Changed
+- Editor picking, box select and the selection outline now follow an entity's rotation and scale (they used the unturned box), and moving a child of a turned or stretched parent follows the pointer along the parent's axes.
+
 ## [0.9.0] - 2026-11-24
 
 ### Added
