@@ -189,25 +189,31 @@ namespace engine::editor
 				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
 				{
 					const core::LogRecord& record = state.records[shown[static_cast<std::size_t>(row)]];
-					ImGui::PushStyleColor(ImGuiCol_Text, LevelColour(record.level));
 					const std::string line = ConsoleLine(record);
-					// A row you can click: it selects the message, and the strip below shows where it was logged.
-					const std::string rowId = line + "##row" + std::to_string(record.id);
-					if (ImGui::Selectable(rowId.c_str(), state.selected == record.id,
-					                      ImGuiSelectableFlags_AllowDoubleClick))
+					// A row you can click: it selects the message, and the strip below shows where it was logged. The
+					// text is drawn over an empty Selectable, so a "##" in a message shows as it is.
+					const ImVec2 rowStart = ImGui::GetCursorPos();
+					ImGui::PushID(static_cast<int>(record.id));
+					if (ImGui::Selectable("##row", state.selected == record.id, ImGuiSelectableFlags_AllowDoubleClick))
 					{
 						state.selected = record.id;
 						state.note.clear();
 						if (ImGui::IsMouseDoubleClicked(0) && !record.file.empty()) OpenSource(state, record);
 					}
-					ImGui::PopStyleColor();
 					if (ImGui::IsItemHovered() && !record.file.empty())
 						ImGui::SetTooltip("%s", ConsoleSource(record).c_str());
-					if (ImGui::BeginPopupContextItem(("##lineMenu" + std::to_string(record.id)).c_str()))
+					if (ImGui::BeginPopupContextItem("##lineMenu"))
 					{
 						if (ImGui::MenuItem("Copy line")) ImGui::SetClipboardText(line.c_str());
 						ImGui::EndPopup();
 					}
+					ImGui::PopID();
+					const ImVec2 rowEnd = ImGui::GetCursorPos();
+					ImGui::SetCursorPos(rowStart);
+					ImGui::PushStyleColor(ImGuiCol_Text, LevelColour(record.level));
+					ImGui::TextUnformatted(line.c_str(), line.c_str() + line.size());
+					ImGui::PopStyleColor();
+					ImGui::SetCursorPos(rowEnd);
 				}
 			}
 			// Stay at the bottom while new messages arrive, unless the user has scrolled up.
@@ -266,7 +272,9 @@ namespace engine::editor
 		std::string slashed = path;
 		std::ranges::replace(slashed, '\\', '/');
 		if (slashed.empty() || slashed.front() != '/') slashed.insert(slashed.begin(), '/'); // "C:/x" is "/C:/x"
-		std::string url = "file://";
+		// A network path (\\server\share) is "file://server/share": its two slashes already start the URL's host.
+		const bool network = slashed.size() > 1 && slashed[1] == '/';
+		std::string url = network ? "file:" : "file://";
 		for (const char c : slashed)
 		{
 			const unsigned char u = static_cast<unsigned char>(c);

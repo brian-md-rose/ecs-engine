@@ -47,4 +47,5 @@ TEST_CASE("File URLs take Windows and POSIX paths and escape what a URL can't ho
 	using engine::editor::FileUrl;
 	CHECK(FileUrl("D:\\Visual Studio Projects\\a#b.cpp") == "file:///D:/Visual%20Studio%20Projects/a%23b.cpp");
 	CHECK(FileUrl("/home/me/x.cpp") == "file:///home/me/x.cpp");
+	CHECK(FileUrl("\\\\server\\share\\x.cpp") == "file://server/share/x.cpp");
 }
