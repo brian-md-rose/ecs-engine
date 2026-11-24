@@ -12,7 +12,7 @@ thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
 ## Status
 
-Every roadmap phase is done, up to **v0.8.0**. The game is playable from title screen to game over,
+Every roadmap phase is done, up to **v0.9.0**. The game is playable from title screen to game over,
 with enemies, scoring, a HUD, sound effects and music, sprites, mouse, keyboard and gamepad menus, and
 levels that get harder as you go. Phases 0 to 9 built the engine and the game; Phases 10 to 12 added what a
 second game (Project Babel, see [docs/babel-support.md](docs/babel-support.md)) needs: JSON and a
@@ -32,7 +32,7 @@ The version is available in code as `<core/version.hpp>`. To use the engine from
 include(FetchContent)
 FetchContent_Declare(ecs_engine
     GIT_REPOSITORY https://github.com/brian-md-rose/ecs-engine.git
-    GIT_TAG        v0.8.0
+    GIT_TAG        v0.9.0
     GIT_SUBMODULES thirdparty/SDL   # the engine builds its vendored SDL3
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(ecs_engine)
