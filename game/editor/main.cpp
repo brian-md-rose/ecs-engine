@@ -114,6 +114,10 @@ namespace
 		{
 			game::PaintMazeTile(world.registry, kind, cell.column, cell.row);
 		};
+		tool.kindAt = [](engine::ecs::World& world, engine::editor::GridCell cell)
+		{
+			return game::MazeTileKindAt(world.registry, cell.column, cell.row);
+		};
 		tool.erase = [](engine::ecs::World& world, engine::editor::GridCell cell)
 		{
 			game::EraseMazeTile(world.registry, cell.column, cell.row);

@@ -734,21 +734,91 @@ namespace engine::editor
 			              IM_COL32(255, 200, 40, 255));
 		}
 
-		if (ImGui::IsItemActive())
+		const GridTool& tool = config.gridTool;
+		const auto kindOf = [&](GridCell cell)
+		{
+			if (!tool.kindAt) return -1;
+			const std::optional<std::size_t> kind = tool.kindAt(edit->world, cell);
+			return kind ? static_cast<int>(*kind) : -1;
+		};
+		const auto putDown = [&](GridCell cell, int kind)
+		{
+			if (kind >= 0 && static_cast<std::size_t>(kind) < tool.palette.size() && tool.paint)
+				tool.paint(edit->world, static_cast<std::size_t>(kind), cell);
+			else if (kind < 0 && tool.erase)
+				tool.erase(edit->world, cell);
+		};
+		// Puts the brush (a palette entry, or the eraser) into every cell.
+		const auto applyBrush = [&](const std::vector<GridCell>& cells)
+		{
+			for (const GridCell& cell : cells)
+				putDown(cell, brush >= 0 ? brush : -1);
+			if (tool.refresh) tool.refresh(edit->world);
+			problemsStale = true;
+		};
+		const auto highlight = [&](GridCell cell, ImU32 color)
+		{
+			const float x = grid.x + static_cast<float>(cell.column) * grid.cellWidth;
+			const float y = grid.y + static_cast<float>(cell.row) * grid.cellHeight;
+			draw->AddRectFilled(toWindow(x, y), toWindow(x + grid.cellWidth, y + grid.cellHeight), color);
+		};
+		const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+		const bool released = !ImGui::IsMouseDown(ImGuiMouseButton_Left);
+		const bool corners = brush == kBrushCopy ||
+		                     (brush != kBrushStamp && gridShape != GridShape::Freehand && gridShape != GridShape::Fill);
+
+		if (brush == kBrushStamp)
+		{
+			// The copied cells follow the pointer; a click puts them down.
+			if (under && !stamp.Empty() && ImGui::IsItemHovered())
+			{
+				const std::vector<StampedCell> cells = StampCells(stamp, grid, *under);
+				for (const StampedCell& placed : cells)
+					highlight(placed.cell, placed.kind >= 0 ? IM_COL32(255, 200, 40, 90) : IM_COL32(255, 80, 80, 60));
+				if (clicked)
+				{
+					for (const StampedCell& placed : cells)
+						putDown(placed.cell, placed.kind);
+					if (tool.refresh) tool.refresh(edit->world);
+					problemsStale = true;
+				}
+			}
+		}
+		else if (corners)
+		{
+			// Press at one corner, drag to the other; the cells are put down when the button comes up over the grid.
+			if (clicked && under) shapeStart = under;
+			if (shapeStart)
+			{
+				const GridShape shape = brush == kBrushCopy ? GridShape::FilledRectangle : gridShape;
+				std::vector<GridCell> cells;
+				if (under) cells = ShapeCells(shape, *shapeStart, *under);
+				for (const GridCell& cell : cells)
+					highlight(cell, brush == kBrushCopy ? IM_COL32(80, 160, 255, 90) : IM_COL32(255, 200, 40, 90));
+				if (released)
+				{
+					if (under && brush == kBrushCopy)
+						stamp = CaptureStamp(*shapeStart, *under, kindOf);
+					else if (under)
+						applyBrush(cells);
+					if (under && brush == kBrushCopy && !stamp.Empty()) brush = kBrushStamp;
+					shapeStart.reset();
+				}
+			}
+		}
+		else if (gridShape == GridShape::Fill)
+		{
+			if (clicked && under) applyBrush(FloodCells(grid, *under, kindOf));
+		}
+		else if (ImGui::IsItemActive())
 		{
 			stroking = true;
 			if (under)
 			{
 				const std::vector<GridCell> cells =
 				    lastCell ? CellLine(*lastCell, *under) : std::vector<GridCell>{*under};
-				const GridTool& tool = config.gridTool;
 				for (const GridCell& cell : cells)
-				{
-					if (brush >= 0 && static_cast<std::size_t>(brush) < tool.palette.size() && tool.paint)
-						tool.paint(edit->world, static_cast<std::size_t>(brush), cell);
-					else if (brush == kBrushErase && tool.erase)
-						tool.erase(edit->world, cell);
-				}
+					putDown(cell, brush >= 0 ? brush : -1);
 				if (!lastCell || *lastCell != *under)
 				{
 					if (tool.refresh) tool.refresh(edit->world);
@@ -758,6 +828,13 @@ namespace engine::editor
 			lastCell = under;
 		}
 		else if (stroking)
+		{
+			stroking = false;
+			lastCell.reset();
+		}
+		if (!corners) shapeStart.reset();
+		// A stroke ends when the button is up, whatever else changed meanwhile (the brush or shape picked mid-drag).
+		if (released)
 		{
 			stroking = false;
 			lastCell.reset();
@@ -852,6 +929,31 @@ namespace engine::editor
 			}
 			ImGui::SameLine();
 			if (ImGui::RadioButton("Erase", brush == kBrushErase)) brush = kBrushErase;
+			if (tool.kindAt)
+			{
+				ImGui::SameLine();
+				if (ImGui::RadioButton("Copy", brush == kBrushCopy)) brush = kBrushCopy;
+				if (ImGui::IsItemHovered()) ImGui::SetTooltip("Drag over cells to copy them as a stamp.");
+				ImGui::SameLine();
+				if (ImGui::RadioButton("Stamp", brush == kBrushStamp)) brush = kBrushStamp;
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("Click to put the copied cells down (top-left at the pointer).");
+			}
+			if (brush >= 0 || brush == kBrushErase)
+			{
+				const std::array<std::pair<const char*, GridShape>, 5> shapes{{{"Freehand", GridShape::Freehand},
+				                                                               {"Line", GridShape::Line},
+				                                                               {"Rectangle", GridShape::Rectangle},
+				                                                               {"Filled", GridShape::FilledRectangle},
+				                                                               {"Fill", GridShape::Fill}}};
+				for (const auto& [label, which] : shapes)
+				{
+					if (which == GridShape::Fill && !tool.kindAt) continue;
+					if (ImGui::RadioButton(label, gridShape == which)) gridShape = which;
+					ImGui::SameLine();
+				}
+				ImGui::NewLine();
+			}
 			if (tool.problems)
 			{
 				if (problemsStale)

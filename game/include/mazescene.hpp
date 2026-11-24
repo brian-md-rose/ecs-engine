@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -97,6 +98,10 @@ namespace game
 	// the palette or a cell outside the layout. Call PlaceMazeTiles and ResolveMazeTiles afterwards: the new tile has
 	// no Transform or picture yet.
 	void PaintMazeTile(engine::ecs::Registry& registry, std::size_t kind, int column, int row);
+
+	// The palette entry (an index into MazePaletteNames) of the tile in the cell, or nothing if the cell is empty or
+	// outside the layout.
+	[[nodiscard]] std::optional<std::size_t> MazeTileKindAt(engine::ecs::Registry& registry, int column, int row);
 
 	// Removes the tile in the cell, if any.
 	void EraseMazeTile(engine::ecs::Registry& registry, int column, int row);

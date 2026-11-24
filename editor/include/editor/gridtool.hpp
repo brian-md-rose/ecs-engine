@@ -37,6 +37,48 @@ namespace engine::editor
 	// is listed once.
 	[[nodiscard]] std::vector<GridCell> CellLine(GridCell a, GridCell b);
 
+	// How a drag with a brush puts it down: Freehand paints the cells the pointer crosses; Line, Rectangle (outline)
+	// and FilledRectangle paint from where the button went down to where it comes up; Fill paints the connected cells
+	// that hold what the clicked one does.
+	enum class GridShape
+	{
+		Freehand,
+		Line,
+		Rectangle,
+		FilledRectangle,
+		Fill
+	};
+
+	// The cells a Line, Rectangle or FilledRectangle drag from a to b covers, each once. Empty for Freehand and Fill,
+	// which have no corner to corner shape.
+	[[nodiscard]] std::vector<GridCell> ShapeCells(GridShape shape, GridCell a, GridCell b);
+
+	// The cells connected (side to side) to start that hold the same kind of thing, start included, kindOf giving what
+	// a cell holds (-1 for empty). Only cells inside the grid are listed; empty if start is outside it.
+	[[nodiscard]] std::vector<GridCell> FloodCells(const GridInfo& grid, GridCell start,
+	                                               const std::function<int(GridCell)>& kindOf);
+
+	// A rectangle of cells copied to be put down again: what each held (-1 for empty), row by row.
+	struct GridStamp
+	{
+		int columns = 0;
+		int rows = 0;
+		std::vector<int> kinds;
+
+		[[nodiscard]] bool Empty() const noexcept { return kinds.empty(); }
+	};
+	struct StampedCell
+	{
+		GridCell cell;
+		int kind = -1;
+	};
+
+	// The cells inside the rectangle with corners a and b (in either order), and what they hold.
+	[[nodiscard]] GridStamp CaptureStamp(GridCell a, GridCell b, const std::function<int(GridCell)>& kindOf);
+
+	// The stamp's cells as they land with its top-left on at, leaving out any that fall outside the grid.
+	[[nodiscard]] std::vector<StampedCell> StampCells(const GridStamp& stamp, const GridInfo& grid, GridCell at);
+
 	// What a game gives the standalone editor to paint a scene made of grid cells (Tangle Run's maze). The editor
 	// shows a palette in the Viewport and calls these between frames, on the edit world only, never while playing.
 	struct GridTool
@@ -49,6 +91,10 @@ namespace engine::editor
 
 		// Puts kind into the cell (replacing what is there; painting what is already there changes nothing).
 		std::function<void(ecs::World&, std::size_t kind, GridCell cell)> paint;
+
+		// What the cell holds, as an index into palette, or nothing if it is empty. Fill and Copy need this; a game
+		// that leaves it out gets neither.
+		std::function<std::optional<std::size_t>(ecs::World&, GridCell cell)> kindAt;
 
 		// Empties the cell.
 		std::function<void(ecs::World&, GridCell cell)> erase;

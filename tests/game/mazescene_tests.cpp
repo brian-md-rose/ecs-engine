@@ -309,6 +309,22 @@ TEST_CASE("painting a tile replaces what is in the cell")
 	CHECK(registry.AllEntities().size() == before - 1);
 }
 
+TEST_CASE("MazeTileKindAt says which palette entry is in a cell")
+{
+	const game::TileMap map = Parse(kSmall);
+	Registry registry;
+	game::SpawnMazeScene(registry, map, {.x = 0.0F, .y = 16.0F});
+
+	CHECK(game::MazeTileKindAt(registry, 1, 2) == 2U); // a pellet
+	game::PaintMazeTile(registry, 0, 1, 2);
+	CHECK(game::MazeTileKindAt(registry, 1, 2) == 0U); // a wall
+	game::PaintMazeTile(registry, 6, 1, 2);
+	CHECK(game::MazeTileKindAt(registry, 1, 2) == 6U); // a tunnel
+	game::EraseMazeTile(registry, 1, 2);
+	CHECK_FALSE(game::MazeTileKindAt(registry, 1, 2).has_value());
+	CHECK_FALSE(game::MazeTileKindAt(registry, 99, 99).has_value());
+}
+
 TEST_CASE("a maze has one player start, so painting one moves it")
 {
 	const game::TileMap map = Parse(kSmall);
