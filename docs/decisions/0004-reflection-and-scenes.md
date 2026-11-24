@@ -25,7 +25,7 @@ types exist only at compile time, and C++20 has no reflection.
 - **`name` and `parent` are top-level keys** that map to the `Name` and `Parent` components.
 - **The file has an integer `format`**, refused if it isn't the one this engine reads. Migrations are added
   when a second format exists.
-- **Entities only for now.** Resources and prefabs are left out; the format can grow a `"prefab"` key later.
+- **Entities only for now.** Resources and prefabs are left out; the format can grow a `"prefab"` key later. (Update: basic prefabs now exist as separate scene files with a `PrefabInstance` marker component on the root, with no format change; overrides and nesting are still not there.)
 
 ## Consequences
 

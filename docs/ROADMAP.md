@@ -123,7 +123,7 @@ mechanisms; then window settings, gamepads and audio files. See
 
 ---
 
-## Editor – type registry, scenes and an ImGui editor (v0.6.0 to v0.8.0)
+## Editor – type registry, scenes and an ImGui editor (v0.6.0 onward)
 
 Steps E1 to E7 of the editor plan. See [scenes.md](scenes.md), [editor.md](editor.md) and
 [ADR 0004](decisions/0004-reflection-and-scenes.md).
@@ -136,7 +136,8 @@ Steps E1 to E7 of the editor plan. See [scenes.md](scenes.md), [editor.md](edito
 - [x] **E6** (v0.8.0): Viewport with zoom, pan, picking and drag to move.
 - [x] **E7** (v0.8.0): undo and redo.
 - [x] Tangle Run's menu screens laid out by scene files (the game's own change, after v0.8.0). The playing field is still built from code.
-- [ ] Not started: prefabs, resource editing, an asset browser, and a macOS or Linux editor build (CI builds the editor on Windows only).
+- [x] Editor features after v0.8.0 (see the [Unreleased] notes in the [changelog](../CHANGELOG.md) for what has not been tagged): asset browser with thumbnails, import settings and drag and drop, console, profiler, build settings, docking, rotation and scale on `Transform`, rotate and scale gizmos, basic prefabs, tile tools, game extension points and a Game panel beside the Viewport.
+- [ ] Not started: prefab overrides and nested prefabs, resource editing, animation clips and an animator, and a macOS or Linux editor build (CI builds the editor on Windows only).
 
 ---
 
