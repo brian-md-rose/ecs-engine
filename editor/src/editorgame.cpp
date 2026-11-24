@@ -93,6 +93,9 @@ namespace engine::editor
 		{
 			return CurrentWorld();
 		});
+		panels->inspectors = config.inspectors;
+		panels->componentCommands = config.componentCommands;
+		panels->entityCommands = config.entityCommands;
 		if (!config.assetFolder.empty())
 		{
 			thumbnails = std::make_shared<AssetThumbnails>();
@@ -1595,6 +1598,7 @@ namespace engine::editor
 			}
 			ImGui::EndMenu();
 		}
+		if (config.menu && !play) config.menu(edit->world);
 		if (ImGui::BeginMenu("Scene"))
 		{
 			if (ImGui::MenuItem("New", "Ctrl+N")) Request(Action::New, {});

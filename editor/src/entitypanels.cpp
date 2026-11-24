@@ -50,11 +50,13 @@ namespace engine::editor
 				AddChild,
 				Duplicate,
 				Delete,
-				Reparent
+				Reparent,
+				Command
 			};
 			Kind kind = Kind::None;
 			Entity target = Entity::Null;
 			Entity newParent = Entity::Null;
+			std::size_t command = 0; // Command: an index into PanelState::entityCommands
 		};
 
 		void DrawNode(Registry& registry, const Tree& tree, PanelState& state, Pending& pending, Entity entity,
@@ -86,6 +88,12 @@ namespace engine::editor
 				if (ImGui::MenuItem("Add child")) pending = {Pending::Kind::AddChild, entity, Entity::Null};
 				if (ImGui::MenuItem("Duplicate")) pending = {Pending::Kind::Duplicate, entity, Entity::Null};
 				if (ImGui::MenuItem("Delete")) pending = {Pending::Kind::Delete, entity, Entity::Null};
+				if (!state.entityCommands.empty()) ImGui::Separator();
+				for (std::size_t i = 0; i < state.entityCommands.size(); ++i)
+				{
+					if (ImGui::MenuItem(state.entityCommands[i].label.c_str()))
+						pending = {Pending::Kind::Command, entity, Entity::Null, i};
+				}
 				ImGui::EndPopup();
 			}
 			if (ImGui::BeginDragDropSource())
@@ -151,6 +159,11 @@ namespace engine::editor
 					state.status = "can't make " + LabelOf(registry, pending.target) + " a child of " +
 					               LabelOf(registry, pending.newParent) + " (it would be its own ancestor)";
 				}
+				break;
+			case Pending::Kind::Command:
+				if (pending.command < state.entityCommands.size() && state.entityCommands[pending.command].run &&
+				    registry.IsAlive(pending.target))
+					state.entityCommands[pending.command].run(registry, pending.target);
 				break;
 			}
 		}
@@ -581,6 +594,12 @@ namespace engine::editor
 		{
 			const void* component = type.Get(registry, entity);
 			if (component == nullptr) return;
+			if (const auto custom = state.inspectors.find(type.Name());
+			    custom != state.inspectors.end() && custom->second)
+			{
+				custom->second(registry, entity);
+				return;
+			}
 			// A filter that matches the component's name shows all its fields; otherwise only the matching ones.
 			const bool wholeType = ContainsNoCase(type.Name(), state.fieldFilter);
 			for (const FieldInfo& field : type.Fields())
@@ -630,6 +649,7 @@ namespace engine::editor
 			const LiveIds ids(registry); // once per frame, not per component
 			const std::vector<Entity> selection = state.All();
 			const TypeInfo* toRemove = nullptr;
+			std::function<void()> deferred; // a component command, run once the components are drawn
 			for (std::size_t i = 0; i < types->Count(); ++i)
 			{
 				const TypeInfo& type = types->At(i);
@@ -669,6 +689,18 @@ namespace engine::editor
 						else
 							state.status.clear();
 					}
+					bool separated = false;
+					for (const PanelState::Command& command : state.componentCommands)
+					{
+						if (command.component != type.Name()) continue;
+						if (!separated) ImGui::Separator();
+						separated = true;
+						if (ImGui::MenuItem(command.label.c_str()) && command.run)
+							deferred = [&command, &registry, entity]
+							{
+								command.run(registry, entity);
+							};
+					}
 					ImGui::EndPopup();
 				}
 				if (open) DrawComponent(registry, type, entity, state, all, ids, targets);
@@ -680,6 +712,7 @@ namespace engine::editor
 				for (const Entity other : selection)
 					if (toRemove->Has(registry, other)) toRemove->Remove(registry, other);
 			}
+			if (deferred) deferred();
 
 			ImGui::Spacing();
 			if (ImGui::BeginCombo("Add component", "choose..."))

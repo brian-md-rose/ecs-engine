@@ -10,12 +10,14 @@
 #include <string>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 #include "application/application.hpp"
 #include "core/log.hpp"
 #include "core/paths.hpp"
 #include "core/sdllog.hpp"
 #include "core/version.hpp"
+#include "ecs/registry.hpp"
 #include "editor/assetbrowser.hpp"
 #include "editor/buildsettings.hpp"
 #include "editor/editor.hpp"
@@ -23,6 +25,7 @@
 #include "editor/entitypanels.hpp"
 #include "editor/gridtool.hpp"
 #include "graphics/screenshot.hpp"
+#include "graphics/transform.hpp"
 #include "mazegame.hpp"
 #include "mazescene.hpp"
 #include "save.hpp"
@@ -130,6 +133,25 @@ namespace
 		return tool;
 	}
 
+	// Right-click commands for the Hierarchy (docs/editor.md, "Game extensions"): puts an entity's rotation and scale
+	// back to 0 and 1, after trying the rotate and scale gizmos.
+	std::vector<engine::editor::PanelState::Command> HierarchyCommands()
+	{
+		return {{"", "Reset rotation and scale", [](engine::ecs::Registry& registry, engine::ecs::Entity entity)
+		{
+			if (auto* transform = registry.TryGetComponent<engine::graphics::Transform>(entity))
+			{
+				transform->rotation = 0;
+				transform->scale = {};
+			}
+			if (auto* local = registry.TryGetComponent<engine::graphics::LocalTransform>(entity))
+			{
+				local->rotation = 0;
+				local->scale = {};
+			}
+		}}};
+	}
+
 	// Play on a maze scene starts the game on that maze; any other scene is left to the game's own start.
 	std::string StartPlay(engine::ecs::World& world)
 	{
@@ -199,6 +221,7 @@ int main(int argc, char** argv)
 	             .openOnStart = openScene,
 	             .onPlay = StartPlay,
 	             .onPlayFrom = StartPlayFrom,
+	             .entityCommands = HierarchyCommands(),
 	             .gridTool = MazePainter()});
 	if (!game.IsValid()) return 1;
 	// Build settings: the game exe is the one built beside the editor (game.exe in the same configuration folder).

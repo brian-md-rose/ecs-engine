@@ -10,6 +10,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ## [Unreleased]
 
 ### Added
+- **Editor game extensions**: `EditorGameConfig` (and `PanelState`) take per-component Inspector widgets, commands in the Inspector's component menu and the Hierarchy's entity menu, and a menu callback, so a game can extend the editor in C++ from its registration block.
 - **Editor tile tools beyond the brush**: line, rectangle, filled rectangle and flood fill with a palette brush or the eraser, and Copy and Stamp for a rectangle of cells. A game's `GridTool` gains an optional `kindAt` (needed for Fill, Copy and Stamp); Tangle Run's maze painter supplies it.
 - **Prefabs (basic)**: `ecs::PrefabInstance` (registered with the engine components) marks the root of a copy of a prefab. In the editor, Edit > Prefab saves the selected tree to the assets folder's `prefabs` folder, applies a copy back to its prefab, or reverts it; the Assets panel has a Prefabs tab, and dragging one onto the Viewport puts a copy in the scene.
 - **Editor rotate and scale gizmos**: a Move / Rotate / Scale tool choice above the Viewport (W, E, R). Rotate is a ring that turns the selection; Scale has axis squares and a uniform centre square, turned to the shown entity. Snap rounds to 15 degrees and 0.25.
