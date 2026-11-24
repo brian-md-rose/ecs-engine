@@ -8,6 +8,7 @@ using engine::editor::Profiler;
 using engine::editor::ProfilerHistory;
 using engine::editor::ProfilerSample;
 using engine::editor::Summarize;
+using engine::editor::SlowestFirst;
 
 TEST_CASE("The Profiler history keeps the newest frames, oldest first", "[profiler]")
 {
@@ -63,4 +64,18 @@ TEST_CASE("The Profiler drops update time that piled up while the panel was clos
 	CHECK(profiler.TakeUpdateMs(50) == 0.0); // frames 2..49 were not drawn
 	profiler.AddUpdateMs(1.0);
 	CHECK(profiler.TakeUpdateMs(51) == 1.0);
+}
+
+TEST_CASE("Systems are listed slowest first, equal times keeping run order", "[profiler]")
+{
+	using engine::ecs::Phase;
+	const auto sorted = engine::editor::SlowestFirst({{.phase = Phase::Update, .name = "a", .averageMs = 0.5},
+	                                                  {.phase = Phase::Update, .name = "b", .averageMs = 2.0},
+	                                                  {.phase = Phase::Render, .name = "c", .averageMs = 0.5},
+	                                                  {.phase = Phase::Input, .name = "d", .averageMs = 0.0}});
+	REQUIRE(sorted.size() == 4);
+	CHECK(sorted[0].name == "b");
+	CHECK(sorted[1].name == "a");
+	CHECK(sorted[2].name == "c");
+	CHECK(sorted[3].name == "d");
 }

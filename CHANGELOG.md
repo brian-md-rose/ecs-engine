@@ -10,6 +10,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ## [Unreleased]
 
 ### Added
+- **Per-system timings in the editor Profiler**: a Systems table, shown while Play runs, with each system of the played game, its phase and smoothed time, slowest first. `AddProfilerPanel` takes an optional scheduler function.
 - **Game starts on the Build settings startup scene**: Tangle Run reads `build.json` beside its executable and plays the chosen maze scene first; without one it starts on `level1`.
 - **Editor Game panel**: a second view that shows the playing game with its own mouse and keys while the Viewport keeps showing and editing the scene. The Viewport strip gains Gizmos and Grid lines toggles.
 - **Editor game extensions**: `EditorGameConfig` (and `PanelState`) take per-component Inspector widgets, commands in the Inspector's component menu and the Hierarchy's entity menu, and a menu callback, so a game can extend the editor in C++ from its registration block.
