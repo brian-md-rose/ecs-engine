@@ -36,7 +36,14 @@ namespace engine::editor
 
 	bool IsValidPrefabName(const std::string& name)
 	{
-		return !name.empty() && name.find_first_of("/\\:.") == std::string::npos;
+		// What Windows allows in a file name: no folders, dots, wildcards or quotes, no control characters, and no
+		// space at the end.
+		if (name.empty() || name.back() == ' ') return false;
+		if (name.find_first_of("/\\:.*?\"<>|") != std::string::npos) return false;
+		return std::none_of(name.begin(), name.end(), [](char c)
+		{
+			return static_cast<unsigned char>(c) < 0x20;
+		});
 	}
 
 	std::vector<std::string> ListPrefabs(const std::filesystem::path& folder)
@@ -55,7 +62,8 @@ namespace engine::editor
 	{
 		if (!IsValidPrefabName(name))
 		{
-			error = "a prefab name can't be empty or have dots, slashes or colons";
+			error = "a prefab name can't be empty, end in a space, or have dots, slashes, colons or other characters a "
+			        "file name can't hold";
 			return false;
 		}
 		if (!registry.IsAlive(root))

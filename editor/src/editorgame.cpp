@@ -1480,6 +1480,7 @@ namespace engine::editor
 				if (ImGui::MenuItem("Save selection as prefab...", nullptr, false, hasSelection))
 				{
 					prefabName = instanceOf;
+					message.clear();
 					dialog = Dialog::SavePrefab;
 					openDialog = true;
 				}
@@ -1637,6 +1638,7 @@ namespace engine::editor
 			{
 				ImGui::TextUnformatted("Saves the selected entity and everything under it.");
 				ImGui::InputText("name", &prefabName);
+				if (!message.empty()) ImGui::TextColored(ImVec4(1.0F, 0.6F, 0.3F, 1.0F), "%s", message.c_str());
 				const bool save = ImGui::Button("Save");
 				ImGui::SameLine();
 				const bool cancel = ImGui::Button("Cancel");

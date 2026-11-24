@@ -75,6 +75,10 @@ TEST_CASE("Prefab names are plain file names", "[editor][prefab]")
 	CHECK_FALSE(IsValidPrefabName("a/b"));
 	CHECK_FALSE(IsValidPrefabName("door.json"));
 	CHECK_FALSE(IsValidPrefabName("C:door"));
+	CHECK_FALSE(IsValidPrefabName("what?"));
+	CHECK_FALSE(IsValidPrefabName("a|b"));
+	CHECK_FALSE(IsValidPrefabName("door "));
+	CHECK_FALSE(IsValidPrefabName("tab\there"));
 }
 
 TEST_CASE("A saved prefab can be put into a scene as a copy of the whole tree", "[editor][prefab]")

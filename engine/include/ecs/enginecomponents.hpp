@@ -44,8 +44,8 @@ namespace engine::ecs
 		static bool Load(graphics::PixelRect& value, const core::JsonValue& in, const IEntityIds&, std::string& error);
 	};
 
-	// Registers Name, PrefabInstance, Parent, Transform, LocalTransform, Shape, Sprite, ClipRect, ScreenSpace, Text and the
-	// UI components (NinePatch, Hitbox, Interactable, FocusOrder, ScrollView),
-	// and Interpolation as a Runtime component. Call it once, before a game's own registrations.
+	// Registers Name, PrefabInstance, Parent, Transform, LocalTransform, Shape, Sprite, ClipRect, ScreenSpace, Text and
+	// the UI components (NinePatch, Hitbox, Interactable, FocusOrder, ScrollView), and Interpolation as a Runtime
+	// component. Call it once, before a game's own registrations.
 	void RegisterEngineComponents(TypeRegistry& types);
 } // namespace engine::ecs
