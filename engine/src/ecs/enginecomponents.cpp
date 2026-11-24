@@ -5,6 +5,7 @@
 
 #include "ecs/hierarchy.hpp"
 #include "ecs/name.hpp"
+#include "ecs/prefabinstance.hpp"
 #include "graphics/clip.hpp"
 #include "graphics/font.hpp"
 #include "graphics/interpolation.hpp"
@@ -169,6 +170,7 @@ namespace engine::ecs
 	{
 		using namespace graphics;
 		types.Register<Name>("Name").Field("value", &Name::value);
+		types.Register<PrefabInstance>("PrefabInstance").Field("name", &PrefabInstance::name);
 		types.Register<Parent>("Parent").Field("entity", &Parent::entity);
 		types.Register<Transform>("Transform")
 		    .Field("position", &Transform::position)

@@ -20,7 +20,7 @@ namespace
 
 TEST_CASE("an asset drag survives the payload round trip, whatever its kind")
 {
-	for (const DragKind kind : {DragKind::Sprite, DragKind::Font, DragKind::Sound, DragKind::Scene})
+	for (const DragKind kind : {DragKind::Sprite, DragKind::Font, DragKind::Sound, DragKind::Scene, DragKind::Prefab})
 	{
 		const std::vector<char> bytes = EncodeAssetDrag({kind, "music/theme.ogg"});
 		const auto back = DecodeAssetDrag(bytes);

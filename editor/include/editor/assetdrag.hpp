@@ -17,7 +17,8 @@ namespace engine::editor
 		Sprite,
 		Font,
 		Sound,
-		Scene, // a scene file name in the scene folder, with ".json"
+		Scene,  // a scene file name in the scene folder, with ".json"
+		Prefab, // a prefab name (the file's name without ".json")
 	};
 
 	struct AssetDrag

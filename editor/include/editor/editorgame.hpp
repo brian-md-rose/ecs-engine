@@ -97,6 +97,7 @@ namespace engine::editor
 			None,
 			ConfirmDiscard,
 			SaveAs,
+			SavePrefab,
 			Recover
 		};
 
@@ -132,6 +133,7 @@ namespace engine::editor
 		Dialog dialog = Dialog::None;
 		bool openDialog = false; // the popup still has to be opened
 		std::string saveAsName;
+		std::string prefabName; // what the Save prefab window holds
 
 		std::shared_ptr<AssetThumbnails>
 		    thumbnails;                     // the Assets panel's sprite pictures; null without an assets folder
@@ -200,6 +202,12 @@ namespace engine::editor
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
+		// Prefabs (docs/editor.md): the folder, a copy at a point, and the Edit > Prefab menu's items.
+		[[nodiscard]] std::filesystem::path PrefabsFolder() const;
+		void PutPrefab(const std::string& name, graphics::Position at);
+		bool SavePrefabAs(const std::string& name);
+		void ApplySelectedPrefab();
+		void RevertSelectedPrefab();
 		// What the Assets panel dropped on the Viewport this frame: a sprite becomes an entity at the pointer, a scene
 		// opens.
 		void TakeAssetDrop(graphics::Position origin);

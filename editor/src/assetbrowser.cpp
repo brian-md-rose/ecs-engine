@@ -13,6 +13,7 @@
 #include "core/text.hpp"
 #include "editor/assetdrag.hpp"
 #include "editor/assetthumbnails.hpp"
+#include "editor/prefabs.hpp"
 
 namespace engine::editor
 {
@@ -43,6 +44,8 @@ namespace engine::editor
 			std::string saveError;
 			std::vector<std::string> scenes; // the .json files of the scene folder, as of the last rescan
 			bool scenesScanned = false;
+			std::vector<std::string> prefabs; // the prefabs, by name, as of the last rescan
+			bool prefabsScanned = false;
 		};
 
 		// Where the sprite is drawn inside a box: as big as fits, in whole pixels when it can (so pixel art stays
@@ -272,6 +275,33 @@ namespace engine::editor
 			else
 				ImGui::TextDisabled("Drag a scene onto the Viewport to open it");
 		}
+		// The prefabs of the prefabs folder, to drag onto the Viewport to put a copy in the scene.
+		void DrawPrefabs(const std::filesystem::path& folder, BrowserState& state)
+		{
+			if (!state.prefabsScanned || ImGui::GetFrameCount() % 30 == 0) // a new prefab shows within half a second
+			{
+				state.prefabs = ListPrefabs(folder);
+				state.prefabsScanned = true;
+			}
+			bool any = false;
+			for (const std::string& name : state.prefabs)
+			{
+				if (!state.filter.empty() && !ContainsNoCase(name, state.filter)) continue;
+				any = true;
+				const bool isSelected = state.selectedKind == ecs::AssetKind::None && state.selected == name;
+				if (ImGui::Selectable(name.c_str(), isSelected))
+				{
+					state.selected = name;
+					state.selectedKind = ecs::AssetKind::None;
+					state.selectedFile.clear();
+				}
+				AssetDragSource({DragKind::Prefab, name});
+			}
+			if (!any)
+				ImGui::TextDisabled("No prefab yet: select an entity and use Edit > Prefab > Save selection as prefab");
+			else
+				ImGui::TextDisabled("Drag a prefab onto the Viewport to put a copy in the scene");
+		}
 	} // namespace
 
 	bool AssetMatches(const AssetEntry& entry, const std::string& needle)
@@ -292,6 +322,7 @@ namespace engine::editor
 				if (thumbnails != nullptr) thumbnails->Forget();
 				catalog->Rescan();
 				state->scenesScanned = false;
+				state->prefabsScanned = false;
 			}
 			ImGui::SameLine();
 			const bool canCopy = !state->selected.empty();
@@ -336,6 +367,11 @@ namespace engine::editor
 			if (!sceneFolder.empty() && ImGui::BeginTabItem("Scenes###Scenes"))
 			{
 				DrawScenes(sceneFolder, *state);
+				ImGui::EndTabItem();
+			}
+			if (!sceneFolder.empty() && ImGui::BeginTabItem("Prefabs###Prefabs"))
+			{
+				DrawPrefabs(PrefabFolder(catalog->Folder()), *state);
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();

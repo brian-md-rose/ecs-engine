@@ -61,7 +61,7 @@ inspector), and `Save` and `Load` for one component.
   order of the entities' own ids, so a save of the same world is the same text and diffs cleanly.
 - `name` is the `Name` component and `parent` the `Parent` component; neither appears under `components`.
 - `format` is the file layout version (1). A file with another number is refused. `engine` is for diagnostics.
-- Resources (the maze, the score) are not part of a scene. Prefabs are not supported yet.
+- Resources (the maze, the score) are not part of a scene. A prefab is a scene file of its own with one root entity (see [the editor](editor.md)); a copy of one in a scene is ordinary entities, with a `PrefabInstance` component (`{"name": ...}`) on its root that only the editor reads.
 - `Transform` and `LocalTransform` also have `rotation` (degrees, clockwise on screen) and `scale` (`{"x", "y"}`, default 1). A scene written before they existed omits them and loads unchanged, as every missing field keeps its default; saving now writes them. Shapes and sprites rotate and scale about the centre of their box (`position` stays the top-left of the box before it is turned); text ignores both. A parent and its children turn and stretch together about the parent's centre (its position if it has no Shape or Sprite): rotations add and scales multiply.
 
 ## Scene settings
@@ -100,7 +100,7 @@ if (!result.Ok())
 
 ## Limits
 
-Entities only. There are no resources, prefabs or asset references yet; textures and sounds belong in
+Entities only. There are no resources, nested or overriding prefabs, or asset references yet; textures and sounds belong in
 scenes as names, resolved after loading.
 
 ## Example: Tangle Run's screens

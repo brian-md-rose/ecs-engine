@@ -23,6 +23,7 @@
 #include "editor/assetdrag.hpp"
 #include "editor/consolepanel.hpp"
 #include "editor/entityops.hpp"
+#include "editor/prefabs.hpp"
 #include "editor/profilerpanel.hpp"
 #include "graphics/renderer2d.hpp"
 
@@ -765,11 +766,23 @@ namespace engine::editor
 
 	void EditorGame::TakeAssetDrop(graphics::Position origin)
 	{
-		const auto dropped = AssetDropTarget({DragKind::Sprite, DragKind::Scene});
+		const auto dropped = AssetDropTarget({DragKind::Sprite, DragKind::Scene, DragKind::Prefab});
 		if (!dropped) return;
 		if (dropped->kind == DragKind::Scene)
 		{
 			Request(Action::Open, dropped->name); // asks first if there are unsaved changes
+			return;
+		}
+		if (dropped->kind == DragKind::Prefab)
+		{
+			const ImGuiIO& io = ImGui::GetIO();
+			graphics::Position at = view.ToPicture({io.MousePos.x, io.MousePos.y}, origin);
+			if (snapToGrid != io.KeyCtrl)
+			{
+				const auto step = static_cast<float>(snapSize);
+				at = {std::round(at.x / step) * step, std::round(at.y / step) * step};
+			}
+			PutPrefab(dropped->name, at);
 			return;
 		}
 		const auto rect = config.spriteRect ? config.spriteRect(CurrentWorld(), dropped->name) : std::nullopt;
@@ -1390,6 +1403,64 @@ namespace engine::editor
 			                 issues.warnings.front().path + ": " + issues.warnings.front().message;
 	}
 
+	std::filesystem::path EditorGame::PrefabsFolder() const
+	{
+		return PrefabFolder(config.assetFolder);
+	}
+
+	// A copy of the prefab at at (picture pixels) in the open scene, selected.
+	void EditorGame::PutPrefab(const std::string& name, graphics::Position at)
+	{
+		std::string error;
+		ecs::Registry& registry = edit->world.registry;
+		const ecs::Entity root = InstantiatePrefab(registry, EnsureTypes(edit->world), PrefabsFolder(), name, error);
+		if (root.IsNull())
+		{
+			message = "can't use prefab " + name + ": " + error;
+			return;
+		}
+		(void)SetMovablePosition(registry, root, at);
+		panels->Select(root);
+		message.clear();
+	}
+
+	bool EditorGame::SavePrefabAs(const std::string& name)
+	{
+		panels->Prune(edit->world.registry);
+		std::string error;
+		if (panels->selected.IsNull() ||
+		    !SavePrefab(edit->world.registry, EnsureTypes(edit->world), panels->selected, PrefabsFolder(), name, error))
+		{
+			message = "can't save prefab: " + (error.empty() ? std::string("nothing is selected") : error);
+			return false;
+		}
+		message = "saved prefab " + name;
+		return true;
+	}
+
+	void EditorGame::ApplySelectedPrefab()
+	{
+		std::string error;
+		if (ApplyToPrefab(edit->world.registry, EnsureTypes(edit->world), panels->selected, PrefabsFolder(), error))
+			message = "applied to prefab " + PrefabNameOf(edit->world.registry, panels->selected);
+		else
+			message = "can't apply: " + error;
+	}
+
+	void EditorGame::RevertSelectedPrefab()
+	{
+		std::string error;
+		const ecs::Entity fresh =
+		    RevertToPrefab(edit->world.registry, EnsureTypes(edit->world), panels->selected, PrefabsFolder(), error);
+		if (fresh.IsNull())
+		{
+			message = "can't revert: " + error;
+			return;
+		}
+		panels->Select(fresh);
+		message.clear();
+	}
+
 	void EditorGame::DrawMenuBar()
 	{
 		HandleShortcuts();
@@ -1400,6 +1471,25 @@ namespace engine::editor
 			ImGui::Separator();
 			if (ImGui::MenuItem("Copy", "Ctrl+C", false, !play && !panels->selected.IsNull())) CopySelection();
 			if (ImGui::MenuItem("Paste", "Ctrl+V", false, !play)) PasteClipboard();
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Prefab", !play && !config.assetFolder.empty()))
+			{
+				panels->Prune(edit->world.registry);
+				const bool hasSelection = !panels->selected.IsNull();
+				const std::string instanceOf = PrefabNameOf(edit->world.registry, panels->selected);
+				if (ImGui::MenuItem("Save selection as prefab...", nullptr, false, hasSelection))
+				{
+					prefabName = instanceOf;
+					dialog = Dialog::SavePrefab;
+					openDialog = true;
+				}
+				if (ImGui::MenuItem(
+				        ("Apply to prefab" + (instanceOf.empty() ? std::string() : " (" + instanceOf + ")")).c_str(),
+				        nullptr, false, !instanceOf.empty()))
+					ApplySelectedPrefab();
+				if (ImGui::MenuItem("Revert to prefab", nullptr, false, !instanceOf.empty())) RevertSelectedPrefab();
+				ImGui::EndMenu();
+			}
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Scene"))
@@ -1534,6 +1624,30 @@ namespace engine::editor
 				if (ImGui::Button("Throw them away"))
 				{
 					DeclineRecovery();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndPopup();
+			}
+		}
+		else if (dialog == Dialog::SavePrefab)
+		{
+			if (openDialog) ImGui::OpenPopup("Save prefab");
+			openDialog = false;
+			if (ImGui::BeginPopupModal("Save prefab", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				ImGui::TextUnformatted("Saves the selected entity and everything under it.");
+				ImGui::InputText("name", &prefabName);
+				const bool save = ImGui::Button("Save");
+				ImGui::SameLine();
+				const bool cancel = ImGui::Button("Cancel");
+				if (save && SavePrefabAs(prefabName))
+				{
+					dialog = Dialog::None;
+					ImGui::CloseCurrentPopup();
+				}
+				if (cancel)
+				{
+					dialog = Dialog::None;
 					ImGui::CloseCurrentPopup();
 				}
 				ImGui::EndPopup();
