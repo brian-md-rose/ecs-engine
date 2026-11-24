@@ -71,6 +71,17 @@ namespace engine::editor
 		// is not offered.
 		std::function<std::string(ecs::World&, GridCell)> onPlayFrom = nullptr;
 
+		// A game's own additions to the editor, for the registration block in its editor's main (see PanelState for
+		// what each does): a widget per component for the Inspector, commands in the Inspector's component menu and
+		// the Hierarchy's entity menu, and menu items.
+		std::unordered_map<std::string, std::function<void(ecs::Registry&, ecs::Entity)>> inspectors = {};
+		std::vector<PanelState::Command> componentCommands = {};
+		std::vector<PanelState::Command> entityCommands = {};
+		// Called inside the menu bar (after Edit) while editing, with the edit world, to add the game's own menus and
+		// items with ImGui::BeginMenu and ImGui::MenuItem. A change it makes is a change like any other: it is undone
+		// by Undo and marks the scene as unsaved.
+		std::function<void(ecs::World&)> menu = nullptr;
+
 		// Paints a scene made of grid cells (a maze). The Viewport shows its palette while editing a scene it applies
 		// to.
 		GridTool gridTool = {};

@@ -663,3 +663,41 @@ TEST_CASE("Play from here calls the game's hook with the cell, Restart repeats i
 	CHECK_FALSE(game.IsPlaying());
 	CHECK(game.Message().find("a wall") != std::string::npos);
 }
+
+TEST_CASE("A game's own inspectors, commands and menu reach the panels", "[editor][editorgame]")
+{
+	const auto folder = TempFolder("registrations");
+	engine::editor::Editor editor;
+	int drawn = 0;
+	int ran = 0;
+	EditorGameConfig config = MakeConfig(folder);
+	config.inspectors["Mover"] = [&](engine::ecs::Registry&, Entity)
+	{
+		++drawn;
+	};
+	config.componentCommands.push_back({"Mover", "Stop", [&](engine::ecs::Registry&, Entity)
+	{
+		++ran;
+	}});
+	config.entityCommands.push_back({"", "Wave", [&](engine::ecs::Registry&, Entity)
+	{
+		++ran;
+	}});
+	config.menu = [](engine::ecs::World&) {};
+	EditorGame game(editor, std::move(config));
+	REQUIRE(game.IsValid());
+
+	const auto& panels = game.Selection();
+	REQUIRE(panels.inspectors.count("Mover") == 1);
+	REQUIRE(panels.componentCommands.size() == 1);
+	CHECK(panels.componentCommands.front().component == "Mover");
+	REQUIRE(panels.entityCommands.size() == 1);
+
+	// What the panels are given runs on the live registry.
+	engine::ecs::Registry registry;
+	panels.inspectors.at("Mover")(registry, Entity::Null);
+	panels.componentCommands.front().run(registry, Entity::Null);
+	panels.entityCommands.front().run(registry, Entity::Null);
+	CHECK(drawn == 1);
+	CHECK(ran == 2);
+}

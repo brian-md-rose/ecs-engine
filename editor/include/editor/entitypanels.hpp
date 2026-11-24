@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "core/json.hpp"
@@ -41,6 +42,27 @@ namespace engine::editor
 		// `assets`) a PixelRect field marked `assetKind = Sprite` (Sprite::source) gets a picker of sprite names that
 		// sets the rectangle, above the raw x, y, width and height.
 		std::function<std::optional<graphics::PixelRect>(const std::string&)> spriteRect;
+
+		// A game's own additions to the panels, set before the first frame (EditorGameConfig carries them for the
+		// standalone editor). All run between frames, on the live registry.
+		//
+		// inspectors: a widget for one component, by its registered name, drawn under the component's header instead
+		// of the field widgets (the header, its remove button and its right-click menu stay). It gets the primary
+		// selected entity, which has the component, and edits it itself with ImGui and the registry. It does not take
+		// part in multi-edit: the other selected entities are left alone.
+		std::unordered_map<std::string, std::function<void(ecs::Registry&, ecs::Entity)>> inspectors;
+
+		// A command in a right-click menu: run on the entity (the one clicked in the Hierarchy, or the primary
+		// selection for an Inspector header) after the panel is drawn, so it may add, remove or destroy entities and
+		// components.
+		struct Command
+		{
+			std::string component; // componentCommands only: the registered name of the component whose header has it
+			std::string label;
+			std::function<void(ecs::Registry&, ecs::Entity)> run;
+		};
+		std::vector<Command> componentCommands; // in the right-click menu of that component's header in the Inspector
+		std::vector<Command> entityCommands;    // in the right-click menu of an entity in the Hierarchy
 
 		// The whole selection: the primary first, then the others. Empty if nothing is selected.
 		[[nodiscard]] std::vector<ecs::Entity> All() const;
