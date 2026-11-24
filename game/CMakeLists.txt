@@ -16,6 +16,8 @@ target_link_libraries(game PRIVATE engine::platform engine::warnings SDL3::SDL3)
 # The application icon, embedded as a Windows resource (game/app_icon.rc.in). configure_file
 # writes the absolute icon path into the generated .rc, so it doesn't depend on rc.exe's search path.
 if(WIN32)
+    # CMake already enables RC for MSVC and MinGW on Windows; this states it for every generator.
+    enable_language(RC)
     set(APP_ICON_PATH "${PROJECT_SOURCE_DIR}/docs/icon/icon.ico")
     configure_file(app_icon.rc.in ${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc @ONLY)
     set(APP_ICON_RC ${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc)
