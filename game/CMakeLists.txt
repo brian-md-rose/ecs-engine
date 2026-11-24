@@ -13,6 +13,15 @@ target_include_directories(game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # game code still goes through the engine and never touches SDL headers.
 target_link_libraries(game PRIVATE engine::platform engine::warnings SDL3::SDL3)
 
+# The application icon, embedded as a Windows resource (game/app_icon.rc.in). configure_file
+# writes the absolute icon path into the generated .rc, so it doesn't depend on rc.exe's search path.
+if(WIN32)
+    set(APP_ICON_PATH "${PROJECT_SOURCE_DIR}/docs/icon/icon.ico")
+    configure_file(app_icon.rc.in ${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc @ONLY)
+    set(APP_ICON_RC ${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc)
+    target_sources(game PRIVATE ${APP_ICON_RC})
+endif()
+
 # Mirror the folder layout as IDE filters: include/ and src/.
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${GAME_SOURCES} ${GAME_HEADERS})
 
@@ -45,6 +54,9 @@ if(ENGINE_BUILD_EDITOR)
             ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:tangle_run_editor>/assets
         VERBATIM)
     add_dependencies(tangle_run_editor tangle_run_editor_assets)
+    if(WIN32)
+        target_sources(tangle_run_editor PRIVATE ${APP_ICON_RC})
+    endif()
     # The editor opens and saves scenes in the source folder, so edits persist and get committed (editor/main.cpp).
     target_compile_definitions(tangle_run_editor PRIVATE TANGLE_RUN_SOURCE_SCENES="${CMAKE_CURRENT_SOURCE_DIR}/assets/scenes")
 endif()
