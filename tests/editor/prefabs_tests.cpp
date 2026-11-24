@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 
 #include "ecs/enginecomponents.hpp"
@@ -46,10 +47,17 @@ namespace
 		}
 	};
 
+	// A game component that points at another entity.
+	struct Target
+	{
+		Entity who = Entity::Null;
+	};
+
 	engine::ecs::TypeRegistry MakeTypes()
 	{
 		engine::ecs::TypeRegistry types;
 		engine::ecs::RegisterEngineComponents(types);
+		types.Register<Target>("Target").Field("who", &Target::who);
 		return types;
 	}
 
@@ -124,6 +132,47 @@ TEST_CASE("Saving a prefab refuses a bad name and a tree that refers outside its
 	const Entity handle = engine::ecs::DescendantsOf(registry, door).front();
 	CHECK(engine::editor::SavePrefab(registry, types, handle, scratch.path, "handle", error)); // its Parent is dropped
 	CHECK_FALSE(engine::editor::SavePrefab(registry, types, Entity::Null, scratch.path, "none", error));
+
+	// A field that points at an entity outside the tree can't be saved, and the root is left as it was.
+	const Entity elsewhere = CreateEntity(registry, "Elsewhere");
+	registry.Add<Target>(handle, Target{elsewhere});
+	error.clear();
+	CHECK_FALSE(engine::editor::SavePrefab(registry, types, door, scratch.path, "pointer", error));
+	CHECK_FALSE(error.empty());
+	CHECK_FALSE(registry.HasComponent<PrefabInstance>(door));
+	CHECK(engine::editor::ListPrefabs(scratch.path) == std::vector<std::string>{"handle"});
+}
+
+TEST_CASE("A prefab that can't be written leaves the copy's PrefabInstance and the old file as they were",
+          "[editor][prefab]")
+{
+	ScratchFolder scratch;
+	const auto types = MakeTypes();
+	Registry registry;
+	const Entity door = MakeDoor(registry, 0);
+	std::string error;
+	REQUIRE(engine::editor::SavePrefab(registry, types, door, scratch.path, "door", error));
+	const std::string before = [&]
+	{
+		std::ifstream in(scratch.path / "door.json", std::ios::binary);
+		return std::string(std::istreambuf_iterator<char>(in), {});
+	}();
+
+	// A folder that is really a file: nothing can be written there.
+	const std::filesystem::path blocked = scratch.path / "blocked";
+	std::ofstream(blocked) << "not a folder";
+	registry.TryGetComponent<Name>(door)->value = "Changed";
+	CHECK_FALSE(engine::editor::SavePrefab(registry, types, door, blocked, "other", error));
+	CHECK_FALSE(error.empty());
+	CHECK(engine::editor::PrefabNameOf(registry, door) == "door"); // not "other"
+
+	// And a new root with no PrefabInstance gets none.
+	const Entity fresh = MakeDoor(registry, 3);
+	CHECK_FALSE(engine::editor::SavePrefab(registry, types, fresh, blocked, "other", error));
+	CHECK_FALSE(registry.HasComponent<PrefabInstance>(fresh));
+
+	std::ifstream in(scratch.path / "door.json", std::ios::binary);
+	CHECK(std::string(std::istreambuf_iterator<char>(in), {}) == before); // the old file is intact
 }
 
 TEST_CASE("Instantiating a prefab that is missing or broken changes nothing", "[editor][prefab]")
