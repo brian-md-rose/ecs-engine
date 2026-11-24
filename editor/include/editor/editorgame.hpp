@@ -157,6 +157,19 @@ namespace engine::editor
 		int targetHeight = 0;
 		SDL_Texture* targetHandle = nullptr;
 		ViewTransform view;
+		// The Game panel: the playing game, drawn into its own picture while the Viewport keeps showing and editing the
+		// scene. split is true while a game is played and the Game panel is shown; then the Inspector, Hierarchy and
+		// every edit work on the edit world, and the play world only runs.
+		graphics::TextureId gameTarget = graphics::kNoTexture;
+		int gameTargetWidth = 0;
+		int gameTargetHeight = 0;
+		SDL_Texture* gameTargetHandle = nullptr;
+		ViewTransform gameView;
+		bool split = false;
+		bool gameDrawn = false;  // the Game panel was drawn since the last Render
+		bool gameActive = false; // the Game panel had the pointer or focus last frame (the game gets the keys then)
+		bool showGizmos = true;  // the selection outline and gizmo are drawn on the Viewport
+		bool showSnapGrid = false; // lines at every snap size are drawn over the Viewport
 		// The grid tool's brush: select (the usual click and drag), a palette entry (its index), or erase.
 		static constexpr std::size_t kRecentScenes = 8; // how many scene names are kept
 		static constexpr int kBrushSelect = -1;
@@ -218,6 +231,8 @@ namespace engine::editor
 
 		[[nodiscard]] graphics::Camera CurrentCamera();
 		void DrawViewport();
+		void DrawGame();
+		[[nodiscard]] bool Editing() const noexcept { return !play || split; } // the edit world can be changed
 		// Prefabs (docs/editor.md): the folder, a copy at a point, and the Edit > Prefab menu's items.
 		[[nodiscard]] std::filesystem::path PrefabsFolder() const;
 		void PutPrefab(const std::string& name, graphics::Position at);
@@ -235,7 +250,7 @@ namespace engine::editor
 		void ShowIssues(const std::string& source, const ecs::Issues& issues);
 		void PaintStroke(const GridInfo& grid, graphics::Position origin, ImDrawList* draw);
 
-		[[nodiscard]] ecs::World& CurrentWorld() { return play ? play->world : edit->world; }
+		[[nodiscard]] ecs::World& CurrentWorld() { return play && !split ? play->world : edit->world; }
 		[[nodiscard]] std::string SceneText();
 		void ClearWorld(ecs::World& world);
 		void Perform(Action action, const std::string& name);
@@ -276,8 +291,8 @@ namespace engine::editor
 		// again. Not while playing.
 		bool Undo();
 		bool Redo();
-		[[nodiscard]] bool CanUndo() const noexcept { return !play && historyPos > 0; }
-		[[nodiscard]] bool CanRedo() const noexcept { return !play && historyPos + 1 < history.size(); }
+		[[nodiscard]] bool CanUndo() const noexcept { return Editing() && historyPos > 0; }
+		[[nodiscard]] bool CanRedo() const noexcept { return Editing() && historyPos + 1 < history.size(); }
 
 		// ---- play ----
 		bool StartPlay();
