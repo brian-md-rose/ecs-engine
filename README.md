@@ -19,7 +19,7 @@ second game (Project Babel, see [docs/babel-support.md](docs/babel-support.md)) 
 seeded random number generator, mouse and text, camera zoom and clipping, UI building blocks, display
 settings, gamepads and audio files with a mixer and music. Since then the engine has gained a type registry and JSON scenes (v0.6.0),
 an optional Dear ImGui overlay with Hierarchy and Inspector panels (v0.7.0), and a standalone editor with Play and Stop, a viewport and undo
-(v0.8.0), see [docs/editor.md](docs/editor.md).
+(v0.8.0). Later releases added the Assets, Console, Profiler and Build settings panels, docking, drag and drop from the Assets panel, and rotation and scale on `Transform` (v0.9.0). The unreleased editor work since then adds rotate and scale gizmos, basic prefabs, tile tools for the maze, C++ extension points for a game's own Inspector widgets and commands, and a Game panel that runs the game beside the Viewport. See [docs/editor.md](docs/editor.md) and the [changelog](CHANGELOG.md).
 
 ## Versions and releases
 
@@ -64,7 +64,7 @@ target_link_libraries(my_game PRIVATE engine::platform)   # or engine::core for 
 - **Scenes**: components described at run time by a type registry, and entities saved to and loaded from JSON with
   ids remapped on load, in `engine::core` with no editor needed ([scenes](docs/scenes.md),
   [ADR 0004](docs/decisions/0004-reflection-and-scenes.md)).
-- **Editor** (optional, off by default, Windows only in CI): a Dear ImGui editor behind `ENGINE_BUILD_EDITOR`: an overlay on a running game, or a standalone editor with scene files, Play and Stop, a viewport with picking and moving, undo and redo, and Hierarchy and Inspector panels
+- **Editor** (optional, off by default, Windows only in CI): a Dear ImGui editor behind `ENGINE_BUILD_EDITOR`: an overlay on a running game, or a standalone editor with scene files, Play and Stop, a viewport with picking and move, rotate and scale gizmos, a Game panel beside it, undo and redo, prefabs, asset browser, console, profiler, build settings, and Hierarchy and Inspector panels
   ([editor](docs/editor.md)).
 - **Platform**: an SDL3 window and an application loop with a fixed 60 Hz update and variable-rate
   rendering. SDL types stay out of the public headers.
