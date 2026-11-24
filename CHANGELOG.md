@@ -9,6 +9,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-24
+
 ### Added
 - **Editor Build settings panel**: pick the scenes to ship and a startup scene, then Package (or Package and run) the game executable with its assets and a `build.json` manifest into an output folder. Windows only for now (`AddBuildSettingsPanel`).
 - **Editor Profiler panel**: a frame-time graph of the last 240 frames with the update share, average and worst frame time, FPS, the entity count, and a table of entities per component (biggest first, empty ones hideable), with Pause and Clear. Frames are recorded only while the panel is open. `AddProfilerPanel`, `ProfilerHistory`, `Summarize`. Per-system timings are not included.
@@ -242,7 +244,8 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.5.0...v0.6.0
