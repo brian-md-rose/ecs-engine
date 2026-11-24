@@ -97,13 +97,28 @@ namespace engine::editor
 		}
 		std::error_code fsError;
 		std::filesystem::create_directories(folder, fsError);
-		std::ofstream out(FileOf(folder, name), std::ios::binary | std::ios::trunc);
-		out << text;
-		out.flush();
-		if (!out)
+		// Written beside the file and renamed over it, so a failed write leaves the old prefab as it was.
+		const std::filesystem::path file = FileOf(folder, name);
+		std::filesystem::path temporary = file;
+		temporary += ".tmp";
+		{
+			std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+			out << text;
+			out.flush();
+			if (!out)
+			{
+				undo();
+				std::filesystem::remove(temporary, fsError);
+				error = "can't write " + file.string();
+				return false;
+			}
+		}
+		std::filesystem::rename(temporary, file, fsError);
+		if (fsError)
 		{
 			undo();
-			error = "can't write " + FileOf(folder, name).string();
+			std::filesystem::remove(temporary, fsError);
+			error = "can't write " + file.string();
 			return false;
 		}
 		return true;
@@ -180,9 +195,15 @@ namespace engine::editor
 		ecs::Entity parent = ecs::Entity::Null;
 		if (const auto* link = registry.TryGetComponent<ecs::Parent>(root)) parent = link->entity;
 		const std::optional<graphics::Position> at = MovablePosition(registry, root);
-		DestroyTree(registry, root);
-		if (!parent.IsNull() && registry.IsAlive(parent)) (void)SetParent(registry, fresh, parent);
+		// Into place before the old tree goes, so a copy that can't go there leaves the scene as it was.
+		if (!parent.IsNull() && registry.IsAlive(parent) && !SetParent(registry, fresh, parent))
+		{
+			DestroyTree(registry, fresh);
+			error = "can't put the copy under its parent";
+			return ecs::Entity::Null;
+		}
 		if (at) (void)SetMovablePosition(registry, fresh, *at);
+		DestroyTree(registry, root);
 		return fresh;
 	}
 } // namespace engine::editor
