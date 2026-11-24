@@ -10,6 +10,7 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 ## [Unreleased]
 
 ### Added
+- **Console click-to-source**: `core::Log`, `LogDebug`, `LogInfo`, `LogWarning` and `LogError` take a defaulted `std::source_location`, and `LogRecord` gains `file` and `line` (new `LogAt` logs with a location given by hand, used for SDL messages). In the editor, clicking a Console message shows where it was logged, with Open and Copy path; `AddConsolePanel` takes an optional opener. Existing calls compile unchanged.
 - **Per-system timings in the editor Profiler**: a Systems table, shown while Play runs, with each system of the played game, its phase and smoothed time, slowest first. `AddProfilerPanel` takes an optional scheduler function.
 - **Game starts on the Build settings startup scene**: Tangle Run reads `build.json` beside its executable and plays the chosen maze scene first; without one it starts on `level1`.
 - **Editor Game panel**: a second view that shows the playing game with its own mouse and keys while the Viewport keeps showing and editing the scene. The Viewport strip gains Gizmos and Grid lines toggles.

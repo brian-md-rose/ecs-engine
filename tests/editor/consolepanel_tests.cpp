@@ -32,3 +32,19 @@ TEST_CASE("A Console line is the time of day, the level and the message", "[cons
 	CHECK(ConsoleLine({1, LogLevel::Error, "2026-11-23 10:11:12.345", "boom"}) == "10:11:12.345 [ERROR] boom");
 	CHECK(ConsoleLine({1, LogLevel::Info, "-", "hi"}) == "- [INFO] hi");
 }
+
+TEST_CASE("A record's source shows as file and line, or nothing without one", "[console]")
+{
+	LogRecord record{1, LogLevel::Error, "", "x", "game/src/maze.cpp", 42};
+	CHECK(engine::editor::ConsoleSource(record) == "game/src/maze.cpp:42");
+	record.line = 0;
+	CHECK(engine::editor::ConsoleSource(record).empty());
+	CHECK(engine::editor::ConsoleSource({2, LogLevel::Info, "", "SDL says", "", 0}).empty());
+}
+
+TEST_CASE("File URLs take Windows and POSIX paths and escape what a URL can't hold", "[console]")
+{
+	using engine::editor::FileUrl;
+	CHECK(FileUrl("D:\\Visual Studio Projects\\a#b.cpp") == "file:///D:/Visual%20Studio%20Projects/a%23b.cpp");
+	CHECK(FileUrl("/home/me/x.cpp") == "file:///home/me/x.cpp");
+}

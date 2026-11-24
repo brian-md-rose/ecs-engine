@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <source_location>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -62,8 +63,10 @@ namespace engine::core
 	{
 		std::uint64_t id = 0; // 1, 2, 3, ... in the order logged; never reused, so a viewer can tell what is new
 		LogLevel level = LogLevel::Info;
-		std::string time;    // "2026-11-18 16:09:27.123"
-		std::string message; // without the time and level
+		std::string time;       // "2026-11-18 16:09:27.123"
+		std::string message;    // without the time and level
+		std::string file{};     // the source file of the call that logged it, as the compiler gave it; empty if unknown
+		std::uint32_t line = 0; // its line, 0 if unknown
 	};
 
 	// Keeps the last `capacity` messages in memory (0, the default, keeps none and frees what was kept). Messages
@@ -80,23 +83,28 @@ namespace engine::core
 	// Forgets the remembered messages (ids keep counting).
 	void ClearLogHistory();
 
-	// Writes one line, "2026-11-18 16:09:27.123 [ERROR] message". Safe to call from any thread.
-	void Log(LogLevel level, std::string_view message);
+	// Writes one line, "2026-11-18 16:09:27.123 [ERROR] message". Safe to call from any thread. The file and line of
+	// the call are kept in the LogRecord (not in the written line), so a viewer can jump to them.
+	void Log(LogLevel level, std::string_view message, std::source_location where = std::source_location::current());
 
-	inline void LogDebug(std::string_view message)
+	// As Log, with the source location given by hand (empty file and line 0 when there is none), for a message that
+	// is passed on from somewhere else, such as SDL's log.
+	void LogAt(LogLevel level, std::string_view message, std::string_view file, std::uint32_t sourceLine);
+
+	inline void LogDebug(std::string_view message, std::source_location where = std::source_location::current())
 	{
-		Log(LogLevel::Debug, message);
+		Log(LogLevel::Debug, message, where);
 	}
-	inline void LogInfo(std::string_view message)
+	inline void LogInfo(std::string_view message, std::source_location where = std::source_location::current())
 	{
-		Log(LogLevel::Info, message);
+		Log(LogLevel::Info, message, where);
 	}
-	inline void LogWarning(std::string_view message)
+	inline void LogWarning(std::string_view message, std::source_location where = std::source_location::current())
 	{
-		Log(LogLevel::Warning, message);
+		Log(LogLevel::Warning, message, where);
 	}
-	inline void LogError(std::string_view message)
+	inline void LogError(std::string_view message, std::source_location where = std::source_location::current())
 	{
-		Log(LogLevel::Error, message);
+		Log(LogLevel::Error, message, where);
 	}
 } // namespace engine::core

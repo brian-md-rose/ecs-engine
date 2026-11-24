@@ -161,7 +161,12 @@ namespace engine::core
 		++state.version;
 	}
 
-	void Log(LogLevel level, std::string_view message)
+	void Log(LogLevel level, std::string_view message, std::source_location where)
+	{
+		LogAt(level, message, where.file_name(), where.line());
+	}
+
+	void LogAt(LogLevel level, std::string_view message, std::string_view file, std::uint32_t sourceLine)
 	{
 		LogState& state = State();
 		const std::lock_guard<std::mutex> lock(state.mutex);
@@ -171,7 +176,7 @@ namespace engine::core
 		if (state.historyCapacity > 0)
 		{
 			if (state.history.size() >= state.historyCapacity) state.history.pop_front();
-			state.history.push_back({state.nextId++, level, time, std::string(message)});
+			state.history.push_back({state.nextId++, level, time, std::string(message), std::string(file), sourceLine});
 			++state.version;
 		}
 

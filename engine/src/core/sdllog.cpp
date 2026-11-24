@@ -27,7 +27,7 @@ namespace engine::core
 			const char* text = message != nullptr ? message : "";
 			if (LogIsActive())
 			{
-				Log(FromSdl(priority), text);
+				LogAt(FromSdl(priority), text, {}, 0); // SDL's own call site is no use
 			}
 			else
 			{
