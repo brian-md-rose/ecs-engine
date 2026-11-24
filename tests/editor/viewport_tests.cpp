@@ -1,6 +1,8 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <memory>
+#include <vector>
 
 #include "application/application.hpp"
 #include "application/scheduledgame.hpp"
@@ -430,4 +432,184 @@ TEST_CASE("The gizmo sits at the mean middle of what is drawn", "[editor][viewpo
 	CHECK(both->x == ((ra->x + ra->width / 2.0F) + (rb->x + rb->width / 2.0F)) / 2.0F);
 	CHECK(both->y == ((ra->y + ra->height / 2.0F) + (rb->y + rb->height / 2.0F)) / 2.0F);
 	CHECK_FALSE(engine::editor::SelectionCentre(registry, {bare}, camera).has_value());
+}
+
+namespace
+{
+	Entity AddTurnedBox(Registry& registry, float x, float y, float width, float height, float rotation,
+	                    engine::graphics::Scale scale = {})
+	{
+		const Entity entity = registry.Create();
+		registry.Add<Transform>(entity, Transform{.position = {x, y}, .rotation = rotation, .scale = scale});
+		registry.Add<Shape>(entity, Shape{.width = width, .height = height});
+		return entity;
+	}
+} // namespace
+
+TEST_CASE("A turned and stretched box has its corners turned about its middle", "[editor][viewport][rotation]")
+{
+	using engine::editor::EntityScreenCorners;
+	Registry registry;
+	const Camera camera = MakeCamera();
+
+	// A 40 by 10 box turned a quarter clockwise stands upright about its middle (20, 5).
+	const Entity upright = AddTurnedBox(registry, 0, 0, 40, 10, 90);
+	const auto corners = EntityScreenCorners(registry, upright, camera);
+	REQUIRE(corners.has_value());
+	CHECK((*corners)[0].x == Catch::Approx(25.0F));
+	CHECK((*corners)[0].y == Catch::Approx(-15.0F));
+	CHECK((*corners)[2].x == Catch::Approx(15.0F));
+	CHECK((*corners)[2].y == Catch::Approx(25.0F));
+
+	// Doubled it is twice as far from the middle, and the unrotated rectangle is still the box before it was turned.
+	const Entity big = AddTurnedBox(registry, 0, 0, 10, 10, 0, {2, 2});
+	const auto doubled = EntityScreenCorners(registry, big, camera);
+	REQUIRE(doubled.has_value());
+	CHECK((*doubled)[0].x == Catch::Approx(-5.0F));
+	CHECK((*doubled)[2].x == Catch::Approx(15.0F));
+	CHECK(EntityScreenRect(registry, big, camera)->width == 10.0F);
+
+	// A plain box has the rectangle's own corners, and a box with nothing drawn has none.
+	const Entity plain = AddBox(registry, 3, 4, 5);
+	const auto flat = EntityScreenCorners(registry, plain, camera);
+	REQUIRE(flat.has_value());
+	CHECK((*flat)[0].x == 3.0F);
+	CHECK((*flat)[2].y == 9.0F);
+	CHECK_FALSE(EntityScreenCorners(registry, registry.Create(), camera).has_value());
+}
+
+TEST_CASE("Picking and the box select follow a turned and stretched entity", "[editor][viewport][rotation]")
+{
+	Registry registry;
+	const Camera camera = MakeCamera();
+	// The box stands upright after the turn: x from 15 to 25, y from -15 to 25.
+	const Entity upright = AddTurnedBox(registry, 0, 0, 40, 10, 90);
+
+	CHECK(PickEntity(registry, camera, {20, -10}) == upright); // only the turned box is there
+	CHECK(PickEntity(registry, camera, {20, 20}) == upright);
+	CHECK(PickEntity(registry, camera, {5, 5}) == Entity::Null); // the unturned box was there
+	CHECK(PickEntity(registry, camera, {35, 5}) == Entity::Null);
+
+	CHECK(engine::editor::EntitiesInBox(registry, camera, {16, -16, 4, 4}) == std::vector<Entity>{upright});
+	CHECK(engine::editor::EntitiesInBox(registry, camera, {0, 0, 10, 10}).empty());
+	// A box that crosses the turned outline's edge but holds no corner of either shape still counts.
+	CHECK(engine::editor::EntitiesInBox(registry, camera, {10, 4, 20, 2}) == std::vector<Entity>{upright});
+
+	// A turn of 45 degrees makes a diamond: its corner reaches out, its box corner does not.
+	const Entity diamond = AddTurnedBox(registry, 100, 0, 20, 20, 45);
+	CHECK(PickEntity(registry, camera, {110, -3}) == diamond);     // above the original top edge
+	CHECK(PickEntity(registry, camera, {101, 1}) == Entity::Null); // the original corner is now empty
+	// Stretched: scale 2 doubles it about the middle, and a negative scale still has its body.
+	const Entity wide = AddTurnedBox(registry, 200, 0, 10, 10, 0, {-3, 1});
+	CHECK(PickEntity(registry, camera, {190, 5}) == wide);
+	CHECK(PickEntity(registry, camera, {214, 5}) == wide);
+	CHECK(PickEntity(registry, camera, {221, 5}) == Entity::Null);
+}
+
+TEST_CASE("A child of a turned parent moves in the parent's axes", "[editor][viewport][rotation]")
+{
+	using engine::graphics::LocalTransform;
+	Registry registry;
+	const Camera camera = MakeCamera();
+	const Entity parent = AddTurnedBox(registry, 0, 0, 10, 10, 90, {2, 1});
+	const Entity child = AddBox(registry, 0, 0, 4);
+	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{parent});
+	registry.Add<LocalTransform>(child, LocalTransform{});
+
+	// To go down the screen by 4 the child goes 4 along the parent's x (which points down after the turn), and the
+	// parent's scale of 2 along that axis halves it.
+	const Position local = engine::editor::LocalDelta(registry, child, {0, 4});
+	CHECK(local.x == Catch::Approx(2.0F));
+	CHECK(local.y == Catch::Approx(0.0F).margin(1e-5));
+	// Where it ends up agrees: the world movement is the local one turned and stretched.
+	REQUIRE(engine::editor::MoveEntity(registry, child, camera, {0, 4}));
+	CHECK(registry.TryGetComponent<LocalTransform>(child)->position.x == Catch::Approx(2.0F));
+
+	// Anything without a turned parent is moved as it was.
+	const Entity free = AddBox(registry, 0, 0, 4);
+	CHECK(engine::editor::LocalDelta(registry, free, {3, 4}).x == 3.0F);
+	CHECK(engine::editor::LocalDelta(registry, Entity::Null, {3, 4}).y == 4.0F);
+}
+
+TEST_CASE("MovableRotation and MovableScale are on the LocalTransform of a child, else the Transform",
+          "[editor][viewport][rotation]")
+{
+	using engine::graphics::LocalTransform;
+	using engine::graphics::Scale;
+	Registry registry;
+	const Entity alone = AddTurnedBox(registry, 0, 0, 4, 4, 30, {2, 3});
+	CHECK(engine::editor::MovableRotation(registry, alone).value() == 30.0F);
+	CHECK(engine::editor::MovableScale(registry, alone)->y == 3.0F);
+	REQUIRE(engine::editor::SetMovableRotation(registry, alone, 80));
+	REQUIRE(engine::editor::SetMovableScale(registry, alone, Scale{4, 5}));
+	CHECK(registry.TryGetComponent<Transform>(alone)->rotation == 80.0F);
+	CHECK(registry.TryGetComponent<Transform>(alone)->scale.x == 4.0F);
+
+	const Entity child = AddTurnedBox(registry, 0, 0, 4, 4, 10);
+	registry.Add<engine::ecs::Parent>(child, engine::ecs::Parent{alone});
+	registry.Add<LocalTransform>(child, LocalTransform{.rotation = 5, .scale = {1, 2}});
+	CHECK(engine::editor::MovableRotation(registry, child).value() == 5.0F);
+	REQUIRE(engine::editor::SetMovableScale(registry, child, Scale{7, 7}));
+	CHECK(registry.TryGetComponent<LocalTransform>(child)->scale.x == 7.0F);
+	CHECK(registry.TryGetComponent<Transform>(child)->scale.x == 1.0F);
+
+	CHECK_FALSE(engine::editor::MovableRotation(registry, registry.Create()).has_value());
+	CHECK_FALSE(engine::editor::SetMovableScale(registry, Entity::Null, Scale{}));
+}
+
+TEST_CASE("The rotate gizmo is a ring and turns by the angle the pointer goes round", "[editor][viewport][gizmo]")
+{
+	using engine::editor::AngleBetween;
+	using engine::editor::GizmoHandle;
+	using engine::editor::PickRotateGizmo;
+	using engine::editor::TurnedRotation;
+	const Position pivot{100, 100};
+
+	CHECK(PickRotateGizmo(pivot, {148, 100}) == GizmoHandle::Ring);
+	CHECK(PickRotateGizmo(pivot, {100, 52}) == GizmoHandle::Ring);
+	CHECK(PickRotateGizmo(pivot, {100, 100}) == GizmoHandle::None); // inside the ring
+	CHECK(PickRotateGizmo(pivot, {160, 100}) == GizmoHandle::None);
+
+	// Clockwise on screen is positive: from the right of the pivot to below it is a quarter turn.
+	CHECK(AngleBetween(pivot, {150, 100}, {100, 150}) == Catch::Approx(90.0F));
+	CHECK(AngleBetween(pivot, {100, 150}, {150, 100}) == Catch::Approx(-90.0F));
+	// Crossing the left of the pivot is a small step, not a jump of nearly 360.
+	CHECK(AngleBetween(pivot, {50, 99}, {50, 101}) == Catch::Approx(-2.29F).margin(0.05));
+
+	CHECK(TurnedRotation(10, 20, 0) == Catch::Approx(30.0F));
+	CHECK(TurnedRotation(170, 20, 0) == Catch::Approx(-170.0F)); // wraps
+	CHECK(TurnedRotation(0, 100, 15) == Catch::Approx(105.0F));  // rounds to a multiple of 15
+	CHECK(TurnedRotation(0, 106, 15) == Catch::Approx(105.0F));
+	CHECK(TurnedRotation(0, 180, 0) == Catch::Approx(180.0F));
+	CHECK(TurnedRotation(0, -180, 0) == Catch::Approx(180.0F));
+}
+
+TEST_CASE("The scale gizmo turns with the entity and scales by the travel along an arrow", "[editor][viewport][gizmo]")
+{
+	using engine::editor::GizmoHandle;
+	using engine::editor::PickGizmo;
+	using engine::editor::ScaledValue;
+	using engine::editor::ScaleFactor;
+	const Position pivot{100, 100};
+
+	// Turned a quarter, the X arrow points down and the Y arrow points left.
+	CHECK(PickGizmo(pivot, {100, 140}, {}, 90) == GizmoHandle::X);
+	CHECK(PickGizmo(pivot, {60, 100}, {}, 90) == GizmoHandle::Y);
+	CHECK(PickGizmo(pivot, {140, 100}, {}, 90) == GizmoHandle::None);
+	CHECK(PickGizmo(pivot, {102, 98}, {}, 90) == GizmoHandle::Free);
+
+	CHECK(ScaleFactor(GizmoHandle::X, 0, {56, 30}) == Catch::Approx(2.0F)); // one arrow length more
+	CHECK(ScaleFactor(GizmoHandle::X, 0, {-28, 30}) == Catch::Approx(0.5F));
+	CHECK(ScaleFactor(GizmoHandle::Y, 0, {30, 56}) == Catch::Approx(2.0F));
+	CHECK(ScaleFactor(GizmoHandle::X, 90, {30, 56}) == Catch::Approx(2.0F)); // the arrow points down now
+	CHECK(ScaleFactor(GizmoHandle::Free, 0, {56, -56}) == Catch::Approx(2.0F));
+	CHECK(ScaleFactor(GizmoHandle::Free, 0, {-56, 56}) == Catch::Approx(0.0F));
+	CHECK(ScaleFactor(GizmoHandle::None, 0, {56, 56}) == 1.0F);
+	CHECK(ScaleFactor(GizmoHandle::Ring, 0, {56, 56}) == 1.0F);
+
+	CHECK(ScaledValue(2, 1.5F, 0) == Catch::Approx(3.0F));
+	CHECK(ScaledValue(1, 1.6F, 0.25F) == Catch::Approx(1.5F));
+	CHECK(ScaledValue(1, 0, 0) == Catch::Approx(0.01F));     // never quite nothing
+	CHECK(ScaledValue(-1, 0.5F, 0) == Catch::Approx(-0.5F)); // the sign (a mirror) is kept
+	CHECK(ScaledValue(1, -2, 0) == Catch::Approx(-2.0F));    // dragging past zero mirrors
 }
