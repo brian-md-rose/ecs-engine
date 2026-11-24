@@ -1044,11 +1044,30 @@ namespace engine::editor
 					const float units = UnitsPerPixel(world.registry, item.entity, camera);
 					const graphics::Position moved =
 					    DragTarget({}, {dragPixels.x * units, dragPixels.y * units}, io.KeyShift, 0.0F);
-					const graphics::Position local = LocalDelta(world.registry, item.entity, moved);
-					graphics::Position moveTo =
-					    DragTarget(item.start, local, false, snapping ? static_cast<float>(snapSize) : 0.0F);
-					if (gizmoHandle == GizmoHandle::X && local.y == 0.0F) moveTo.y = item.start.y;
-					if (gizmoHandle == GizmoHandle::Y && local.x == 0.0F) moveTo.x = item.start.x;
+					graphics::Position local = LocalDelta(world.registry, item.entity, moved);
+					const bool axisArrow = gizmoHandle == GizmoHandle::X || gizmoHandle == GizmoHandle::Y;
+					const bool turnedFrame = local.x != moved.x || local.y != moved.y;
+					graphics::Position moveTo{};
+					if (axisArrow && turnedFrame)
+					{
+						// The parent's axes are not the arrow's: snap how far it went along the arrow, in world units,
+						// and then turn that into the entity's own, so it stays on the arrow's line.
+						graphics::Position along = moved;
+						if (snapping)
+						{
+							const auto cellSize = static_cast<float>(snapSize);
+							along.x = std::round(along.x / cellSize) * cellSize;
+							along.y = std::round(along.y / cellSize) * cellSize;
+						}
+						local = LocalDelta(world.registry, item.entity, along);
+						moveTo = {item.start.x + local.x, item.start.y + local.y};
+					}
+					else
+					{
+						moveTo = DragTarget(item.start, local, false, snapping ? static_cast<float>(snapSize) : 0.0F);
+						if (gizmoHandle == GizmoHandle::X && local.y == 0.0F) moveTo.y = item.start.y;
+						if (gizmoHandle == GizmoHandle::Y && local.x == 0.0F) moveTo.x = item.start.x;
+					}
 					(void)SetMovablePosition(world.registry, item.entity, moveTo);
 				}
 			}
@@ -1171,7 +1190,12 @@ namespace engine::editor
 				if (gizmoHandle == GizmoHandle::Ring)
 				{
 					char text[32];
-					(void)std::snprintf(text, sizeof text, "%.0f deg", static_cast<double>(gizmoRotation));
+					// What the first dragged entity is being set to (its own rotation, not the world one it is drawn
+					// at).
+					const float shown = dragged.empty() ? gizmoRotation
+					                                    : TurnedRotation(dragged.front().rotation, dragDegrees,
+					                                                     snapToGrid != io.KeyCtrl ? kRotateSnap : 0.0F);
+					(void)std::snprintf(text, sizeof text, "%.0f deg", static_cast<double>(shown));
 					draw->AddText(ImVec2(at.x + shape.ringRadius + 8.0F, at.y - 8.0F), IM_COL32(255, 230, 90, 255),
 					              text);
 				}
