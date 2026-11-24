@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ecs/registry.hpp"
+#include "ecs/scheduler.hpp"
 #include "editor/editor.hpp"
 
 namespace engine::ecs
@@ -61,6 +62,10 @@ namespace engine::editor
 	[[nodiscard]] std::vector<ecs::Registry::ComponentCount> CountsByPopulation(
 	    std::vector<ecs::Registry::ComponentCount> counts);
 
+	// The systems slowest first (by smoothed time; ties keep run order).
+	[[nodiscard]] std::vector<ecs::Scheduler::SystemTiming> SlowestFirst(
+	    std::vector<ecs::Scheduler::SystemTiming> timings);
+
 	// What the game's Update costs, handed from the editor's Update to the panel's frame.
 	class Profiler
 	{
@@ -83,8 +88,11 @@ namespace engine::editor
 	};
 
 	// Adds the Profiler panel: a frame-time graph (the last 240 frames, with the update share), average, worst and
-	// FPS, the entity count and a table of how many entities have each component. Frames are only recorded while
-	// the panel is open. `world` gives the world to count (the played one when playing). Returns the Profiler the
-	// caller feeds with Update times (may be ignored: the update share then reads 0).
-	std::shared_ptr<Profiler> AddProfilerPanel(Editor& editor, std::function<ecs::World&()> world);
+	// FPS, the entity count, a table of each system's time (while a scheduler is given) and a table of how many
+	// entities have each component. Frames are only recorded while the panel is open. `world` gives the world to count
+	// (the played one when playing). `scheduler` gives the scheduler of the game that is running, or null when none is
+	// (the table then asks for Play); leave it empty for a game with no scheduler. Returns the Profiler the caller
+	// feeds with Update times (may be ignored: the update share then reads 0).
+	std::shared_ptr<Profiler> AddProfilerPanel(Editor& editor, std::function<ecs::World&()> world,
+	                                              std::function<const ecs::Scheduler*()> scheduler = {});
 } // namespace engine::editor

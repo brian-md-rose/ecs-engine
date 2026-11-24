@@ -105,6 +105,10 @@ namespace engine::editor
 		profiler = AddProfilerPanel(editor, [this]() -> ecs::World&
 		{
 			return CurrentWorld();
+		},
+		                           [this]() -> const ecs::Scheduler*
+		{
+			return play ? &play->scheduler : nullptr; // the edit world runs no systems
 		});
 		if (config.spriteRect)
 			panels->spriteRect = [this](const std::string& name)

@@ -66,6 +66,16 @@ namespace engine::editor
 		return counts;
 	}
 
+	std::vector<ecs::Scheduler::SystemTiming> SlowestFirst(std::vector<ecs::Scheduler::SystemTiming> timings)
+	{
+		std::ranges::stable_sort(timings,
+		                         [](const ecs::Scheduler::SystemTiming& a, const ecs::Scheduler::SystemTiming& b)
+		{
+			return a.averageMs > b.averageMs;
+		});
+		return timings;
+	}
+
 	namespace
 	{
 		struct ProfilerState
@@ -74,7 +84,52 @@ namespace engine::editor
 			std::shared_ptr<Profiler> profiler = std::make_shared<Profiler>();
 			bool paused = false;
 			bool hideEmpty = true;
+			bool slowestFirst = true; // the systems table order: slowest first, or as they run
+			std::function<const ecs::Scheduler*()> scheduler;
 		};
+
+		// The per-system table: each system's smoothed time, for the game that is playing.
+		void DrawSystems(ProfilerState& state)
+		{
+			const ecs::Scheduler* scheduler = state.scheduler ? state.scheduler() : nullptr;
+			if (scheduler == nullptr)
+			{
+				ImGui::TextDisabled("Systems: press Play to see how long each one takes.");
+				return;
+			}
+			std::vector<ecs::Scheduler::SystemTiming> timings = scheduler->Timings();
+			double total = 0.0;
+			for (const ecs::Scheduler::SystemTiming& timing : timings)
+				total += timing.averageMs;
+			if (state.slowestFirst) timings = SlowestFirst(std::move(timings));
+			ImGui::Text("%zu systems, %.3f ms in all", timings.size(), total);
+			ImGui::SameLine();
+			ImGui::Checkbox("Slowest first", &state.slowestFirst);
+			if (ImGui::BeginTable("##systems", 3,
+			                      ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, {0.0F, 160.0F}))
+			{
+				ImGui::TableSetupColumn("System");
+				ImGui::TableSetupColumn("Phase", ImGuiTableColumnFlags_WidthFixed, 70.0F);
+				ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthFixed, 60.0F);
+				ImGui::TableHeadersRow();
+				for (const ecs::Scheduler::SystemTiming& timing : timings)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					const std::string name(timing.name);
+					if (timing.skipped)
+						ImGui::TextDisabled("%s (skipped)", name.c_str());
+					else
+						ImGui::TextUnformatted(name.c_str());
+					ImGui::TableNextColumn();
+					const std::string phase(ecs::PhaseName(timing.phase));
+					ImGui::TextUnformatted(phase.c_str());
+					ImGui::TableNextColumn();
+					ImGui::Text("%.3f", timing.averageMs);
+				}
+				ImGui::EndTable();
+			}
+		}
 
 		void DrawProfiler(ProfilerState& state, ecs::World& world)
 		{
@@ -114,6 +169,8 @@ namespace engine::editor
 			                 {-FLT_MIN, 40.0F});
 
 			ImGui::Separator();
+			DrawSystems(state);
+			ImGui::Separator();
 			ImGui::Text("%zu entities", entities);
 			const std::vector<ecs::Registry::ComponentCount> counts =
 			    CountsByPopulation(world.registry.ComponentCounts());
@@ -137,9 +194,11 @@ namespace engine::editor
 		}
 	} // namespace
 
-	std::shared_ptr<Profiler> AddProfilerPanel(Editor& editor, std::function<ecs::World&()> world)
+	std::shared_ptr<Profiler> AddProfilerPanel(Editor& editor, std::function<ecs::World&()> world,
+	                                              std::function<const ecs::Scheduler*()> scheduler)
 	{
 		auto state = std::make_shared<ProfilerState>();
+		state->scheduler = std::move(scheduler);
 		editor.AddPanel("Profiler", [state, world = std::move(world)]
 		{
 			DrawProfiler(*state, world());
