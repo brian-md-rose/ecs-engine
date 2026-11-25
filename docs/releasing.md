@@ -20,7 +20,7 @@ Versions follow [Semantic Versioning](https://semver.org/). The single source of
 include(FetchContent)
 FetchContent_Declare(ecs_engine
     GIT_REPOSITORY https://github.com/brian-md-rose/ecs-engine.git
-    GIT_TAG        v0.9.0
+    GIT_TAG        v0.10.0
     GIT_SUBMODULES thirdparty/SDL   # the engine builds its vendored SDL3
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(ecs_engine)

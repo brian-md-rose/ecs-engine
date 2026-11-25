@@ -12,14 +12,14 @@ thin layer on top. See [docs/ROADMAP.md](docs/ROADMAP.md) for the phases.
 
 ## Status
 
-Every roadmap phase is done, up to **v0.9.0**. The game is playable from title screen to game over,
+Every roadmap phase is done, up to **v0.10.0**. The game is playable from title screen to game over,
 with enemies, scoring, a HUD, sound effects and music, sprites, mouse, keyboard and gamepad menus, and
 levels that get harder as you go. Phases 0 to 9 built the engine and the game; Phases 10 to 12 added what a
 second game (Project Babel, see [docs/babel-support.md](docs/babel-support.md)) needs: JSON and a
 seeded random number generator, mouse and text, camera zoom and clipping, UI building blocks, display
 settings, gamepads and audio files with a mixer and music. Since then the engine has gained a type registry and JSON scenes (v0.6.0),
 an optional Dear ImGui overlay with Hierarchy and Inspector panels (v0.7.0), and a standalone editor with Play and Stop, a viewport and undo
-(v0.8.0). Later releases added the Assets, Console, Profiler and Build settings panels, docking, drag and drop from the Assets panel, and rotation and scale on `Transform` (v0.9.0). The unreleased editor work since then adds rotate and scale gizmos, basic prefabs, tile tools for the maze, C++ extension points for a game's own Inspector widgets and commands, and a Game panel that runs the game beside the Viewport. See [docs/editor.md](docs/editor.md) and the [changelog](CHANGELOG.md).
+(v0.8.0). Later releases added the Assets, Console, Profiler and Build settings panels, docking, drag and drop from the Assets panel, and rotation and scale on `Transform` (v0.9.0). v0.10.0 adds rotate and scale gizmos, basic prefabs, tile tools for the maze, C++ extension points for a game's own Inspector widgets and commands, a Game panel that runs the game beside the Viewport, per-system timings in the Profiler and click-to-source in the Console. See [docs/editor.md](docs/editor.md) and the [changelog](CHANGELOG.md).
 
 ## Versions and releases
 
@@ -32,7 +32,7 @@ The version is available in code as `<core/version.hpp>`. To use the engine from
 include(FetchContent)
 FetchContent_Declare(ecs_engine
     GIT_REPOSITORY https://github.com/brian-md-rose/ecs-engine.git
-    GIT_TAG        v0.9.0
+    GIT_TAG        v0.10.0
     GIT_SUBMODULES thirdparty/SDL   # the engine builds its vendored SDL3
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(ecs_engine)

@@ -9,6 +9,8 @@ To cut a release, see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-25
+
 ### Added
 - **Console click-to-source**: `core::Log`, `LogDebug`, `LogInfo`, `LogWarning` and `LogError` take a defaulted `std::source_location`, and `LogRecord` gains `file` and `line` (new `LogAt` logs with a location given by hand, used for SDL messages). In the editor, clicking a Console message shows where it was logged, with Open and Copy path; `AddConsolePanel` takes an optional opener. Existing calls compile unchanged.
 - **Per-system timings in the editor Profiler**: a Systems table, shown while Play runs, with each system of the played game, its phase and smoothed time, slowest first. `AddProfilerPanel` takes an optional scheduler function.
@@ -257,7 +259,8 @@ SDL3 window, input and audio, batched 2D renderer, and debug panel.
   the game, tests and benchmarks are not built when the engine is a subproject.
 - Release workflow that publishes a GitHub release when a `vX.Y.Z` tag is pushed.
 
-[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/brian-md-rose/ecs-engine/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/brian-md-rose/ecs-engine/compare/v0.6.0...v0.7.0
